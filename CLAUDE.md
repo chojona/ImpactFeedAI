@@ -34,6 +34,14 @@ into visual, cross-asset market reaction stories. Target user: retail trader lea
 - Use named exports, not default exports for components
 - Tailwind for all styling — no inline styles except dynamic values
 - Mobile-first responsive design always
+- EventCategory has a higherIsBetter flag for surprise coloring:
+  INFLATION = false (hot print = red)
+  FED = false (higher rate = red) 
+  EARNINGS = true (beat = green)
+  JOBS/NFP = true (more jobs = green)
+  TARIFF = false (bigger tariff = red)
+  - Always use category.higherIsBetter to determine surprise direction, 
+    never raw actualValue > expectedValue comparison
 
 ## Current Phase
 MVP — Phase 1. Building the curated event library.

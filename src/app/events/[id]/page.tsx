@@ -1,27 +1,11 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
 import { ChartReplayPanel } from "@/components/charts/ChartReplayPanel";
+import { BackButton } from "@/components/ui/BackButton";
 import { assetReasoning } from "@/lib/assetReasoning";
 import { eventTimes, mockChartData } from "@/lib/mockChartData";
 import { mockEvents } from "@/lib/mockEvents";
-import type { EventCategory } from "@/lib/types";
-
-const CATEGORY_STYLES: Record<
-  EventCategory,
-  { label: string; className: string }
-> = {
-  TARIFF: { label: "Tariff", className: "bg-[#FF6B35]/15 text-[#FF6B35]" },
-  FED: { label: "Fed", className: "bg-purple-500/15 text-purple-300" },
-  INFLATION: { label: "Inflation", className: "bg-red-500/15 text-red-300" },
-  GEOPOLITICAL: {
-    label: "Geopolitical",
-    className: "bg-yellow-500/15 text-yellow-300",
-  },
-  EARNINGS: { label: "Earnings", className: "bg-blue-500/15 text-blue-300" },
-  OTHER: { label: "Other", className: "bg-zinc-500/15 text-zinc-300" },
-};
+import { CATEGORY_CONFIG } from "@/lib/types";
 
 const formatDate = (iso: string): string =>
   new Date(iso).toLocaleDateString("en-US", {
@@ -35,11 +19,16 @@ const parseNumeric = (raw: string): number | null => {
   return m ? parseFloat(m[0]) : null;
 };
 
-const surpriseColor = (expected: string, actual: string): string => {
+const surpriseColor = (
+  expected: string,
+  actual: string,
+  higherIsBetter: boolean,
+): string => {
   const e = parseNumeric(expected);
   const a = parseNumeric(actual);
   if (e === null || a === null || e === a) return "text-zinc-300";
-  return a > e ? "text-red-400" : "text-[#00FF94]";
+  const isPositiveSurprise = higherIsBetter ? a > e : a < e;
+  return isPositiveSurprise ? "text-[#00FF94]" : "text-red-400";
 };
 
 export function generateStaticParams(): { id: string }[] {
@@ -58,7 +47,7 @@ export default async function EventDetailPage({ params }: PageProps) {
   const charts = mockChartData[event.id] ?? {};
   const eventTime = eventTimes[event.id] ?? "";
   const reasoning = assetReasoning[event.id] ?? {};
-  const category = CATEGORY_STYLES[event.category];
+  const categoryColor = CATEGORY_CONFIG[event.category].color;
   const showSurprise =
     typeof event.expectedValue === "string" &&
     typeof event.actualValue === "string";
@@ -66,19 +55,18 @@ export default async function EventDetailPage({ params }: PageProps) {
   return (
     <div className="flex flex-1 flex-col bg-[#080C10] text-zinc-100">
       <div className="mx-auto w-full max-w-5xl px-6 pt-10 pb-24">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-100"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to events
-        </Link>
+        <BackButton />
 
         <div className="mt-8 flex items-center gap-3">
           <span
-            className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${category.className}`}
+            className="rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+            style={{
+              backgroundColor: `${categoryColor}20`,
+              color: categoryColor,
+              border: `1px solid ${categoryColor}40`,
+            }}
           >
-            {category.label}
+            {event.category}
           </span>
           <time className="text-sm text-zinc-500">
             {formatDate(event.date)}
@@ -104,6 +92,7 @@ export default async function EventDetailPage({ params }: PageProps) {
               className={`rounded-full bg-zinc-800/60 px-4 py-1.5 text-sm text-zinc-400 ${surpriseColor(
                 event.expectedValue,
                 event.actualValue,
+                CATEGORY_CONFIG[event.category].higherIsBetter,
               )}`}
             >
               Actual
@@ -148,7 +137,9 @@ export default async function EventDetailPage({ params }: PageProps) {
                   <span className="font-semibold text-zinc-100">
                     {asset.symbol}
                   </span>
-                  <span className={`font-mono text-sm font-semibold ${moveColor}`}>
+                  <span
+                    className={`font-mono text-sm font-semibold ${moveColor}`}
+                  >
                     {sign}
                     {asset.percentChange.toFixed(2)}%
                   </span>

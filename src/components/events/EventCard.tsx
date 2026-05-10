@@ -2,26 +2,11 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import type {
-  AssetReaction,
-  EventCategory,
-  NewsEvent,
+import {
+  CATEGORY_CONFIG,
+  type AssetReaction,
+  type NewsEvent,
 } from "@/lib/types";
-
-const CATEGORY_STYLES: Record<
-  EventCategory,
-  { label: string; className: string }
-> = {
-  TARIFF: { label: "Tariff", className: "bg-[#FF6B35]/15 text-[#FF6B35]" },
-  FED: { label: "Fed", className: "bg-purple-500/15 text-purple-300" },
-  INFLATION: { label: "Inflation", className: "bg-red-500/15 text-red-300" },
-  GEOPOLITICAL: {
-    label: "Geopolitical",
-    className: "bg-yellow-500/15 text-yellow-300",
-  },
-  EARNINGS: { label: "Earnings", className: "bg-blue-500/15 text-blue-300" },
-  OTHER: { label: "Other", className: "bg-zinc-500/15 text-zinc-300" },
-};
 
 const formatDate = (iso: string): string =>
   new Date(iso).toLocaleDateString("en-US", {
@@ -35,18 +20,23 @@ const parseNumeric = (raw: string): number | null => {
   return match ? parseFloat(match[0]) : null;
 };
 
-const surpriseColorClass = (expected: string, actual: string): string => {
+const surpriseColorClass = (
+  expected: string,
+  actual: string,
+  higherIsBetter: boolean,
+): string => {
   const e = parseNumeric(expected);
   const a = parseNumeric(actual);
   if (e === null || a === null || e === a) return "text-zinc-300";
-  return a > e ? "text-red-400" : "text-[#00FF94]";
+  const isPositiveSurprise = higherIsBetter ? a > e : a < e;
+  return isPositiveSurprise ? "text-[#00FF94]" : "text-red-400";
 };
 
 type Props = { event: NewsEvent };
 
 export function EventCard({ event }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const category = CATEGORY_STYLES[event.category];
+  const categoryColor = CATEGORY_CONFIG[event.category].color;
   const showSurprise =
     typeof event.expectedValue === "string" &&
     typeof event.actualValue === "string";
@@ -59,9 +49,14 @@ export function EventCard({ event }: Props) {
     >
       <div className="flex items-center justify-between gap-3">
         <span
-          className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${category.className}`}
+          className="rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+          style={{
+            backgroundColor: `${categoryColor}20`,
+            color: categoryColor,
+            border: `1px solid ${categoryColor}40`,
+          }}
         >
-          {category.label}
+          {event.category}
         </span>
         <time className="text-xs text-zinc-500">{formatDate(event.date)}</time>
       </div>
@@ -85,6 +80,7 @@ export function EventCard({ event }: Props) {
             className={`rounded-full bg-zinc-800/60 px-3 py-1 text-xs text-zinc-400 ${surpriseColorClass(
               event.expectedValue,
               event.actualValue,
+              CATEGORY_CONFIG[event.category].higherIsBetter,
             )}`}
           >
             Actual

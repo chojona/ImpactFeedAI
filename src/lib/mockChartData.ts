@@ -3,8 +3,17 @@ import type { ChartDataPoint } from "./types";
 
 export const eventTimes: Record<string, string> = {
   "trump-liberation-day-tariffs-2025": "2025-04-03T13:30:00Z",
+  "trump-90-day-pause-april-2025": "2025-04-09T17:18:00Z",
+  "china-counter-tariffs-april-2025": "2025-04-11T13:30:00Z",
   "cpi-january-2025-hot": "2025-02-12T13:30:00Z",
+  "cpi-april-2025-cool": "2025-05-13T12:30:00Z",
+  "pce-december-2024-hot": "2025-01-31T13:30:00Z",
   "fomc-march-2025-hold": "2025-03-19T18:00:00Z",
+  "fomc-may-2025-pause": "2025-05-07T18:00:00Z",
+  "israel-iran-strike-june-2025": "2025-06-13T13:30:00Z",
+  "scotus-tariffs-feb-2026": "2026-02-25T15:00:00Z",
+  "nvda-q1-fy26-beat": "2025-05-28T20:20:00Z",
+  "tsla-q1-2025-miss": "2025-04-22T20:05:00Z",
 };
 
 const PRE_MINUTES = 120;
