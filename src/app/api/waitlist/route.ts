@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const waitlist: string[] = [];
+import { prisma } from "@/lib/prisma";
+import { sendWaitlistNotification } from "@/lib/resend";
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface WaitlistBody {
   email?: unknown;
+  source?: unknown;
 }
+
+const isUniqueViolation = (err: unknown): boolean =>
+  typeof err === "object" &&
+  err !== null &&
+  "code" in err &&
+  (err as { code: unknown }).code === "P2002";
 
 export async function POST(request: NextRequest) {
   let body: WaitlistBody;
@@ -30,17 +39,38 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!waitlist.includes(email)) {
-    waitlist.push(email);
+  const source = typeof body.source === "string" ? body.source : null;
+
+  try {
+    await prisma.waitlistSignup.create({
+      data: { email, source },
+    });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      // Email already on the waitlist — silently confirm
+      return NextResponse.json({ message: "already_registered" });
+    }
+    console.error("[waitlist] DB insert failed:", err);
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 },
+    );
   }
 
-  console.log(
-    `[waitlist] signup: ${email} (total: ${waitlist.length})`,
-  );
+  // Notification is non-critical — never fail the signup over it
+  try {
+    await sendWaitlistNotification(email);
+  } catch (err) {
+    console.error("[waitlist] Resend notification failed:", err);
+  }
 
-  return NextResponse.json({ success: true, count: waitlist.length });
+  return NextResponse.json({ message: "success" });
 }
 
 export async function GET() {
-  return NextResponse.json({ count: waitlist.length, emails: waitlist });
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const count = await prisma.waitlistSignup.count();
+  return NextResponse.json({ count });
 }
