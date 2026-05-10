@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { sendWaitlistNotification } from "@/lib/resend";
+import { sendWaitlistNotification, sendWaitlistConfirmation } from "@/lib/resend";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -47,7 +47,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     if (isUniqueViolation(err)) {
-      // Email already on the waitlist — silently confirm
       return NextResponse.json({ message: "already_registered" });
     }
     console.error("[waitlist] DB insert failed:", err);
@@ -57,11 +56,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Notification is non-critical — never fail the signup over it
+  // Both non-critical — never fail the signup over either
   try {
     await sendWaitlistNotification(email);
   } catch (err) {
     console.error("[waitlist] Resend notification failed:", err);
+  }
+
+  try {
+    await sendWaitlistConfirmation(email);
+  } catch (err) {
+    console.error("[waitlist] Resend confirmation failed:", err);
   }
 
   return NextResponse.json({ message: "success" });
