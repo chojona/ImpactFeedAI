@@ -9,7 +9,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import type { ChartDataPoint, Direction } from "@/lib/types";
+import type { ChartDataPoint, Direction } from "@/types/events";
 
 type ReplaySpeed = 1 | 2 | 5 | 10;
 

@@ -2,10 +2,10 @@ import { notFound } from "next/navigation";
 
 import { ChartReplayPanel } from "@/components/charts/ChartReplayPanel";
 import { BackButton } from "@/components/ui/BackButton";
-import { assetReasoning } from "@/lib/assetReasoning";
-import { eventTimes, mockChartData } from "@/lib/mockChartData";
-import { mockEvents } from "@/lib/mockEvents";
-import { CATEGORY_CONFIG } from "@/lib/types";
+import { CATEGORY_CONFIG } from "@/lib/eventCategories";
+import { eventTimes, mockChartData } from "@/lib/mock-data/charts";
+import { mockEvents } from "@/lib/mock-data/events";
+import { assetReasoning } from "@/lib/mock-data/reasoning";
 
 const formatDate = (iso: string): string =>
   new Date(iso).toLocaleDateString("en-US", {

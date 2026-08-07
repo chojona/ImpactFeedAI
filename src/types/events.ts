@@ -1,3 +1,13 @@
+/**
+ * Shared UI-facing domain types.
+ *
+ * NOTE: these are the *presentation* types the current Next.js app renders.
+ * They are deliberately separate from the Prisma models in
+ * `prisma/schema.prisma` (`Event`, `AssetReaction`, `DataRelease`), which use a
+ * different vocabulary (`EventType.FED_DECISION` vs `EventCategory.FED`).
+ * A mapping layer between the two does not exist yet — see docs/architecture.md.
+ */
+
 export type EventCategory =
   | "TARIFF"
   | "FED"
@@ -42,15 +52,3 @@ export interface ChartDataPoint {
   time: string;
   value: number;
 }
-
-export const CATEGORY_CONFIG: Record<
-  EventCategory,
-  { higherIsBetter: boolean; color: string }
-> = {
-  TARIFF: { higherIsBetter: false, color: "#FF6B35" },
-  FED: { higherIsBetter: false, color: "#A78BFA" },
-  INFLATION: { higherIsBetter: false, color: "#EF4444" },
-  GEOPOLITICAL: { higherIsBetter: false, color: "#F59E0B" },
-  EARNINGS: { higherIsBetter: true, color: "#3B82F6" },
-  OTHER: { higherIsBetter: true, color: "#6B7280" },
-};

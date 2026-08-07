@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { CATEGORY_CONFIG } from "@/lib/types";
+import { CATEGORY_CONFIG } from "@/lib/eventCategories";
 import type {
   AssetPattern,
   CategoryPattern,
-} from "@/lib/patternAnalysis";
+} from "@/services/analytics/patternAnalysis";
 
 interface Props {
   pattern: CategoryPattern;

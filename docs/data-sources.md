@@ -1,0 +1,284 @@
+# Data Sources
+
+An inventory of the data ImpactFeedAI uses and might use. Only the entries
+marked **Integrated** exist in the codebase; everything else is a candidate.
+
+**Status values**
+
+| Status | Meaning |
+| --- | --- |
+| **Integrated** | Code in this repository fetches it today |
+| **Researching** | Being evaluated; feasibility or cost unresolved |
+| **Planned** | Decided, not built |
+| **Rejected** | Evaluated and ruled out, with a reason |
+
+> ⚠️ **Pricing and API terms change.** Anything below marked *(verify)* was not
+> confirmed against the provider's current documentation while writing this
+> document. Confirm licensing before relying on a source commercially —
+> especially for redistribution, which is where most market-data terms bite.
+
+---
+
+## Macroeconomic
+
+### FRED — Federal Reserve Bank of St. Louis · **Integrated**
+
+| | |
+| --- | --- |
+| Provides | CPI, Core CPI, PPI, Nonfarm payrolls, Unemployment, Fed funds (effective and target upper bound), PCE, Core PCE, GDP, UMich sentiment, JOLTS |
+| Endpoint | `api.stlouisfed.org/fred/series/observations` |
+| Cost | Free, API key required (`FRED_API_KEY`) |
+| History | Deep — decades for most series; `--since 2000-01-01` is the pipeline default |
+| Used by | `scripts/ingest/sources-fred.ts` (11 series), `scripts/ingest/fetch-macro.ts` (4 series), `scripts/ingest/sources-fomc.ts` |
+
+**Limitations that matter:**
+
+- **No consensus estimates.** FRED ships actuals only. See
+  [the consensus problem](#the-consensus-problem).
+- **Observation dates are reference periods, not release dates.** `CPIAUCSL`
+  for March is dated 2024-03-01, not the day it was published. Reaction windows
+  need the release timestamp; the pipeline currently approximates by taking the
+  last observation on or before the event date.
+- **Revisions are invisible.** The standard API returns the *current* value of
+  a series. Studying what the market actually saw requires
+  **ALFRED** vintage endpoints (`realtime_start` / `realtime_end`). Not used
+  yet; **Planned** and important — without it, surprise calculations use
+  numbers nobody traded on.
+- Raw series are index levels; headline metrics are derived by per-series
+  transforms in the pipeline (YoY %, MoM Δ in thousands, level %, QoQ
+  annualised).
+- Rate limits exist *(verify current threshold)*; the pipeline serialises
+  requests.
+
+### BLS — Bureau of Labor Statistics · **Integrated**
+
+| | |
+| --- | --- |
+| Provides | CPI-U, Core CPI-U, Total Nonfarm Payroll, Unemployment Rate |
+| Endpoint | `api.bls.gov/publicAPI/v2/timeseries/data/` (POST) |
+| Cost | Free. Key optional (`BLS_API_KEY`) — raises the daily cap from 25 to 500 requests *(verify)* |
+| History | Long; capped at 20 years per request, so the pipeline paginates in 10-year chunks |
+| Used by | `scripts/ingest/sources-bls.ts` |
+
+Overlaps with FRED for CPI and unemployment — the ingestion dedup exists partly
+to handle that. Value of keeping both: BLS is the primary publisher, useful as
+a cross-check on FRED's transformations. Also publishes the official release
+calendar, which is the natural path to real release timestamps. **Researching.**
+
+### FOMC / Federal Reserve · **Integrated (indirectly)**
+
+Rate decisions are currently derived by walking the FRED `DFEDTARU` daily
+series and emitting an event on each step change. This is accurate for the
+target rate and the decision date, but **omits meetings that held rates
+steady** — often the most interesting ones.
+
+**Planned** improvements: the official FOMC calendar and statement archive at
+`federalreserve.gov` (free, HTML/RSS, no formal API *(verify)*) for meeting
+dates including holds, statements, dot plots and minutes.
+
+### BEA — Bureau of Economic Analysis · **Researching**
+
+GDP, PCE and personal income at source, with more detail than the FRED mirror
+(component breakdowns, vintage tables). Free API with registration *(verify)*.
+Low priority while FRED covers the headline numbers.
+
+### Census Bureau · **Researching**
+
+Retail sales, durable goods, trade balance. Free API *(verify)*. Retail sales
+is a market-moving release currently missing from the pipeline.
+
+### Treasury · **Planned**
+
+`fiscaldata.treasury.gov` for auction results and the daily yield curve. Free,
+official. Relevant to Phase 2 (rate environment) and to auction-day events.
+
+---
+
+## The consensus problem
+
+**This is the single biggest data gap in the project, and it constrains the
+whole research thesis.**
+
+`surprise = actual − forecast`. Every free government source publishes the
+actual and nothing else. Consensus forecasts are commercial products.
+Currently `expectedValue` is hand-typed into `events-seed.ts` for a handful of
+events, which does not scale past the seed list.
+
+Candidate paths, none yet chosen:
+
+| Option | Coverage | Cost | Notes | Status |
+| --- | --- | --- | --- | --- |
+| Commercial calendar APIs (Trading Economics, Econoday, Financial Modeling Prep, and similar) | Broad, includes consensus and release timestamps | Paid, tiers vary widely *(verify)* | Cleanest solution. Check redistribution terms and how much history each tier includes | **Researching** |
+| Scraping public calendar sites | Broad | Free | Terms of service almost always prohibit it; fragile; not a foundation to build on | **Rejected** |
+| Philadelphia Fed Survey of Professional Forecasters | Narrow, quarterly | Free | Real forecasts, but wrong frequency for monthly releases *(verify coverage)* | **Researching** |
+| Cleveland Fed inflation nowcast | CPI/PCE only | Free | A model's expectation, not a market consensus — a proxy, and it must be labelled as one | **Researching** |
+| Market-implied expectations (fed funds futures, inflation breakevens/swaps) | Rates and inflation | Free via FRED for some series | Not a "consensus number", but arguably a better measure of what was priced in. Worth having regardless of what else is chosen | **Planned** |
+| Derive a naive baseline (e.g. prior value, trailing average) | Complete | Free | Honest fallback, clearly labelled as *not* consensus. Useful for coverage, weak as a surprise measure | **Planned** |
+
+Interim recommendation: store forecasts with an explicit source and method
+field so consensus, nowcast, market-implied and naive baselines never get
+silently mixed.
+
+---
+
+## Market prices
+
+### Yahoo Finance (`yahoo-finance2`) · **Integrated**
+
+| | |
+| --- | --- |
+| Provides | OHLCV for the 12-symbol universe: SPY, QQQ, IWM, TLT, GLD, GC=F, CL=F, DX-Y.NYB, BTC-USD, XLE, XLF, XLK |
+| Cost | Free, no key |
+| History | Daily: decades. **Intraday (1h): roughly 730 days** — older events get daily granularity only |
+| Used by | `scripts/ingest/fetch-prices.ts` |
+
+**Limitations:** unofficial API accessed through a community library, so it can
+break without notice; throttles under load (the pipeline waits 500 ms per
+symbol and backs off 30 s after repeated failures); no guarantee of
+adjustment/dividend consistency; **commercial use terms need verification**
+before this becomes production infrastructure.
+
+Missing from the universe and needed for Phase 2: **VIX and Treasury yields**.
+
+### Polygon.io · **Planned**
+
+Named as the intended price provider in the project instructions; **no code
+uses it**. Aggregates, tick data and options across US equities. Paid tiers
+with a limited free tier *(verify current limits and history depth)*. The
+natural upgrade from Yahoo when reliability and intraday depth start mattering —
+particularly for 5-minute and 30-minute reaction windows, which Yahoo cannot
+support historically.
+
+### FRED (market series) · **Planned**
+
+Free daily series that cover several Phase 2 needs without a new provider:
+
+- `VIXCLS` — VIX daily close
+- `DGS2`, `DGS10`, `DGS30` — constant-maturity Treasury yields
+- `T10Y2Y` — 2s10s spread
+- `T5YIE`, `T10YIE` — inflation breakevens
+- `SP500`, `NASDAQ100` — index levels *(verify licensing on index series)*
+
+Daily granularity only — fine for regime and context features, insufficient for
+intraday reaction analysis.
+
+### Futures data (ES, NQ, ZN) · **Researching**
+
+The product's language is futures (ES/NQ) but the pipeline stores ETF proxies
+(SPY/QQQ). Proxies are acceptable for daily percentage moves and wrong for
+overnight sessions — a CPI print at 08:30 ET moves ES for an hour before the
+ETF opens. Continuous-contract history with correct roll handling is the hard
+part. Candidate providers: Databento, CME DataMine, Barchart *(all paid,
+verify)*.
+
+### Cboe · **Researching**
+
+VIX history and index data direct from the source. Some free daily files; the
+intraday and options products are paid *(verify)*.
+
+---
+
+## Options
+
+**Status: Planned / Researching. Nothing built. Phase 5.**
+
+Options data is where "what is the market positioned for" gets answered, and
+also where costs jump.
+
+| Source | Provides | Notes | Status |
+| --- | --- | --- | --- |
+| Cboe DataShop | Historical options quotes, trades, open interest | Paid, per-dataset pricing *(verify)* | **Researching** |
+| ORATS | Cleaned historical chains, implied vols, greeks | Paid subscription *(verify)* | **Researching** |
+| Polygon.io options | Chains, aggregates | Paid tiers *(verify)* | **Researching** |
+| OPRA direct | Full options tape | Prohibitively expensive for this project | **Rejected** |
+| Deribit / crypto venues | Crypto options, free APIs | Only relevant if crypto stays in scope | **Researching** |
+
+Dealer gamma exposure is a *derived* metric, not a purchasable one: it needs
+open interest by strike plus assumptions about dealer positioning. Any GEX
+figure the product shows must state its assumptions.
+
+---
+
+## Order flow
+
+**Status: Researching. Expect this to be difficult and expensive.**
+
+Historical order-flow data — full depth-of-book, message-level tape, footprint
+and volume profile reconstruction — is the most expensive category in this
+document and the least likely to be free.
+
+- **CME MDP 3.0 historical / CME DataMine** — official futures market data,
+  priced per dataset *(verify)*. Storage and processing are non-trivial: raw
+  message data for one instrument-year runs to hundreds of gigabytes.
+- **Databento** — normalised historical market data with usage-based pricing
+  *(verify)*; commonly cited as the most accessible commercial option.
+- **Nasdaq TotalView-ITCH** — equity depth, via vendors *(verify)*.
+- **Volume profile / footprint** — derivable from tick data rather than bought
+  directly. The cost is in the tick data and the processing.
+
+**Realistic assessment:** order flow is a Phase 5+ item, and it may end up
+limited to a recent window (last 1–2 years) rather than the deep history the
+rest of the platform has. That asymmetry has to be visible in the product —
+an analog engine cannot weight a feature that only exists for 5% of the sample.
+
+---
+
+## News and events
+
+Needed for tariff, geopolitical and policy events, which have no equivalent of
+a FRED series.
+
+| Source | Provides | Cost | Status |
+| --- | --- | --- | --- |
+| **Federal Register API** | Executive orders, tariff proclamations, agency rules — official, timestamped, structured | Free | **Planned** — the best structured source for the tariff events already in the seed data |
+| **Federal Reserve press releases** | FOMC statements, minutes, speeches | Free (RSS/HTML) | **Planned** |
+| **GDELT** | Global event and news database, structured | Free | **Researching** — very broad, needs heavy filtering |
+| **NewsAPI / Alpha Vantage news** | Headlines, some sentiment | Freemium *(verify history depth)* | **Researching** — free tiers usually cap historical lookback, which is the part that matters here |
+| **RavenPack, Benzinga, Bloomberg** | Curated, timestamped, market-grade news | Enterprise pricing | **Rejected** for now on cost |
+| **Hand-curated seed list** | ~51 events in `events-seed.ts` | Free | **Integrated** — accurate, does not scale |
+
+Discretionary events will likely stay partly hand-curated for a while. That is
+acceptable if provenance is recorded: a hand-entered event and an
+API-sourced one should be distinguishable in the database.
+
+---
+
+## Status summary
+
+| Source | Category | Status |
+| --- | --- | --- |
+| FRED | Macro | **Integrated** |
+| BLS | Macro | **Integrated** |
+| FOMC via `DFEDTARU` | Macro | **Integrated** (holds missing) |
+| Yahoo Finance | Prices | **Integrated** |
+| Hand-curated seed events | News | **Integrated** |
+| FRED ALFRED vintages | Macro | **Planned** |
+| FRED market series (VIX, yields, breakevens) | Market | **Planned** |
+| Federal Register | News | **Planned** |
+| Fed press releases | News | **Planned** |
+| Treasury fiscal data | Macro | **Planned** |
+| Polygon.io | Prices | **Planned** |
+| Market-implied expectations | Consensus | **Planned** |
+| Commercial calendar APIs | Consensus | **Researching** |
+| Philadelphia Fed SPF / Cleveland Fed nowcast | Consensus | **Researching** |
+| BEA, Census | Macro | **Researching** |
+| Futures history (Databento, CME, Barchart) | Prices | **Researching** |
+| Cboe | Volatility/options | **Researching** |
+| Cboe DataShop, ORATS, Polygon options | Options | **Researching** |
+| CME DataMine, Databento, ITCH | Order flow | **Researching** |
+| GDELT, NewsAPI, Alpha Vantage | News | **Researching** |
+| Scraping calendar sites | Consensus | **Rejected** — ToS |
+| OPRA direct | Options | **Rejected** — cost |
+| RavenPack / Bloomberg | News | **Rejected** — cost |
+
+---
+
+## Provenance requirement
+
+Whatever gets added, every stored value should eventually record **where it
+came from, when it was fetched, and which vintage it represents.** The schema
+has no `DataSource` concept today (see
+[architecture.md](architecture.md#database)). Adding it before the source list
+grows is much cheaper than backfilling provenance later — and without it,
+mixing a hand-typed consensus with a model nowcast and a revised actual becomes
+undetectable.

@@ -1,4 +1,13 @@
-import type { NewsEvent } from "./types";
+/**
+ * PLACEHOLDER DATA — not the product's source of truth.
+ *
+ * 12 hand-written events with hand-written prices. Every page in the app
+ * currently renders from this file, including `/api/events`. The real event
+ * store is Postgres (`events` / `asset_reactions` / `data_releases`), populated
+ * by `scripts/ingest/`. Replacing these fixtures with database reads is the
+ * next milestone — see docs/roadmap.md, Phase 1.
+ */
+import type { NewsEvent } from "@/types/events";
 
 export const mockEvents: NewsEvent[] = [
   {

@@ -3,7 +3,7 @@ import type {
   Direction,
   EventCategory,
   NewsEvent,
-} from "./types";
+} from "@/types/events";
 
 export interface AssetPattern {
   symbol: string;

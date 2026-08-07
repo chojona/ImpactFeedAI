@@ -1,5 +1,10 @@
-import { mockEvents } from "./mockEvents";
-import type { ChartDataPoint } from "./types";
+/**
+ * PLACEHOLDER DATA — synthetic intraday series generated per mock event, plus
+ * the event timestamps used to draw the "news hit" marker. Replaced once
+ * `asset_reactions` (and, later, real candle data) back the chart panel.
+ */
+import type { ChartDataPoint } from "@/types/events";
+import { mockEvents } from "./events";
 
 export const eventTimes: Record<string, string> = {
   "trump-liberation-day-tariffs-2025": "2025-04-03T13:30:00Z",

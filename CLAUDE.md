@@ -7,24 +7,37 @@ A platform that turns major news events (tariffs, Fed decisions, CPI prints, geo
 into visual, cross-asset market reaction stories. Target user: retail trader learning to trade macro.
 
 ## Tech Stack
-- Framework: Next.js 14 (App Router), TypeScript
-- Styling: Tailwind CSS
+- Framework: Next.js 16 (App Router), React 19, TypeScript strict
+- Styling: Tailwind CSS v4
 - Charts: TradingView Lightweight Charts library
 - Animations: Framer Motion
-- Database: PostgreSQL via Prisma
-- AI: Anthropic Claude API (event explainers, chat)
-- Price Data: Polygon.io API
+- Database: PostgreSQL via Prisma 7 + @prisma/adapter-pg + pg
+- PrismaClient requires adapter — no zero-arg constructor
+- Generated client lives in src/generated/prisma (gitignored — run `npm run db:generate`)
+- Email: Resend (waitlist notifications)
+- Market/macro data: yahoo-finance2 + FRED/BLS REST, ingestion scripts only
 - State: React useState/useContext (no Redux yet)
+- AI: planned, not built. @anthropic-ai/sdk is installed but unused.
+- Price Data: Polygon.io is the intended provider but is NOT integrated yet.
 
 ## Project Structure
-- src/app/ — Next.js routes and layouts
-- src/components/ — Reusable UI components
-- src/components/events/ — Event card components
-- src/components/charts/ — Chart and replay components
-- src/lib/ — API clients, utilities, types
-- src/lib/polygon.ts — Polygon.io price data fetcher
-- src/lib/anthropic.ts — Claude API wrapper
+- src/app/ — Next.js routes, layouts, and route handlers (/api/*)
+- src/components/ — Reusable UI, grouped by domain (events/, charts/, landing/, patterns/, ui/)
+- src/lib/ — Third-party clients + app config (prisma.ts, resend.ts, eventCategories.ts)
+- src/lib/mock-data/ — PLACEHOLDER fixtures the UI renders today; delete once the DB is wired up
+- src/services/ — Business logic and external-API services (analytics/)
+- src/types/ — Shared TypeScript types (events.ts)
+- scripts/ingest/ — Macro + price ingestion pipelines (has its own README)
+- scripts/maintenance/ — DB verification and upkeep scripts
 - prisma/schema.prisma — Database schema
+- docs/ — vision, architecture, data-sources, research-methodology, roadmap
+
+Read docs/architecture.md before adding a new file — it documents what is built
+vs. planned and where each kind of code belongs.
+
+Important: the UI does NOT read the database yet. Pages and /api/events render
+from src/lib/mock-data/; the ingestion scripts write to Postgres. Connecting
+them is the current priority.
 
 ## Coding Rules
 - Always use TypeScript with strict types — no `any`

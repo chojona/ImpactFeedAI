@@ -2,11 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  CATEGORY_CONFIG,
-  type AssetReaction,
-  type NewsEvent,
-} from "@/lib/types";
+import { CATEGORY_CONFIG } from "@/lib/eventCategories";
+import type { AssetReaction, NewsEvent } from "@/types/events";
 
 const formatDate = (iso: string): string =>
   new Date(iso).toLocaleDateString("en-US", {

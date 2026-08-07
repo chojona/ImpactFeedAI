@@ -6,7 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:verify": "tsx scripts/maintenance/verify-db.ts",
+    "ingest": "tsx scripts/ingest/ingest.ts",
+    "ingest:dry-run": "tsx scripts/ingest/ingest.ts --dry-run",
+    "auto-ingest": "tsx scripts/ingest/auto-ingest.ts",
+    "auto-ingest:dry-run": "tsx scripts/ingest/auto-ingest.ts --dry-run",
+    "auto-ingest:fred": "tsx scripts/ingest/auto-ingest.ts --source fred",
+    "auto-ingest:fomc": "tsx scripts/ingest/auto-ingest.ts --source fomc"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
@@ -20,7 +31,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
-    "resend": "^6.12.3"
+    "resend": "^6.12.3",
+    "yahoo-finance2": "^3.14.0"
   },
   "devDependencies": {
     "@prisma/client": "^7.8.0",
@@ -33,6 +45,7 @@
     "eslint-config-next": "16.2.6",
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

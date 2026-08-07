@@ -1,3 +1,9 @@
+/**
+ * PLACEHOLDER DATA — hand-written "why did this asset move" copy, keyed by
+ * event id then asset symbol. This is the text an AI explainer layer would
+ * eventually generate from stored event + reaction rows (docs/roadmap.md,
+ * Phase 4). Written by hand today; nothing generates it.
+ */
 export const assetReasoning: Record<string, Record<string, string>> = {
   "trump-liberation-day-tariffs-2025": {
     SPY: "Equities suffered the worst session since the 2020 COVID crash on growth-damage fears. Cyclicals — industrials, autos, retailers — led declines as investors priced in higher input costs and weaker global demand.",

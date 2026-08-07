@@ -1,8 +1,8 @@
 import { Header } from "@/components/Header";
 import { PatternCard } from "@/components/patterns/PatternCard";
-import { mockEvents } from "@/lib/mockEvents";
-import { analyzeCategory } from "@/lib/patternAnalysis";
-import type { EventCategory } from "@/lib/types";
+import { mockEvents } from "@/lib/mock-data/events";
+import { analyzeCategory } from "@/services/analytics/patternAnalysis";
+import type { EventCategory } from "@/types/events";
 
 const CATEGORIES: EventCategory[] = [
   "TARIFF",

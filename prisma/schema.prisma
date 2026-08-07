@@ -18,3 +18,64 @@ model WaitlistSignup {
   createdAt DateTime @default(now())
   source    String?
 }
+
+enum EventType {
+  TARIFF
+  FED_DECISION
+  CPI
+  PPI
+  NFP
+  GEOPOLITICAL
+  EARNINGS_SURPRISE
+  MACRO_DATA
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  headline    String
+  eventType   EventType @map("event_type")
+  occurredAt  DateTime  @map("occurred_at")
+  sourceUrl   String?   @map("source_url")
+  explanation String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  assetReactions AssetReaction[]
+  dataReleases   DataRelease[]
+
+  @@unique([headline, occurredAt], name: "event_natural_key")
+  @@index([occurredAt])
+  @@index([eventType])
+  @@map("events")
+}
+
+model AssetReaction {
+  id           String @id @default(uuid())
+  eventId      String @map("event_id")
+  event        Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assetSymbol  String @map("asset_symbol")
+  priceAtEvent Float  @map("price_at_event")
+  price1h      Float? @map("price_1h")
+  price1d      Float? @map("price_1d")
+  price1w      Float? @map("price_1w")
+  pctChange1h  Float? @map("pct_change_1h")
+  pctChange1d  Float? @map("pct_change_1d")
+  pctChange1w  Float? @map("pct_change_1w")
+
+  @@unique([eventId, assetSymbol])
+  @@index([assetSymbol])
+  @@map("asset_reactions")
+}
+
+model DataRelease {
+  id                String @id @default(uuid())
+  eventId           String @map("event_id")
+  event             Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  metricName        String @map("metric_name")
+  expectedValue     Float? @map("expected_value")
+  actualValue       Float? @map("actual_value")
+  surpriseMagnitude Float? @map("surprise_magnitude")
+  priorValue        Float? @map("prior_value")
+
+  @@unique([eventId, metricName])
+  @@map("data_releases")
+}

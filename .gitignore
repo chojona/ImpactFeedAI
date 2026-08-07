@@ -41,6 +41,23 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma client — regenerate with `npm run db:generate` after install
 /src/generated/prisma
 
-.vercel
+# local agent / editor state
+.claude/*.lock
+.idea/
+*.swp
+
+# local databases and generated datasets
+*.sqlite
+*.sqlite3
+*.db
+/data/
+
+# python analytics service (planned — see docs/architecture.md)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/

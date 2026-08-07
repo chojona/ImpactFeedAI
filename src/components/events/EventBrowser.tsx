@@ -5,16 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
-import type { NewsEvent } from "@/lib/types";
+import type { EventCategory, NewsEvent } from "@/types/events";
 import { CategoryFilterBar, type CategoryFilter } from "./CategoryFilterBar";
 import { EventCard } from "./EventCard";
 import { SearchBar } from "./SearchBar";
 
 type SortMode = "newest" | "biggest";
-
-interface Props {
-  events: NewsEvent[];
-}
 
 const VALID_CATEGORIES: ReadonlyArray<CategoryFilter> = [
   "ALL",
@@ -31,18 +27,26 @@ const isValidCategory = (v: string | null): v is CategoryFilter =>
 const isValidSort = (v: string | null): v is SortMode =>
   v === "newest" || v === "biggest";
 
-const maxAbsMove = (event: NewsEvent): number => {
-  let m = 0;
-  for (const a of event.assets) {
-    const x = Math.abs(a.percentChange);
-    if (x > m) m = x;
-  }
-  return m;
+const PAGE_SIZE = 12;
+
+interface EventsApiResponse {
+  events: NewsEvent[];
+  total: number;
+  offset: number;
+  limit: number;
+  counts: Record<EventCategory | "ALL", number>;
+}
+
+const ZERO_COUNTS: Record<CategoryFilter, number> = {
+  ALL: 0,
+  TARIFF: 0,
+  INFLATION: 0,
+  FED: 0,
+  GEOPOLITICAL: 0,
+  EARNINGS: 0,
 };
 
-const TOTAL_LIBRARY_SIZE = 142;
-
-export function EventBrowser({ events }: Props) {
+export function EventBrowser() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -88,53 +92,133 @@ export function EventBrowser({ events }: Props) {
     [updateParam],
   );
 
+  const [events, setEvents] = useState<NewsEvent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [counts, setCounts] =
+    useState<Record<CategoryFilter, number>>(ZERO_COUNTS);
+  const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchEvents = useCallback(
+    async (offset: number, signal: AbortSignal): Promise<EventsApiResponse> => {
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(PAGE_SIZE),
+        type: category,
+        sort: sortMode,
+      });
+      if (urlQuery.trim().length > 0) params.set("q", urlQuery.trim());
+
+      const res = await fetch(`/api/events?${params.toString()}`, { signal });
+      if (!res.ok) {
+        throw new Error(`Failed to load events (${res.status})`);
+      }
+      return (await res.json()) as EventsApiResponse;
+    },
+    [category, sortMode, urlQuery],
+  );
+
+  // Reset + fetch first page whenever filter/sort/q changes.
+  useEffect(() => {
+    const ac = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    setInitialLoad(true);
+    setError(null);
+
+    fetchEvents(0, ac.signal)
+      .then((data) => {
+        setEvents(data.events);
+        setTotal(data.total);
+        setCounts({
+          ALL: data.counts.ALL,
+          TARIFF: data.counts.TARIFF,
+          INFLATION: data.counts.INFLATION,
+          FED: data.counts.FED,
+          GEOPOLITICAL: data.counts.GEOPOLITICAL,
+          EARNINGS: data.counts.EARNINGS,
+        });
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setError(
+          err instanceof Error ? err.message : "Failed to load events",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+        setInitialLoad(false);
+      });
+
+    return () => ac.abort();
+  }, [fetchEvents]);
+
+  const loadMore = useCallback(async () => {
+    if (loading) return;
+    if (events.length >= total) return;
+    const ac = new AbortController();
+    setLoading(true);
+    try {
+      const data = await fetchEvents(events.length, ac.signal);
+      setEvents((prev) => {
+        const seen = new Set(prev.map((e) => e.id));
+        const next = data.events.filter((e) => !seen.has(e.id));
+        return [...prev, ...next];
+      });
+      setTotal(data.total);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setError(err instanceof Error ? err.message : "Failed to load events");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchEvents, events.length, total, loading]);
+
+  // Sticky header behavior
   const [stickyVisible, setStickyVisible] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const stickyAnchorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
+    const anchor = stickyAnchorRef.current;
+    if (!anchor) return;
     const handler = () => {
-      setStickyVisible(sentinel.getBoundingClientRect().top < 64);
+      setStickyVisible(anchor.getBoundingClientRect().top < 64);
     };
     handler();
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  const counts = useMemo<Record<CategoryFilter, number>>(() => {
-    const result: Record<CategoryFilter, number> = {
-      ALL: events.length,
-      TARIFF: 0,
-      INFLATION: 0,
-      FED: 0,
-      GEOPOLITICAL: 0,
-      EARNINGS: 0,
-    };
-    for (const e of events) {
-      if (e.category === "OTHER") continue;
-      result[e.category] += 1;
-    }
-    return result;
-  }, [events]);
+  // Infinite scroll sentinel
+  const loadSentinelRef = useRef<HTMLDivElement | null>(null);
+  const hasMore = events.length < total;
 
-  const filtered = useMemo(() => {
-    const q = urlQuery.toLowerCase().trim();
-    const list = events.filter((e) => {
-      if (category !== "ALL" && e.category !== category) return false;
-      if (q.length > 0) {
-        const hay = `${e.title} ${e.summary} ${e.explanation}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-    return [...list].sort((a, b) => {
-      if (sortMode === "newest") {
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      }
-      return maxAbsMove(b) - maxAbsMove(a);
-    });
-  }, [events, urlQuery, category, sortMode]);
+  useEffect(() => {
+    const sentinel = loadSentinelRef.current;
+    if (!sentinel) return;
+    if (!hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting) {
+          void loadMore();
+        }
+      },
+      { rootMargin: "200px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
+
+  const counterDisplay = useMemo(
+    () => ({
+      visible: events.length,
+      total,
+    }),
+    [events.length, total],
+  );
 
   return (
     <>
@@ -152,7 +236,7 @@ export function EventBrowser({ events }: Props) {
                 <SearchBar
                   value={searchInput}
                   onChange={setSearchInput}
-                  resultCount={filtered.length}
+                  resultCount={events.length}
                 />
               </div>
               <div className="lg:flex-1 lg:min-w-0">
@@ -171,7 +255,7 @@ export function EventBrowser({ events }: Props) {
         <SearchBar
           value={searchInput}
           onChange={setSearchInput}
-          resultCount={filtered.length}
+          resultCount={events.length}
         />
         <CategoryFilterBar
           active={category}
@@ -180,12 +264,12 @@ export function EventBrowser({ events }: Props) {
         />
       </div>
 
-      <div ref={sentinelRef} className="h-px" />
+      <div ref={stickyAnchorRef} className="h-px" />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h2 className="flex items-baseline gap-2 font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
           <span className="tabular-nums">
-            {filtered.length} of {TOTAL_LIBRARY_SIZE}
+            {counterDisplay.visible} of {counterDisplay.total}
           </span>
           <span className="text-[10px] tracking-normal text-zinc-600 normal-case">
             ({events.length} loaded)
@@ -207,7 +291,13 @@ export function EventBrowser({ events }: Props) {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/5 px-6 py-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      {!initialLoad && events.length === 0 ? (
         <div className="rounded-lg border border-white/5 bg-white/[0.02] px-6 py-16 text-center">
           <p className="text-zinc-300">No events match your search</p>
           <p className="mt-2 text-sm text-zinc-500">
@@ -217,7 +307,7 @@ export function EventBrowser({ events }: Props) {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence mode="popLayout">
-            {filtered.map((event) => (
+            {events.map((event) => (
               <motion.div
                 key={event.id}
                 layout
@@ -237,7 +327,25 @@ export function EventBrowser({ events }: Props) {
           </AnimatePresence>
         </div>
       )}
+
+      <div ref={loadSentinelRef} className="h-px" aria-hidden />
+
+      {loading && (
+        <div className="flex justify-center py-10">
+          <Spinner />
+        </div>
+      )}
     </>
+  );
+}
+
+function Spinner() {
+  return (
+    <span
+      role="status"
+      aria-label="Loading more events"
+      className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[#00FF94]/20 border-t-[#00FF94]"
+    />
   );
 }
 

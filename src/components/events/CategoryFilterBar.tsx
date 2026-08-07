@@ -2,7 +2,8 @@
 
 import { useId } from "react";
 import { motion } from "framer-motion";
-import { CATEGORY_CONFIG, type EventCategory } from "@/lib/types";
+import { CATEGORY_CONFIG } from "@/lib/eventCategories";
+import type { EventCategory } from "@/types/events";
 
 export type CategoryFilter = "ALL" | Exclude<EventCategory, "OTHER">;
 

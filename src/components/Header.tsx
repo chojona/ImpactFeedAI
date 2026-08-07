@@ -23,7 +23,7 @@ export function Header() {
             Patterns
           </Link>
           <Link
-            href="/landing"
+            href="/#waitlist"
             className="rounded-md bg-[#00FF94] px-3 py-1.5 text-sm font-semibold text-[#080C10] transition hover:bg-[#00FF94]/90 focus:outline-none focus:ring-2 focus:ring-[#00FF94]/40 sm:px-4 sm:py-2"
           >
             Join Waitlist

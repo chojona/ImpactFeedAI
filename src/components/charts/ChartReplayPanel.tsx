@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Play, Square } from "lucide-react";
 
 import { AssetChart } from "./AssetChart";
-import type { AssetReaction, ChartDataPoint } from "@/lib/types";
+import type { AssetReaction, ChartDataPoint } from "@/types/events";
 
 type ReplaySpeed = 1 | 2 | 5 | 10;
 
