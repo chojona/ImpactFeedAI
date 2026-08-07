@@ -130,7 +130,6 @@ Everything listed here is confirmed present in the repository.
 | Icons | `lucide-react` |
 | Database | PostgreSQL |
 | ORM | Prisma 7.8 with `@prisma/adapter-pg` (driver adapter required — `PrismaClient` has no zero-arg constructor) |
-| Email | Resend (waitlist notifications) |
 | Market data | `yahoo-finance2` (ingestion scripts only) |
 | Macro data | FRED and BLS REST APIs (`fetch`, no SDK) |
 | Script runner | `tsx` |
@@ -179,7 +178,7 @@ impactfeedai/
     │   ├── patterns/              # per-category aggregate reactions
     │   └── api/
     │       ├── events/            # GET event list (serves placeholder data today)
-    │       └── waitlist/          # POST signup → Postgres + Resend
+    │       └── waitlist/          # POST signup → Postgres
     ├── components/
     │   ├── charts/                # lightweight-charts wrappers, replay panel
     │   ├── events/                # browser, card, filter bar, search
@@ -188,7 +187,6 @@ impactfeedai/
     │   └── ui/                    # small shared primitives
     ├── lib/
     │   ├── prisma.ts              # Prisma client singleton
-    │   ├── resend.ts              # email client + waitlist notification
     │   ├── eventCategories.ts     # category colours + higherIsBetter config
     │   └── mock-data/             # PLACEHOLDER fixtures the UI renders today
     ├── services/
@@ -211,8 +209,8 @@ than kept as empty scaffolding.
 - **Node.js 20+** (Next 16 / React 19)
 - **PostgreSQL 14+** — local instance or a hosted one
 - Optional API keys: [FRED](https://fred.stlouisfed.org/docs/api/api_key.html)
-  (macro data), [Resend](https://resend.com/api-keys) (waitlist emails),
-  [BLS](https://data.bls.gov/registrationEngine/) (higher BLS rate limit)
+  (macro data), [BLS](https://data.bls.gov/registrationEngine/) (higher BLS
+  rate limit)
 
 ### Installation
 
@@ -234,9 +232,6 @@ Fill in the values. Every variable is documented inline in
 | Variable | Required | Used by |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | web app, Prisma CLI, all scripts |
-| `RESEND_API_KEY` | for waitlist email | `POST /api/waitlist` |
-| `NOTIFY_EMAIL` | for waitlist email | `POST /api/waitlist` |
-| `RESEND_FROM_EMAIL` | no | sender identity, defaults to Resend's sandbox sender |
 | `FRED_API_KEY` | for macro ingestion | `scripts/ingest/` |
 | `BLS_API_KEY` | no | raises BLS daily cap from 25 to 500 |
 
@@ -325,7 +320,7 @@ waitlist route and the scripts depend on it; the rest of the app still runs.
 Early development, pre-MVP.
 
 **Working today**
-- Landing page with waitlist capture → Postgres + Resend notification
+- Landing page with waitlist capture → Postgres
 - Event browser, event detail with animated chart replay, pattern library — all
   rendering from `src/lib/mock-data/` (12 hand-written events)
 - Ingestion pipelines for ~51 curated events (prices + FRED releases) and for

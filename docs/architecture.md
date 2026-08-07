@@ -80,7 +80,7 @@ Handlers.
 | `/events/[id]` | RSC, `generateStaticParams` | Event detail, expectation vs. actual, chart replay, per-asset commentary | `mock-data/` |
 | `/patterns` | RSC | Per-category aggregate reaction stats | `mock-data/` + `services/analytics` |
 | `/api/events` | Route Handler (GET) | Filter / search / sort / paginate the event list | `mock-data/` 🟡 |
-| `/api/waitlist` | Route Handler (POST, GET) | Persist a signup, send a notification | Postgres ✅ |
+| `/api/waitlist` | Route Handler (POST, GET) | Persist a signup | Postgres ✅ |
 
 `generateStaticParams` on `/events/[id]` enumerates the placeholder events. Once
 events come from the database this needs to become a dynamic or ISR route.
@@ -124,14 +124,15 @@ server, no Server Actions.
 
 ### `POST /api/waitlist`
 
-The only route that touches the database. Validates the email with a regex,
-inserts a `WaitlistSignup` via Prisma, then attempts a Resend notification. Two
-deliberate behaviours:
+The only route that touches the database. Validates the email with a regex and
+inserts a `WaitlistSignup` via Prisma. One deliberate behaviour:
 
 - A unique-constraint violation (`P2002`) returns success — a duplicate signup
   is not an error the user needs to see.
-- Notification failures are caught and logged, never surfaced. Losing an email
-  alert must not lose the signup.
+
+Signups are stored only. Nothing notifies anyone that a signup happened — the
+Resend email integration that previously did so has been removed. Check the
+`waitlist_signups` table (or `GET /api/waitlist` in development) to see them.
 
 `GET /api/waitlist` returns a signup count and is gated to
 `NODE_ENV === "development"`.
@@ -150,7 +151,7 @@ data source for Prisma queries should not require touching `EventBrowser`.
   a service, shape the response.
 - **`src/services/*`** holds business logic and external-API access. Currently
   only `services/analytics/patternAnalysis.ts`.
-- **`src/lib/*`** holds clients and configuration: `prisma.ts`, `resend.ts`,
+- **`src/lib/*`** holds clients and configuration: `prisma.ts` and
   `eventCategories.ts`.
 - **`src/server/`** 📋 does not exist yet. Add it when there is server-only
   logic that is neither a client wrapper nor a domain service — query builders,

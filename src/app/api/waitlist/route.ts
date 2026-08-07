@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { sendWaitlistNotification } from "@/lib/resend";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -55,13 +54,6 @@ export async function POST(request: NextRequest) {
       { error: "Something went wrong. Please try again." },
       { status: 500 },
     );
-  }
-
-  // Notification is non-critical — never fail the signup over it
-  try {
-    await sendWaitlistNotification(email);
-  } catch (err) {
-    console.error("[waitlist] Resend notification failed:", err);
   }
 
   return NextResponse.json({ message: "success" });
