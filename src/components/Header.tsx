@@ -15,18 +15,18 @@ export function Header() {
             ImpactFeedAI
           </span>
         </Link>
-        <div className="flex items-center gap-3 sm:gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <Link
-            href="/patterns"
-            className="hidden text-sm text-zinc-400 transition hover:text-zinc-100 sm:inline-block"
+            href="/feed"
+            className="text-sm text-zinc-400 transition hover:text-zinc-100"
           >
-            Patterns
+            Event feed
           </Link>
           <Link
-            href="/#waitlist"
-            className="rounded-md bg-[#00FF94] px-3 py-1.5 text-sm font-semibold text-[#080C10] transition hover:bg-[#00FF94]/90 focus:outline-none focus:ring-2 focus:ring-[#00FF94]/40 sm:px-4 sm:py-2"
+            href="/patterns"
+            className="text-sm text-zinc-400 transition hover:text-zinc-100"
           >
-            Join Waitlist
+            Patterns
           </Link>
         </div>
       </div>

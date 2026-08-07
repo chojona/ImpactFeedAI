@@ -13,8 +13,6 @@ import {
   Zap,
 } from "lucide-react";
 
-import { WaitlistForm } from "@/components/landing/WaitlistForm";
-
 export const metadata: Metadata = {
   title: "ImpactFeedAI — Macro market intelligence",
   description:
@@ -30,7 +28,6 @@ export default function LandingPage() {
         <CredibilityStrip />
         <Features />
         <Pricing />
-        <WaitlistSection />
       </main>
       <Footer />
     </div>
@@ -57,22 +54,16 @@ function Navbar() {
         </Link>
         <div className="flex items-center gap-1 sm:gap-2">
           <Link
-            href="/feed"
-            className="hidden rounded-md px-3 py-1.5 font-mono text-xs font-medium text-zinc-300 transition hover:text-zinc-100 sm:inline-block"
-          >
-            Event feed
-          </Link>
-          <Link
             href="#pricing"
             className="hidden rounded-md px-3 py-1.5 font-mono text-xs font-medium text-zinc-300 transition hover:text-zinc-100 sm:inline-block"
           >
             Pricing
           </Link>
           <Link
-            href="#waitlist"
+            href="/feed"
             className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-xs font-medium text-zinc-100 transition hover:border-white/20 hover:bg-white/[0.06]"
           >
-            Get access
+            Open the feed
           </Link>
         </div>
       </div>
@@ -107,21 +98,15 @@ function Hero() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
-              href="#waitlist"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-[#00FF94] px-5 font-mono text-sm font-semibold text-[#080C10] transition hover:bg-[#00FF94]/90 focus:outline-none focus:ring-2 focus:ring-[#00FF94]/40"
-            >
-              Request beta access
-            </Link>
-            <Link
               href="/feed"
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-transparent px-5 font-mono text-sm font-medium text-zinc-100 transition hover:border-white/20 hover:bg-white/[0.04]"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-[#00FF94] px-5 font-mono text-sm font-semibold text-[#080C10] transition hover:bg-[#00FF94]/90 focus:outline-none focus:ring-2 focus:ring-[#00FF94]/40"
             >
               View the live feed
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </div>
           <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
-            Free during beta · No credit card · Invite-only
+            Free during beta · No credit card
           </p>
         </div>
 
@@ -510,6 +495,8 @@ interface TierColumn {
   badge?: string;
   accent: "muted" | "primary" | "secondary";
   ctaLabel: string;
+  /** null renders a non-interactive label — nothing to sign up for yet. */
+  ctaHref: string | null;
 }
 
 const TIER_COLUMNS: TierColumn[] = [
@@ -520,6 +507,7 @@ const TIER_COLUMNS: TierColumn[] = [
     cadence: "forever",
     accent: "muted",
     ctaLabel: "Start free",
+    ctaHref: "/feed",
   },
   {
     key: "pro",
@@ -528,7 +516,8 @@ const TIER_COLUMNS: TierColumn[] = [
     cadence: "/ month",
     accent: "primary",
     badge: "Most popular",
-    ctaLabel: "Join Pro waitlist",
+    ctaLabel: "Coming soon",
+    ctaHref: null,
   },
   {
     key: "premium",
@@ -536,7 +525,8 @@ const TIER_COLUMNS: TierColumn[] = [
     price: "$49",
     cadence: "/ month",
     accent: "secondary",
-    ctaLabel: "Join Premium waitlist",
+    ctaLabel: "Coming soon",
+    ctaHref: null,
   },
 ];
 
@@ -743,51 +733,23 @@ function Pricing() {
                       key={tier.key}
                       className={`px-3 py-5 text-center align-top ${tierCellTintClass(tier.accent)}`}
                     >
-                      <Link
-                        href="#waitlist"
-                        className={`inline-flex h-9 w-full items-center justify-center rounded-md px-3 font-mono text-[12px] font-semibold transition ${tierCtaClass(tier.accent)}`}
-                      >
-                        {tier.ctaLabel}
-                      </Link>
+                      {tier.ctaHref === null ? (
+                        <span className="inline-flex h-9 w-full cursor-default items-center justify-center rounded-md border border-white/10 px-3 font-mono text-[12px] font-semibold text-zinc-500">
+                          {tier.ctaLabel}
+                        </span>
+                      ) : (
+                        <Link
+                          href={tier.ctaHref}
+                          className={`inline-flex h-9 w-full items-center justify-center rounded-md px-3 font-mono text-[12px] font-semibold transition ${tierCtaClass(tier.accent)}`}
+                        >
+                          {tier.ctaLabel}
+                        </Link>
+                      )}
                     </td>
                   ))}
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------- */
-/*                            Waitlist                            */
-/* ------------------------------------------------------------- */
-
-function WaitlistSection() {
-  return (
-    <section
-      id="waitlist"
-      className="scroll-mt-14 border-b border-white/[0.06]"
-    >
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-12">
-        <div className="lg:col-span-5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">
-            Beta access
-          </span>
-          <h2 className="mt-3 font-mono text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
-            Be first when we launch.
-          </h2>
-          <p className="mt-3 max-w-md font-sans text-[15px] leading-relaxed text-zinc-300">
-            We&rsquo;re onboarding traders, analysts, and macro researchers in
-            small cohorts. Drop your email and we&rsquo;ll send an invite when
-            your slot is up.
-          </p>
-        </div>
-        <div className="lg:col-span-7">
-          <div className="rounded-lg border border-white/[0.06] bg-[#0A0F14] p-6 sm:p-8">
-            <WaitlistForm />
           </div>
         </div>
       </div>
@@ -823,9 +785,6 @@ function Footer() {
             </Link>
             <Link href="#pricing" className="transition hover:text-zinc-100">
               Pricing
-            </Link>
-            <Link href="#waitlist" className="transition hover:text-zinc-100">
-              Beta access
             </Link>
           </nav>
         </div>

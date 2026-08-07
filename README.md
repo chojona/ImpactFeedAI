@@ -160,7 +160,7 @@ impactfeedai/
 │   └── roadmap.md                 # phased plan
 │
 ├── prisma/
-│   ├── schema.prisma              # WaitlistSignup, Event, AssetReaction, DataRelease
+│   ├── schema.prisma              # Event, AssetReaction, DataRelease
 │   └── migrations/                # 2 migrations
 │
 ├── scripts/
@@ -172,17 +172,16 @@ impactfeedai/
 │
 └── src/
     ├── app/                       # App Router
-    │   ├── page.tsx               # landing page (hero, features, pricing, waitlist)
+    │   ├── page.tsx               # landing page (hero, features, pricing)
     │   ├── feed/                  # event browser
     │   ├── events/[id]/           # event detail + chart replay
     │   ├── patterns/              # per-category aggregate reactions
     │   └── api/
-    │       ├── events/            # GET event list (serves placeholder data today)
-    │       └── waitlist/          # POST signup → Postgres
+    │       └── events/            # GET event list (serves placeholder data today)
     ├── components/
     │   ├── charts/                # lightweight-charts wrappers, replay panel
     │   ├── events/                # browser, card, filter bar, search
-    │   ├── landing/               # waitlist form, landing visuals
+    │   ├── landing/               # landing-page visuals
     │   ├── patterns/              # pattern card
     │   └── ui/                    # small shared primitives
     ├── lib/
@@ -260,7 +259,8 @@ npm run dev             # http://localhost:3000
 ```
 
 The landing page, `/feed`, `/events/[id]` and `/patterns` all work without a
-database — they render placeholder data. Only the waitlist form needs Postgres.
+database — they render placeholder data. Nothing in the running app reads or
+writes Postgres today; only the ingestion scripts do.
 
 ### Loading real data (optional)
 
@@ -311,7 +311,7 @@ NODE_OPTIONS=--use-system-ca npm run ingest
 
 **`P1017 ConnectionClosed` / Prisma cannot reach the database** — the
 `DATABASE_URL` host is unreachable or the hosted instance is paused. Only the
-waitlist route and the scripts depend on it; the rest of the app still runs.
+ingestion and maintenance scripts depend on it; the web app still runs.
 
 ---
 
@@ -320,7 +320,7 @@ waitlist route and the scripts depend on it; the rest of the app still runs.
 Early development, pre-MVP.
 
 **Working today**
-- Landing page with waitlist capture → Postgres
+- Landing page (hero, features, pricing) — static, no signup flow
 - Event browser, event detail with animated chart replay, pattern library — all
   rendering from `src/lib/mock-data/` (12 hand-written events)
 - Ingestion pipelines for ~51 curated events (prices + FRED releases) and for

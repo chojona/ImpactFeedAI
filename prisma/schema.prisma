@@ -12,12 +12,10 @@ datasource db {
   provider = "postgresql"
 }
 
-model WaitlistSignup {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
-  source    String?
-}
+// NOTE: the `WaitlistSignup` model was removed along with the waitlist feature.
+// The `WaitlistSignup` table still exists in the live database and in the
+// 20260510194536_init migration. A future migration must DROP it — see
+// docs/architecture.md.
 
 enum EventType {
   TARIFF

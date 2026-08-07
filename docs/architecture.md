@@ -28,15 +28,14 @@ is no separate backend service.
 │              ├── Route       │        │  auto-ingest.ts (bulk)    │
 │  Client      │   Handlers    │        │  verify-db.ts             │
 │  components ─┘   (/api/*)    │        │                           │
-└──────┬───────────────┬───────┘        └────────────┬──────────────┘
-       │               │                             │
-       │ ✅ reads      │ ✅ writes                   │ ✅ writes
-       ▼               ▼                             ▼
+└──────┬───────────────────────┘        └────────────┬──────────────┘
+       │                                             │
+       │ ✅ reads                                    │ ✅ writes
+       ▼                                             ▼
 ┌──────────────┐  ┌───────────────────────────────────────────────┐
 │ mock-data/   │  │  PostgreSQL (Prisma)                          │
-│ (fixtures)   │  │  waitlist_signups | events                    │
-└──────────────┘  │  asset_reactions  | data_releases             │
-                  └───────────────────────────────────────────────┘
+│ (fixtures)   │  │  events | asset_reactions | data_releases     │
+└──────────────┘  └───────────────────────────────────────────────┘
 ```
 
 **The most important thing to understand about this codebase:** the UI and the
@@ -44,6 +43,10 @@ database are not connected. Pages and `/api/events` render from
 `src/lib/mock-data/`; the ingestion scripts write to Postgres; nothing reads
 the ingested rows back out except `scripts/maintenance/verify-db.ts`. Closing
 that gap is Phase 1 of the roadmap.
+
+Since the waitlist was removed, **no part of the running web app touches
+Postgres at all** — `src/lib/prisma.ts` currently has no callers. It is kept
+because Phase 1 wires `/api/events` to the database.
 
 ---
 
@@ -64,7 +67,6 @@ with `"use client"`, used only where interactivity or a browser API is needed:
 | `components/events/CategoryFilterBar.tsx`, `SearchBar.tsx` | input handling |
 | `components/charts/AssetChart.tsx` | `lightweight-charts` needs a DOM node |
 | `components/charts/ChartReplayPanel.tsx` | replay playback state |
-| `components/landing/WaitlistForm.tsx` | form submission state |
 | `components/ui/BackButton.tsx` | `router.back()` |
 
 Everything else — the landing page, event detail, patterns page — is a Server
@@ -75,12 +77,11 @@ Handlers.
 
 | Route | Type | What it does | Data source |
 | --- | --- | --- | --- |
-| `/` | RSC | Landing: hero, feature grid, pricing table, waitlist | static |
+| `/` | RSC | Landing: hero, feature grid, pricing table | static |
 | `/feed` | RSC + client island | Event browser with category filter, search, sort, pagination | `/api/events` |
 | `/events/[id]` | RSC, `generateStaticParams` | Event detail, expectation vs. actual, chart replay, per-asset commentary | `mock-data/` |
 | `/patterns` | RSC | Per-category aggregate reaction stats | `mock-data/` + `services/analytics` |
 | `/api/events` | Route Handler (GET) | Filter / search / sort / paginate the event list | `mock-data/` 🟡 |
-| `/api/waitlist` | Route Handler (POST, GET) | Persist a signup | Postgres ✅ |
 
 `generateStaticParams` on `/events/[id]` enumerates the placeholder events. Once
 events come from the database this needs to become a dynamic or ISR route.
@@ -122,20 +123,10 @@ duplicate.
 ✅ **Built** — Next.js Route Handlers only. No tRPC, no GraphQL, no separate API
 server, no Server Actions.
 
-### `POST /api/waitlist`
-
-The only route that touches the database. Validates the email with a regex and
-inserts a `WaitlistSignup` via Prisma. One deliberate behaviour:
-
-- A unique-constraint violation (`P2002`) returns success — a duplicate signup
-  is not an error the user needs to see.
-
-Signups are stored only. Nothing notifies anyone that a signup happened — the
-Resend email integration that previously did so has been removed. Check the
-`waitlist_signups` table (or `GET /api/waitlist` in development) to see them.
-
-`GET /api/waitlist` returns a signup count and is gated to
-`NODE_ENV === "development"`.
+`GET /api/events` is the only route handler that remains. The waitlist
+endpoint that previously wrote signups to Postgres has been removed along with
+the rest of the waitlist feature, so the app performs no database writes and
+sends no email.
 
 ### `GET /api/events`
 
@@ -179,7 +170,6 @@ the migrations path, and reads `DATABASE_URL` through `dotenv/config`.
 
 | Model | Table | Purpose |
 | --- | --- | --- |
-| `WaitlistSignup` | `waitlist_signups` | `email` (unique), `createdAt`, `source` |
 | `Event` | `events` | `headline`, `eventType` (enum), `occurredAt`, `sourceUrl`, `explanation`; unique on `(headline, occurredAt)`; indexed on `occurredAt` and `eventType` |
 | `AssetReaction` | `asset_reactions` | FK → `Event`, `assetSymbol`, `priceAtEvent`, `price1h/1d/1w`, `pctChange1h/1d/1w`; unique on `(eventId, assetSymbol)` |
 | `DataRelease` | `data_releases` | FK → `Event`, `metricName`, `expectedValue`, `actualValue`, `priorValue`, `surpriseMagnitude`; unique on `(eventId, metricName)` |
@@ -187,8 +177,14 @@ the migrations path, and reads `DATABASE_URL` through `dotenv/config`.
 `EventType` enum: `TARIFF`, `FED_DECISION`, `CPI`, `PPI`, `NFP`,
 `GEOPOLITICAL`, `EARNINGS_SURPRISE`, `MACRO_DATA`.
 
-Two migrations exist: the initial waitlist table, and
-`add_event_ingestion_tables`.
+Two migrations exist: `20260510194536_init` (which created the now-removed
+`WaitlistSignup` table) and `add_event_ingestion_tables`.
+
+⚠️ **Pending schema drift.** `WaitlistSignup` was deleted from
+`schema.prisma` but **no migration has been written to drop the table**, so the
+live database still has it. The next `prisma migrate dev` will detect the drift
+and generate a `DROP TABLE` migration — review that migration before applying
+it, since it destroys any stored signups.
 
 ### Assessment against the product goals
 
