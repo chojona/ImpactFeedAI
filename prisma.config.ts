@@ -9,6 +9,10 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Migrations and other CLI operations must use Neon's DIRECT endpoint —
+    // Prisma takes advisory locks, which are unreliable through the pooled
+    // (PgBouncer transaction-mode) endpoint. Falls back to DATABASE_URL so a
+    // single-URL setup still works.
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });

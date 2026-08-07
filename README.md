@@ -128,7 +128,7 @@ Everything listed here is confirmed present in the repository.
 | Charts | `lightweight-charts` 5.2 |
 | Animation | `framer-motion` 12 |
 | Icons | `lucide-react` |
-| Database | PostgreSQL |
+| Database | Neon PostgreSQL |
 | ORM | Prisma 7.8 with `@prisma/adapter-pg` (driver adapter required — `PrismaClient` has no zero-arg constructor) |
 | Market data | `yahoo-finance2` (ingestion scripts only) |
 | Macro data | FRED and BLS REST APIs (`fetch`, no SDK) |
@@ -161,9 +161,10 @@ impactfeedai/
 │
 ├── prisma/
 │   ├── schema.prisma              # Event, AssetReaction, DataRelease
-│   └── migrations/                # 2 migrations
+│   └── migrations/                # single clean baseline (20260512194452_init)
 │
 ├── scripts/
+│   ├── lib/prisma.ts              # shared Prisma factory for scripts (DIRECT_URL)
 │   ├── ingest/                    # macro + price ingestion pipelines (has its own README)
 │   └── maintenance/
 │       └── verify-db.ts           # row counts and coverage check
@@ -206,7 +207,7 @@ than kept as empty scaffolding.
 ### Prerequisites
 
 - **Node.js 20+** (Next 16 / React 19)
-- **PostgreSQL 14+** — local instance or a hosted one
+- **PostgreSQL** — a [Neon](https://neon.tech) project (what this repo uses), or any Postgres 14+ instance
 - Optional API keys: [FRED](https://fred.stlouisfed.org/docs/api/api_key.html)
   (macro data), [BLS](https://data.bls.gov/registrationEngine/) (higher BLS
   rate limit)
@@ -230,14 +231,29 @@ Fill in the values. Every variable is documented inline in
 
 | Variable | Required | Used by |
 | --- | --- | --- |
-| `DATABASE_URL` | yes | web app, Prisma CLI, all scripts |
+| `DATABASE_URL` | yes | the web app (`src/lib/prisma.ts`) |
+| `DIRECT_URL` | yes | Prisma CLI/migrations, ingestion scripts, maintenance scripts |
 | `FRED_API_KEY` | for macro ingestion | `scripts/ingest/` |
 | `BLS_API_KEY` | no | raises BLS daily cap from 25 to 500 |
 
-> Next.js reads `.env.local` in preference to `.env`; the ingestion scripts load
-> only `.env` (via `dotenv/config`). If you keep both files, keep `DATABASE_URL`
-> identical in each — otherwise the app and the scripts write to different
-> databases.
+The database is hosted on **Neon**, which exposes a **pooled** endpoint
+(hostname contains `-pooler.`) and a **direct** endpoint (without it). The
+split is by *consumer*, not by environment — set both variables the same way
+locally and on Vercel:
+
+| Consumer | Variable | Endpoint | Why |
+| --- | --- | --- | --- |
+| Web app | `DATABASE_URL` | **pooled** | many short-lived serverless connections |
+| Prisma CLI / migrations | `DIRECT_URL` | **direct** | advisory locks break under transaction-mode pooling |
+| Ingestion + maintenance scripts | `DIRECT_URL` | **direct** | long interactive transactions, one process |
+
+Scripts fall back to `DATABASE_URL` when `DIRECT_URL` is unset. Both URLs need
+`?sslmode=require`.
+
+> Next.js reads `.env.local` in preference to `.env`, while the ingestion
+> scripts load only `.env`. This project keeps a single `.env` so both see the
+> same database; if you add `.env.local`, keep `DATABASE_URL` identical in
+> each.
 
 ### Database setup
 
@@ -309,9 +325,11 @@ NODE_OPTIONS=--use-system-ca npm run ingest
 
 **`Cannot find module '@/generated/prisma/client'`** — run `npm run db:generate`.
 
-**`P1017 ConnectionClosed` / Prisma cannot reach the database** — the
-`DATABASE_URL` host is unreachable or the hosted instance is paused. Only the
-ingestion and maintenance scripts depend on it; the web app still runs.
+**Prisma cannot reach the database** — check that `DATABASE_URL` /
+`DIRECT_URL` are set and include `?sslmode=require`. Neon free-tier projects
+auto-suspend when idle, so the first query after a pause takes a moment to wake
+the compute; that is normal, not a failure. Only the ingestion and maintenance
+scripts touch the database today — the web app still runs without it.
 
 ---
 

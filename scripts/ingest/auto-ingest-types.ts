@@ -31,5 +31,11 @@ export interface CandidateEvent {
   occurredAt: Date;
   sourceUrl: string;
   source: SourceTag;
+  /**
+   * Canonical metric identity from `metrics.ts` (e.g. "CPI_HEADLINE").
+   * Stable across FRED / BLS / curated, and the basis for deduplication:
+   * two candidates are the same economic release only if this matches.
+   */
+  metricKey: string;
   data: CandidateEventData;
 }

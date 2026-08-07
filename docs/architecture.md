@@ -164,7 +164,35 @@ hot-reloads.
 The client is generated with the `prisma-client` generator into
 `src/generated/prisma/`, which is **gitignored** — run `npm run db:generate`
 after cloning or the build fails. `prisma.config.ts` declares the schema path,
-the migrations path, and reads `DATABASE_URL` through `dotenv/config`.
+the migrations path, and resolves the CLI connection URL through
+`dotenv/config` as `DIRECT_URL ?? DATABASE_URL`.
+
+### Hosting and endpoints
+
+The database is hosted on **Neon** (PostgreSQL 18.x). Neon exposes two
+endpoints for the same database, and the distinction matters:
+
+| Endpoint | Hostname | Used by |
+| --- | --- | --- |
+| **Pooled** | contains `-pooler.` | the app on Vercel — serverless opens many short-lived connections |
+| **Direct** | without `-pooler.` | Prisma migrations, and everything running locally |
+
+Migrations must never run through the pooled endpoint: Prisma takes advisory
+locks, which are unreliable under PgBouncer transaction-mode pooling. That is
+why `prisma.config.ts` prefers `DIRECT_URL`.
+
+Routing is by consumer rather than by environment, so both variables are set
+the same way locally and in production:
+
+| Consumer | Variable | Endpoint |
+| --- | --- | --- |
+| `src/lib/prisma.ts` (web app) | `DATABASE_URL` | pooled |
+| `prisma.config.ts` (CLI/migrations) | `DIRECT_URL ?? DATABASE_URL` | direct |
+| `scripts/lib/prisma.ts` (ingestion + maintenance) | `DIRECT_URL ?? DATABASE_URL` | direct |
+
+`scripts/lib/prisma.ts` is a small shared factory so the endpoint choice lives
+in exactly one place — if it drifted per-script, some jobs would silently run
+through the pooler.
 
 ### Models
 
@@ -177,14 +205,14 @@ the migrations path, and reads `DATABASE_URL` through `dotenv/config`.
 `EventType` enum: `TARIFF`, `FED_DECISION`, `CPI`, `PPI`, `NFP`,
 `GEOPOLITICAL`, `EARNINGS_SURPRISE`, `MACRO_DATA`.
 
-Two migrations exist: `20260510194536_init` (which created the now-removed
-`WaitlistSignup` table) and `add_event_ingestion_tables`.
+One migration exists: `20260512194452_init`, a clean baseline that creates the
+`EventType` enum and the three tables above with their indexes and foreign
+keys. It matches `schema.prisma` exactly — there is no pending drift.
 
-⚠️ **Pending schema drift.** `WaitlistSignup` was deleted from
-`schema.prisma` but **no migration has been written to drop the table**, so the
-live database still has it. The next `prisma migrate dev` will detect the drift
-and generate a `DROP TABLE` migration — review that migration before applying
-it, since it destroys any stored signups.
+The original waitlist-only migration was deleted when the database moved from
+Railway to Neon. Because the Neon database was provisioned fresh and no
+environment depended on the old journal, rebuilding the baseline was preferable
+to shipping a create-then-drop pair for a table the product no longer has.
 
 ### Assessment against the product goals
 

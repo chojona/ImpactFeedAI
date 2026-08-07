@@ -20,9 +20,9 @@
 // files the way Next.js does at runtime. Matches the pattern in prisma.config.ts.
 import "dotenv/config";
 
-import { PrismaPg } from "@prisma/adapter-pg";
-
-import { PrismaClient } from "../../src/generated/prisma/client";
+import type { PrismaClient } from "../../src/generated/prisma/client";
+import { createScriptPrismaClient } from "../lib/prisma";
+import { createDryRunPrismaClient } from "../lib/readonly-prisma";
 import {
   ASSET_UNIVERSE,
   SEED_EVENTS,
@@ -97,17 +97,6 @@ Options:
                           ${[...KNOWN_EVENT_TYPES].join(", ")}
   --limit <n>             Process at most n events (after filters). Useful for smoke tests.
   -h, --help              Show this help.`);
-}
-
-function buildPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error("DATABASE_URL is not set. Aborting.");
-    process.exit(1);
-  }
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
-  });
 }
 
 interface IngestStats {
@@ -264,10 +253,12 @@ async function main(): Promise<void> {
   );
   if (flags.eventType) console.log(`  filter: eventType=${flags.eventType}`);
 
-  // Dry-run skips the DB entirely — works even without DATABASE_URL. The
-  // tradeoff: dry-run can't tell you which events would be skipped as
-  // duplicates. The summary makes that explicit.
-  const prisma = flags.dryRun ? null : buildPrismaClient();
+  // Dry-run connects read-only: the idempotency check below runs for real, so
+  // a dry-run reports exactly which events would be skipped. Writes throw —
+  // see scripts/lib/readonly-prisma.ts.
+  const prisma = flags.dryRun
+    ? createDryRunPrismaClient()
+    : createScriptPrismaClient();
   const stats: IngestStats = {
     processed: 0,
     skipped: 0,

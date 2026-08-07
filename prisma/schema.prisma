@@ -1,7 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Prisma schema — https://pris.ly/d/prisma-schema
+//
+// Database: Neon PostgreSQL. Two endpoints exist for the same database; the
+// CLI uses DIRECT_URL and the application uses DATABASE_URL. See .env.example.
+//
+// Active models: Event, AssetReaction, DataRelease.
+// The waitlist feature (and its WaitlistSignup model) was removed; it is not
+// part of the schema or the migration baseline.
 
 generator client {
   provider = "prisma-client"
@@ -11,11 +15,6 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
-// NOTE: the `WaitlistSignup` model was removed along with the waitlist feature.
-// The `WaitlistSignup` table still exists in the live database and in the
-// 20260510194536_init migration. A future migration must DROP it — see
-// docs/architecture.md.
 
 enum EventType {
   TARIFF

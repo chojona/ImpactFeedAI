@@ -14,6 +14,7 @@
  */
 
 import type { CandidateEvent } from "./auto-ingest-types";
+import { METRICS } from "./metrics";
 
 const FRED_BASE = "https://api.stlouisfed.org/fred";
 
@@ -121,12 +122,16 @@ export async function* yieldFomcEvents(
         occurredAt,
         sourceUrl: `https://www.federalreserve.gov/newsevents/pressreleases/monetary${meetingIso.replace(/-/g, "")}a.htm`,
         source: "FOMC",
+        metricKey: METRICS.FED_TARGET_UPPER.key,
         data: {
-          metricName: "Federal Funds Rate target upper bound",
+          metricName: METRICS.FED_TARGET_UPPER.canonicalName,
           actualValue: Math.round(value * 100) / 100,
           priorValue: Math.round(prior * 100) / 100,
           expectedValue: null,
-          surpriseMagnitude: Math.round((value - prior) * 1e4) / 1e4,
+          // No consensus available from FRED; surpriseMagnitude means
+          // (actual − expected) everywhere. The size of the move is still
+          // derivable as (actual − prior).
+          surpriseMagnitude: null,
           rawActual: bp,
         },
       };

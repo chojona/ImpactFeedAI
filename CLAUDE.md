@@ -11,9 +11,12 @@ into visual, cross-asset market reaction stories. Target user: retail trader lea
 - Styling: Tailwind CSS v4
 - Charts: TradingView Lightweight Charts library
 - Animations: Framer Motion
-- Database: PostgreSQL via Prisma 7 + @prisma/adapter-pg + pg
+- Database: Neon PostgreSQL via Prisma 7 + @prisma/adapter-pg + pg
 - PrismaClient requires adapter — no zero-arg constructor
 - Generated client lives in src/generated/prisma (gitignored — run `npm run db:generate`)
+- Active models: Event, AssetReaction, DataRelease (waitlist + email sending were removed)
+- DATABASE_URL = pooled, web app only. DIRECT_URL = direct, used by Prisma CLI + all scripts
+- Scripts must build clients via scripts/lib/prisma.ts (never read DATABASE_URL directly)
 - Market/macro data: yahoo-finance2 + FRED/BLS REST, ingestion scripts only
 - State: React useState/useContext (no Redux yet)
 - AI: planned, not built. @anthropic-ai/sdk is installed but unused.

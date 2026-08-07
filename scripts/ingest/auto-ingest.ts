@@ -20,9 +20,9 @@
  */
 import "dotenv/config";
 
-import { PrismaPg } from "@prisma/adapter-pg";
-
-import { PrismaClient } from "../../src/generated/prisma/client";
+import type { PrismaClient } from "../../src/generated/prisma/client";
+import { createScriptPrismaClient } from "../lib/prisma";
+import { createDryRunPrismaClient } from "../lib/readonly-prisma";
 import { yieldFredEvents } from "./sources-fred";
 import { yieldBlsEvents } from "./sources-bls";
 import { yieldFomcEvents } from "./sources-fomc";
@@ -106,17 +106,6 @@ interface IngestStats {
   bySource: Record<SourceTag, number>;
 }
 
-function buildPrisma(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error("DATABASE_URL is not set. Aborting.");
-    process.exit(1);
-  }
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
-  });
-}
-
 function startOfDay(d: Date): Date {
   const c = new Date(d);
   c.setUTCHours(0, 0, 0, 0);
@@ -163,6 +152,7 @@ async function fetchPricesWithBackoff(
   const rows: ReturnType<typeof buildAssetReaction>[] = [];
   for (const symbol of ASSET_UNIVERSE) {
     let snapshot = await fetchPriceSnapshot(symbol, occurredAt);
+
     if (snapshot === null) {
       state.consecutiveEmpty += 1;
       if (state.consecutiveEmpty >= YAHOO_BACKOFF_THRESHOLD) {
@@ -171,9 +161,13 @@ async function fetchPricesWithBackoff(
         );
         await sleep(YAHOO_BACKOFF_MS);
         snapshot = await fetchPriceSnapshot(symbol, occurredAt);
-        if (snapshot !== null) state.consecutiveEmpty = 0;
       }
-    } else {
+    }
+
+    // Single collection point: a snapshot recovered by the backoff retry is
+    // kept exactly like a first-attempt success. Previously the push lived in
+    // the `else` branch above, so every retried symbol was silently dropped.
+    if (snapshot !== null) {
       state.consecutiveEmpty = 0;
       rows.push(buildAssetReaction(symbol, snapshot));
     }
@@ -192,6 +186,14 @@ async function ingestOne(
   stats.fetched += 1;
 
   if (prisma) {
+    // Duplicate = the SAME economic release, not merely the same event type on
+    // the same day. Matching on (eventType, ±1 day) alone collapsed headline
+    // CPI with Core CPI, PCE and Core PCE (all eventType=CPI, all dated to the
+    // 1st of the reference month), and payrolls with the unemployment rate.
+    //
+    // `metricName` is canonical across sources (metrics.ts), so a BLS CPI-U
+    // print and a FRED CPIAUCSL print still collide — which is what we want —
+    // while genuinely different metrics survive.
     const dup = await prisma.event.findFirst({
       where: {
         eventType: cand.eventType,
@@ -199,6 +201,7 @@ async function ingestOne(
           gte: startOfDay(cand.occurredAt),
           lte: endOfDay(cand.occurredAt),
         },
+        dataReleases: { some: { metricName: cand.data.metricName } },
       },
       select: { id: true },
     });
@@ -220,6 +223,7 @@ async function ingestOne(
   }
 
   if (flags.dryRun || !prisma) {
+    // Reached only after the dedup check above has actually run.
     stats.inserted += 1;
     stats.bySource[cand.source] += 1;
     console.log(
@@ -296,7 +300,11 @@ async function main(): Promise<void> {
       `${flags.dryRun ? " dry-run" : ""}${flags.noPrices ? " no-prices" : ""}`,
   );
 
-  const prisma = flags.dryRun ? null : buildPrisma();
+  // Dry-run still connects — reads (including the dedup check) run for real,
+  // writes throw. See scripts/lib/readonly-prisma.ts.
+  const prisma = flags.dryRun
+    ? createDryRunPrismaClient()
+    : createScriptPrismaClient();
   const stats: IngestStats = {
     fetched: 0,
     inserted: 0,

@@ -52,7 +52,7 @@ Environment variables (set in `.env.local` or `.env`):
 # Real run — writes to the DB
 npm run ingest
 
-# Dry run — fetches + prints, never writes (works without DATABASE_URL)
+# Dry run — reads the DB (so dedup is exercised) + fetches, but never writes
 npm run ingest:dry-run
 
 # Single category, useful for spot-checking
@@ -102,7 +102,8 @@ For each event in [`events-seed.ts`](./events-seed.ts):
 
 ### Best-effort failure model
 
-- A symbol that errors → null fields + warning + continue.
+- A symbol that errors → null fields + warning + continue. Missing prices can
+  be filled in later with `npm run backfill:prices` (see `scripts/backfill/`).
 - A symbol with no anchor price at all → row skipped, warning, continue.
 - FRED 4xx/5xx → log + continue without macro.
 - DB transaction failure → log, mark event as failed, continue to next event.
@@ -121,6 +122,7 @@ Re-run as needed — events that succeeded won't be re-fetched.
 | `fetch-prices.ts`       | Yahoo Finance window fetcher (intraday + daily, with fallback) |
 | `fetch-macro.ts`        | FRED series fetcher (actual + prior)                           |
 | `compute-reactions.ts`  | `% change` math + surprise magnitude                           |
+| `metrics.ts`            | **Canonical metric registry** — series → transform → unit. Shared by curated and bulk paths |
 | `types.ts`              | Shared types between modules                                   |
 | `ingest.ts`             | CLI orchestrator                                               |
 
