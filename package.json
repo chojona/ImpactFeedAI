@@ -28,7 +28,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
     "@prisma/adapter-pg": "^7.8.0",
-    "axios": "^1.16.0",
+    "axios": "^1.18.0",
     "framer-motion": "^12.38.0",
     "lightweight-charts": "^5.2.0",
     "lucide-react": "^1.14.0",
