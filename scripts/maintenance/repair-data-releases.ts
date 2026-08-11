@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Recalculate existing curated `DataRelease` rows using the canonical metric
- * system in `scripts/ingest/metrics.ts`.
+ * system in `src/services/macro/metrics.ts`.
  *
  *   npm run repair:data-releases:dry-run      # full diff, writes nothing
  *   npm run repair:data-releases              # apply
@@ -30,7 +30,7 @@ import {
   CURATED_SERIES_BY_EVENT_TYPE,
   type CanonicalMetric,
   type MetricUnit,
-} from "../ingest/metrics";
+} from "@/services/macro/metrics";
 import { createScriptPrismaClient } from "../lib/prisma";
 import { createDryRunPrismaClient } from "../lib/readonly-prisma";
 

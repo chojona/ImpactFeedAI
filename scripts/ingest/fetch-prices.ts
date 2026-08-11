@@ -1,12 +1,39 @@
 /**
  * Yahoo Finance price fetcher.
  *
- * For each symbol + event timestamp, return prices at the event, +1h, +1d, +1w.
- * Best-effort: every failure → null in the result rather than throwing. Caller
- * skips an asset entirely only when the anchor (priceAtEvent) is unavailable.
+ * Calculation version 2 measures every reaction from a price observed before
+ * the verified release instant. A first-post-release candle is an endpoint,
+ * never a baseline: using it as both silently discards the opening move caused
+ * by pre-market and weekend releases.
  *
- * Intraday (1h) data is only retained by Yahoo for ~730 days. Older events fall
- * back to daily-only granularity (price_1h will be null).
+ * Baseline order:
+ *
+ *   1. The most recent usable intraday candle whose timestamp is strictly
+ *      before `releaseAt`, provided it is no more than two hours old.
+ *   2. The immediately preceding session's daily close, provided the provider
+ *      bar is no more than four calendar days old.
+ *
+ * The daily fallback is deliberately narrow. It admits ordinary weekends and
+ * long weekends, but rejects an old close after a prolonged data gap. Its
+ * `anchorAt` is Yahoo's timestamp for the daily bar (normally the session-open
+ * stamp), because the daily payload does not carry a separately auditable close
+ * timestamp. The price is the session close; consumers must treat `anchorAt` as
+ * the source-bar identifier in this fallback case, not an exact closing tick.
+ * Regular-session assumptions also cannot model early closes or extended-hours
+ * trading. Those limitations are preferable to fabricating precision.
+ *
+ * Endpoints are release-relative rather than baseline-relative:
+ *
+ *   - 1h: first intraday open at/after releaseAt + one hour, within a bounded
+ *     provider-gap tolerance.
+ *   - 1d: first priced session after the release session.
+ *   - 1w: first priced session at least seven calendar days after the release
+ *     session.
+ *
+ * For a pre-market release the prior close remains in the denominator while
+ * the event day defines the release session. For a weekend release, Friday's
+ * close remains the denominator and Monday is the release session. The gap
+ * caused by the event is therefore included rather than thrown away.
  */
 import YahooFinance from "yahoo-finance2";
 
@@ -18,7 +45,8 @@ const yahooFinance = new YahooFinance({
   suppressNotices: ["yahooSurvey", "ripHistorical"],
 });
 
-interface Candle {
+export interface Candle {
+  /** Provider timestamp for the bar. Yahoo timestamps daily bars at the open. */
   date: Date;
   open: number | null;
   close: number | null;
@@ -28,108 +56,279 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const INTRADAY_HORIZON_MS = 720 * DAY_MS; // Yahoo keeps ~2y of 1h candles
 
-function pickFirstAtOrAfter(
-  candles: Candle[],
-  target: Date,
-): Candle | null {
-  for (const c of candles) {
-    if (c.date.getTime() >= target.getTime()) return c;
+/** Maximum age of an intraday price that may serve as a pre-release baseline. */
+export const INTRADAY_BASELINE_MAX_AGE_MS = 2 * HOUR_MS;
+
+/**
+ * Maximum provider-bar age for a prior-session close fallback. Four days
+ * admits a Friday bar for a Tuesday release after a Monday market holiday.
+ */
+export const PRIOR_SESSION_BASELINE_MAX_AGE_MS = 4 * DAY_MS;
+
+/**
+ * How far after the +1h target an intraday bar may sit and still represent that
+ * window. This tolerates one missing hourly bar but rejects an overnight jump.
+ */
+export const INTRADAY_ENDPOINT_SLIP_MS = 2 * HOUR_MS;
+
+const newYorkDayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const usablePrice = (value: number | null): number | null =>
+  value !== null && Number.isFinite(value) && value > 0 ? value : null;
+
+/** Intraday timestamps identify the bar open, so only its open is time-safe. */
+const intradayPrice = (candle: Candle): number | null =>
+  usablePrice(candle.open);
+
+/** Daily endpoints retain the existing session-open convention. */
+const dailyEndpointPrice = (candle: Candle): number | null =>
+  usablePrice(candle.open);
+
+/** A daily fallback is explicitly a close; it never silently substitutes open. */
+const dailyBaselinePrice = (candle: Candle): number | null =>
+  usablePrice(candle.close);
+
+/** UTC calendar day of a daily candle stamped during its US session. */
+const sessionDay = (candle: Candle): string =>
+  candle.date.toISOString().slice(0, 10);
+
+/** New York calendar day containing an exact release instant. */
+function releaseDay(releaseAt: Date): string {
+  const parts = newYorkDayFormatter.formatToParts(releaseAt);
+  const read = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${read("year")}-${read("month")}-${read("day")}`;
+}
+
+const addDaysIso = (iso: string, days: number): string => {
+  const date = new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+function sortedValidCandles(candles: readonly Candle[]): Candle[] {
+  return candles
+    .filter((candle) => Number.isFinite(candle.date.getTime()))
+    .slice()
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
+/** Most recent usable, sufficiently fresh intraday open before the release. */
+function recentIntradayBaseline(
+  intraday: readonly Candle[],
+  releaseAt: Date,
+): { price: number; anchorAt: Date } | null {
+  const releaseMs = releaseAt.getTime();
+  for (let index = intraday.length - 1; index >= 0; index -= 1) {
+    const candle = intraday[index];
+    const candleMs = candle.date.getTime();
+    if (candleMs >= releaseMs) continue;
+    if (releaseMs - candleMs > INTRADAY_BASELINE_MAX_AGE_MS) return null;
+    const price = intradayPrice(candle);
+    if (price !== null) return { price, anchorAt: candle.date };
   }
   return null;
 }
 
-function pickPrice(candle: Candle | null): number | null {
-  if (!candle) return null;
-  // Prefer open (closest to "what you'd have paid at this moment"); fall back
-  // to close if open is missing (some intraday candles lack it on session open).
-  return candle.open ?? candle.close ?? null;
+/**
+ * Close of the immediately preceding daily session, when fresh enough.
+ *
+ * Requiring a strictly earlier New York session day ensures a same-day daily
+ * close can never leak post-release information into a mid-session baseline.
+ * For an after-hours release, a recent intraday open remains the preferred
+ * baseline; without intraday coverage we conservatively fall back one session.
+ */
+function priorSessionBaseline(
+  daily: readonly Candle[],
+  releaseAt: Date,
+): { price: number; anchorAt: Date } | null {
+  const day = releaseDay(releaseAt);
+  let candidate: Candle | null = null;
+  for (const candle of daily) {
+    if (sessionDay(candle) >= day) break;
+    candidate = candle;
+  }
+  if (candidate === null) return null;
+  if (
+    releaseAt.getTime() - candidate.date.getTime() >
+    PRIOR_SESSION_BASELINE_MAX_AGE_MS
+  ) {
+    return null;
+  }
+  const price = dailyBaselinePrice(candidate);
+  return price === null ? null : { price, anchorAt: candidate.date };
+}
+
+/** First usable intraday open at/after a target, within the allowed slip. */
+function intradayEndpoint(
+  intraday: readonly Candle[],
+  target: Date,
+): number | null {
+  const targetMs = target.getTime();
+  for (const candle of intraday) {
+    const candleMs = candle.date.getTime();
+    if (candleMs < targetMs) continue;
+    if (candleMs - targetMs > INTRADAY_ENDPOINT_SLIP_MS) return null;
+    const price = intradayPrice(candle);
+    if (price !== null) return price;
+  }
+  return null;
 }
 
 /**
- * Fetch a price snapshot for one symbol around the event time.
+ * Daily session containing the release date, or the first session after it for
+ * a weekend/holiday release. The row need not itself have a usable price: it
+ * still defines which trading session the event belongs to.
+ */
+function releaseSessionIndex(
+  daily: readonly Candle[],
+  releaseAt: Date,
+): number {
+  const day = releaseDay(releaseAt);
+  return daily.findIndex((candle) => sessionDay(candle) >= day);
+}
+
+/** First usable daily open strictly after `fromIndex`. */
+function nextSessionPrice(
+  daily: readonly Candle[],
+  fromIndex: number,
+): number | null {
+  for (let index = fromIndex + 1; index < daily.length; index += 1) {
+    const price = dailyEndpointPrice(daily[index]);
+    if (price !== null) return price;
+  }
+  return null;
+}
+
+/** First usable daily open on or after a calendar-day target. */
+function priceOnOrAfterSessionDay(
+  daily: readonly Candle[],
+  fromIndex: number,
+  targetDay: string,
+): number | null {
+  for (let index = fromIndex + 1; index < daily.length; index += 1) {
+    if (sessionDay(daily[index]) < targetDay) continue;
+    const price = dailyEndpointPrice(daily[index]);
+    if (price !== null) return price;
+  }
+  return null;
+}
+
+/**
+ * Pure window resolution — the part tested without provider or database I/O.
+ * Returns null when no bounded, strictly pre-release baseline exists.
+ */
+export function resolvePriceSnapshot(
+  intradayCandles: readonly Candle[],
+  dailyCandles: readonly Candle[],
+  releaseAt: Date,
+): PriceSnapshot | null {
+  if (!Number.isFinite(releaseAt.getTime())) return null;
+
+  const intraday = sortedValidCandles(intradayCandles);
+  const daily = sortedValidCandles(dailyCandles);
+  const baseline =
+    recentIntradayBaseline(intraday, releaseAt) ??
+    priorSessionBaseline(daily, releaseAt);
+  if (baseline === null) return null;
+
+  const price1h = intradayEndpoint(
+    intraday,
+    new Date(releaseAt.getTime() + HOUR_MS),
+  );
+
+  let price1d: number | null = null;
+  let price1w: number | null = null;
+  const releaseSessionIdx = releaseSessionIndex(daily, releaseAt);
+  if (releaseSessionIdx !== -1) {
+    price1d = nextSessionPrice(daily, releaseSessionIdx);
+    const weekTargetDay = addDaysIso(
+      sessionDay(daily[releaseSessionIdx]),
+      7,
+    );
+    price1w = priceOnOrAfterSessionDay(
+      daily,
+      releaseSessionIdx,
+      weekTargetDay,
+    );
+  }
+
+  return {
+    priceAtEvent: baseline.price,
+    anchorAt: baseline.anchorAt,
+    price1h,
+    price1d,
+    price1w,
+  };
+}
+
+/**
+ * Fetch a price snapshot around one verified release instant.
  *
- * Returns null when even the anchor price can't be sourced — caller skips the
- * AssetReaction row entirely. Otherwise returns a PriceSnapshot where the 1h,
- * 1d, 1w fields may be null individually.
+ * Returns null unless a bounded pre-release baseline can be sourced. Individual
+ * endpoints remain nullable when their provider windows are unavailable.
  */
 export async function fetchPriceSnapshot(
   symbol: string,
-  occurredAt: Date,
+  releaseAt: Date,
 ): Promise<PriceSnapshot | null> {
-  const ageMs = Date.now() - occurredAt.getTime();
+  const ageMs = Date.now() - releaseAt.getTime();
   const intradayAvailable = ageMs >= 0 && ageMs < INTRADAY_HORIZON_MS;
 
-  // ── Intraday window (anchor + t+1h) ────────────────────────────────────
   let intradayCandles: Candle[] = [];
   if (intradayAvailable) {
     try {
       const result = await yahooFinance.chart(symbol, {
-        period1: new Date(occurredAt.getTime() - 2 * HOUR_MS),
-        period2: new Date(occurredAt.getTime() + 12 * HOUR_MS),
+        // Include one extra bar so the two-hour baseline boundary is present.
+        period1: new Date(
+          releaseAt.getTime() - INTRADAY_BASELINE_MAX_AGE_MS - HOUR_MS,
+        ),
+        period2: new Date(releaseAt.getTime() + 12 * HOUR_MS),
         interval: "1h",
         return: "array",
       });
-      intradayCandles = result.quotes.map((q) => ({
-        date: q.date,
-        open: q.open,
-        close: q.close,
+      intradayCandles = result.quotes.map((quote) => ({
+        date: quote.date,
+        open: quote.open,
+        close: quote.close,
       }));
-    } catch (err) {
-      logSymbolWarning(symbol, "intraday fetch failed", err);
+    } catch (error) {
+      logSymbolWarning(symbol, "intraday fetch failed", error);
     }
   }
 
-  // ── Daily window (anchor fallback + t+1d + t+1w) ───────────────────────
   let dailyCandles: Candle[] = [];
   try {
     const result = await yahooFinance.chart(symbol, {
-      // Pull a generous window so weekends/holidays don't push us off the end
-      period1: new Date(occurredAt.getTime() - 3 * DAY_MS),
-      period2: new Date(occurredAt.getTime() + 14 * DAY_MS),
+      // Include one extra day around the four-day fallback boundary and enough
+      // forward sessions to survive weekends and holidays at the 1w endpoint.
+      period1: new Date(
+        releaseAt.getTime() - PRIOR_SESSION_BASELINE_MAX_AGE_MS - DAY_MS,
+      ),
+      period2: new Date(releaseAt.getTime() + 21 * DAY_MS),
       interval: "1d",
       return: "array",
     });
-    dailyCandles = result.quotes.map((q) => ({
-      date: q.date,
-      open: q.open,
-      close: q.close,
+    dailyCandles = result.quotes.map((quote) => ({
+      date: quote.date,
+      open: quote.open,
+      close: quote.close,
     }));
-  } catch (err) {
-    logSymbolWarning(symbol, "daily fetch failed", err);
+  } catch (error) {
+    logSymbolWarning(symbol, "daily fetch failed", error);
   }
 
-  // ── Anchor: prefer intraday, fall back to daily ────────────────────────
-  const intradayAnchor = pickPrice(
-    pickFirstAtOrAfter(intradayCandles, occurredAt),
-  );
-  const dailyAnchor = pickPrice(pickFirstAtOrAfter(dailyCandles, occurredAt));
-  const priceAtEvent = intradayAnchor ?? dailyAnchor;
-  if (priceAtEvent === null) return null;
-
-  // ── t+1h: intraday only ─────────────────────────────────────────────────
-  const price1h = pickPrice(
-    pickFirstAtOrAfter(intradayCandles, new Date(occurredAt.getTime() + HOUR_MS)),
-  );
-
-  // ── t+1d: next daily candle on or after t+1d ────────────────────────────
-  const price1d = pickPrice(
-    pickFirstAtOrAfter(dailyCandles, new Date(occurredAt.getTime() + DAY_MS)),
-  );
-
-  // ── t+1w: daily candle on or after t+7d (~5 trading days) ──────────────
-  const price1w = pickPrice(
-    pickFirstAtOrAfter(
-      dailyCandles,
-      new Date(occurredAt.getTime() + 7 * DAY_MS),
-    ),
-  );
-
-  return { priceAtEvent, price1h, price1d, price1w };
+  return resolvePriceSnapshot(intradayCandles, dailyCandles, releaseAt);
 }
 
-function logSymbolWarning(symbol: string, msg: string, err: unknown): void {
-  const detail = err instanceof Error ? err.message : String(err);
-  console.warn(`  ⚠ ${symbol}: ${msg} — ${detail}`);
+function logSymbolWarning(symbol: string, message: string, error: unknown): void {
+  const detail = error instanceof Error ? error.message : String(error);
+  console.warn(`  ⚠ ${symbol}: ${message} — ${detail}`);
 }
 
 export const sleep = (ms: number): Promise<void> =>

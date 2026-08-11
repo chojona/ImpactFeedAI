@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Automated event ingestion. Pulls structured macro events from FRED, BLS, and
- * the FOMC release calendar and writes them into the same Event /
+ * Automated event ingestion. Pulls structured macro observations from FRED,
+ * BLS, and FRED's effective-rate history and writes them into the same Event /
  * AssetReaction / DataRelease tables that the manual seed pipeline uses.
  *
  *   npm run auto-ingest                        # all sources, with prices
@@ -10,13 +10,14 @@
  *   npm run auto-ingest -- --since 2020-01-01   # only post-2020
  *   npm run auto-ingest -- --dry-run            # print + count, no DB writes
  *
- * Dedup: skip if an event already exists with the same event_type within ±1
- * calendar day of occurred_at. Protects against double-insert on rerun and
- * against the 50 curated seed events.
+ * Dedup: every initial macro release has a source-independent key built from
+ * canonical metric + reference period + release stage. A legacy day+metric
+ * lookup remains only to recognize rows written before event_key existed.
  *
- * Heads-up: a full run with --prices is 4-5 hours of Yahoo calls. Run
- * --no-prices first to land event metadata, then backfill prices in a second
- * pass.
+ * FRED/BLS observations and inferred DFEDTARU changes do not prove an exact
+ * publication instant. They are therefore stored, but the central timing gate
+ * suppresses price calls until a release-calendar provider promotes an event
+ * with sourced VERIFIED or SCHEDULED timing.
  */
 import "dotenv/config";
 
@@ -30,6 +31,7 @@ import { fetchPriceSnapshot, sleep } from "./fetch-prices";
 import { buildAssetReaction } from "./compute-reactions";
 import type { CandidateEvent, SourceTag } from "./auto-ingest-types";
 import { ASSET_UNIVERSE } from "./events-seed";
+import { isReactionTimingEligible } from "@/services/events/timing";
 
 const PER_SYMBOL_DELAY_MS = 500;
 const PER_EVENT_DELAY_MS = 2000;
@@ -95,7 +97,7 @@ Options:
 
 Recommended first run:
   npm run auto-ingest -- --no-prices
-  Then backfill prices in a separate pass.`);
+  Add sourced release timing through a calendar provider before backfilling.`);
 }
 
 interface IngestStats {
@@ -103,6 +105,7 @@ interface IngestStats {
   inserted: number;
   duplicates: number;
   yahooSkipped: number;
+  timingSuppressed: number;
   bySource: Record<SourceTag, number>;
 }
 
@@ -116,6 +119,13 @@ function endOfDay(d: Date): Date {
   c.setUTCHours(23, 59, 59, 999);
   return c;
 }
+
+/**
+ * Identity of an economic release for in-run deduplication: same event type,
+ * same UTC day, same canonical metric — the same key the database query below
+ * matches on.
+ */
+const releaseKey = (cand: CandidateEvent): string => cand.eventKey;
 
 /**
  * Pull events from each requested source. Generators run sequentially —
@@ -146,12 +156,12 @@ async function* candidates(flags: Flags): AsyncGenerator<CandidateEvent> {
 }
 
 async function fetchPricesWithBackoff(
-  occurredAt: Date,
+  releaseAt: Date,
   state: { consecutiveEmpty: number },
 ): Promise<ReturnType<typeof buildAssetReaction>[]> {
   const rows: ReturnType<typeof buildAssetReaction>[] = [];
   for (const symbol of ASSET_UNIVERSE) {
-    let snapshot = await fetchPriceSnapshot(symbol, occurredAt);
+    let snapshot = await fetchPriceSnapshot(symbol, releaseAt);
 
     if (snapshot === null) {
       state.consecutiveEmpty += 1;
@@ -160,7 +170,7 @@ async function fetchPricesWithBackoff(
           `  ⏸ ${state.consecutiveEmpty} empty Yahoo responses in a row — backing off ${YAHOO_BACKOFF_MS / 1000}s`,
         );
         await sleep(YAHOO_BACKOFF_MS);
-        snapshot = await fetchPriceSnapshot(symbol, occurredAt);
+        snapshot = await fetchPriceSnapshot(symbol, releaseAt);
       }
     }
 
@@ -180,10 +190,24 @@ async function ingestOne(
   prisma: PrismaClient | null,
   cand: CandidateEvent,
   flags: Flags,
-  state: { consecutiveEmpty: number },
+  state: { consecutiveEmpty: number; accepted: Set<string> },
   stats: IngestStats,
 ): Promise<void> {
   stats.fetched += 1;
+
+  // Releases accepted earlier in *this* run. A real run would have committed
+  // them, so the database query below would catch the collision; a dry-run
+  // commits nothing, so without this an overlapping FRED and BLS print of the
+  // same month both counted as insertable and the preview overstated the real
+  // run. A dry-run that does not predict the run is not a dry-run.
+  const key = releaseKey(cand);
+  if (state.accepted.has(key)) {
+    stats.duplicates += 1;
+    if (stats.duplicates <= 5 || stats.duplicates % 50 === 0) {
+      console.log(`[${cand.source}] ⏭ Duplicate (same run): ${cand.headline}`);
+    }
+    return;
+  }
 
   if (prisma) {
     // Duplicate = the SAME economic release, not merely the same event type on
@@ -196,12 +220,17 @@ async function ingestOne(
     // while genuinely different metrics survive.
     const dup = await prisma.event.findFirst({
       where: {
-        eventType: cand.eventType,
-        occurredAt: {
-          gte: startOfDay(cand.occurredAt),
-          lte: endOfDay(cand.occurredAt),
-        },
-        dataReleases: { some: { metricName: cand.data.metricName } },
+        OR: [
+          { eventKey: cand.eventKey },
+          {
+            eventType: cand.eventType,
+            occurredAt: {
+              gte: startOfDay(cand.occurredAt),
+              lte: endOfDay(cand.occurredAt),
+            },
+            dataReleases: { some: { metricName: cand.data.metricName } },
+          },
+        ],
       },
       select: { id: true },
     });
@@ -215,15 +244,28 @@ async function ingestOne(
   }
 
   let assetRows: ReturnType<typeof buildAssetReaction>[] = [];
-  if (!flags.noPrices) {
-    assetRows = await fetchPricesWithBackoff(cand.occurredAt, state);
+  const reactionEligible = isReactionTimingEligible({
+    releaseAt: cand.releaseAt,
+    timingStatus: cand.timingStatus,
+    timingSource: cand.timingSource,
+  });
+  if (!flags.noPrices && reactionEligible && cand.releaseAt) {
+    assetRows = await fetchPricesWithBackoff(cand.releaseAt, state);
     if (assetRows.length === 0) {
       stats.yahooSkipped += 1;
+    }
+  } else if (!flags.noPrices && !reactionEligible) {
+    stats.timingSuppressed += 1;
+    if (stats.timingSuppressed <= 5 || stats.timingSuppressed % 50 === 0) {
+      console.log(
+        `[${cand.source}] ⊘ Reactions suppressed (${cand.timingStatus}): ${cand.headline}`,
+      );
     }
   }
 
   if (flags.dryRun || !prisma) {
     // Reached only after the dedup check above has actually run.
+    state.accepted.add(key);
     stats.inserted += 1;
     stats.bySource[cand.source] += 1;
     console.log(
@@ -240,6 +282,11 @@ async function ingestOne(
           headline: cand.headline,
           eventType: cand.eventType,
           occurredAt: cand.occurredAt,
+          eventKey: cand.eventKey,
+          releaseAt: cand.releaseAt,
+          releaseDate: cand.releaseDate,
+          timingStatus: cand.timingStatus,
+          timingSource: cand.timingSource,
           sourceUrl: cand.sourceUrl,
         },
         select: { id: true },
@@ -249,6 +296,8 @@ async function ingestOne(
           data: assetRows.map((r) => ({
             eventId: event.id,
             assetSymbol: r.assetSymbol,
+            anchorAt: r.anchorAt,
+            calculationVersion: r.calculationVersion,
             priceAtEvent: r.priceAtEvent,
             price1h: r.price1h,
             price1d: r.price1d,
@@ -262,14 +311,23 @@ async function ingestOne(
       await tx.dataRelease.create({
         data: {
           eventId: event.id,
+          metricKey: cand.data.metricKey,
           metricName: cand.data.metricName,
+          referencePeriodStart: cand.data.referencePeriodStart,
           actualValue: cand.data.actualValue,
+          actualSource: cand.data.actualSource,
+          actualSourceUrl: cand.data.actualSourceUrl,
           expectedValue: cand.data.expectedValue,
+          consensusStatus: cand.data.consensusStatus,
+          consensusSource: cand.data.consensusSource,
+          consensusSourceUrl: cand.data.consensusSourceUrl,
+          consensusAsOf: cand.data.consensusAsOf,
           priorValue: cand.data.priorValue,
           surpriseMagnitude: cand.data.surpriseMagnitude,
         },
       });
     });
+    state.accepted.add(key);
     stats.inserted += 1;
     stats.bySource[cand.source] += 1;
     console.log(
@@ -279,11 +337,11 @@ async function ingestOne(
     );
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
-    // Headline+occurredAt uniqueness collision is possible on rerun if our
-    // ±1-day dedup window misses an exact duplicate (e.g. very close revisions).
+    // The event_key and legacy headline+occurredAt constraints are the final
+    // backstop if another writer inserts the same release after our read.
     if (/Unique constraint/.test(detail)) {
       stats.duplicates += 1;
-      console.log(`[${cand.source}] ⏭ Headline collision: ${cand.headline}`);
+      console.log(`[${cand.source}] ⏭ Identity collision: ${cand.headline}`);
     } else {
       console.error(`[${cand.source}] ✗ ${cand.headline} — ${detail}`);
     }
@@ -310,17 +368,19 @@ async function main(): Promise<void> {
     inserted: 0,
     duplicates: 0,
     yahooSkipped: 0,
+    timingSuppressed: 0,
     bySource: { FRED: 0, BLS: 0, FOMC: 0 },
   };
-  const yahooState = { consecutiveEmpty: 0 };
+  const runState = { consecutiveEmpty: 0, accepted: new Set<string>() };
 
   // Hard cutoff — BLS fetches by year so its candidates may pre-date --since.
   const sinceMs = new Date(flags.since).getTime();
 
   try {
     for await (const cand of candidates(flags)) {
-      if (cand.occurredAt.getTime() < sinceMs) continue;
-      await ingestOne(prisma, cand, flags, yahooState, stats);
+      const cutoffDate = cand.data.referencePeriodStart ?? cand.occurredAt;
+      if (cutoffDate.getTime() < sinceMs) continue;
+      await ingestOne(prisma, cand, flags, runState, stats);
     }
   } finally {
     if (prisma) await prisma.$disconnect();
@@ -335,6 +395,7 @@ async function main(): Promise<void> {
     `  by source — FRED=${stats.bySource.FRED} BLS=${stats.bySource.BLS} FOMC=${stats.bySource.FOMC}`,
   );
   console.log(`  candidates fetched=${stats.fetched}`);
+  console.log(`  reactions suppressed for timing=${stats.timingSuppressed}`);
 }
 
 main().catch((err) => {

@@ -35,20 +35,36 @@ marked **Integrated** exist in the codebase; everything else is a candidate.
 
 - **No consensus estimates.** FRED ships actuals only. See
   [the consensus problem](#the-consensus-problem).
-- **Observation dates are reference periods, not release dates.** `CPIAUCSL`
-  for March is dated 2024-03-01, not the day it was published. Reaction windows
-  need the release timestamp; the pipeline currently approximates by taking the
-  last observation on or before the event date.
-- **Revisions are invisible.** The standard API returns the *current* value of
-  a series. Studying what the market actually saw requires
-  **ALFRED** vintage endpoints (`realtime_start` / `realtime_end`). Not used
-  yet; **Planned** and important — without it, surprise calculations use
-  numbers nobody traded on.
+- **Observation dates are reference periods, not release dates.** `CPIAUCNS`
+  for March is dated 2024-03-01, not the day it was published. The bulk pipeline
+  stores that day as `referencePeriodStart` and as the compatibility/display
+  `occurredAt`, leaves `releaseAt` and `releaseDate` null, and marks the event
+  `REFERENCE_PERIOD_ONLY`. It does not approximate a release timestamp or
+  create a price reaction.
+- **Bulk values are current-vintage values.** The standard observations endpoint
+  returns the latest revised series. The curated monthly path requests an ALFRED
+  snapshot as of the seed event date, but falls back to current vintage when
+  that snapshot is unavailable. The database records FRED as the actual source,
+  but does not yet persist a fetch time or explicit vintage/revision identifier,
+  so point-in-time reproducibility is incomplete.
 - Raw series are index levels; headline metrics are derived by per-series
   transforms in the pipeline (YoY %, MoM Δ in thousands, level %, QoQ
   annualised).
 - Rate limits exist *(verify current threshold)*; the pipeline serialises
   requests.
+
+The 11 bulk series do not all represent the same kind of economic event:
+
+- CPI/Core CPI, PPI, payrolls, unemployment and JOLTS observations identify the
+  month measured, not the later BLS publication. JOLTS also has a different
+  release schedule from the Employment Situation; no conventional hour is
+  inferred for either.
+- PCE/Core PCE and GDP are BEA-origin statistics mirrored by FRED. A GDP
+  observation identifies a reference quarter; the schema does not yet identify
+  advance, second, third or revised estimates.
+- `FEDFUNDS` is a monthly average effective rate, not a discrete FOMC decision.
+- `UMCSENT` is a monthly FRED observation and does not establish the timestamp
+  at which a preliminary or final survey release reached the market.
 
 ### BLS — Bureau of Labor Statistics · **Integrated**
 
@@ -60,21 +76,38 @@ marked **Integrated** exist in the codebase; everything else is a candidate.
 | History | Long; capped at 20 years per request, so the pipeline paginates in 10-year chunks |
 | Used by | `scripts/ingest/sources-bls.ts` |
 
-Overlaps with FRED for CPI and unemployment — the ingestion dedup exists partly
-to handle that. Value of keeping both: BLS is the primary publisher, useful as
-a cross-check on FRED's transformations. Also publishes the official release
-calendar, which is the natural path to real release timestamps. **Researching.**
+The time-series response supplies `year`/`period` and values, not a historical
+publication timestamp. Bulk BLS therefore stores the period as
+`referencePeriodStart`, leaves exact/date timing null, uses
+`REFERENCE_PERIOD_ONLY`, and suppresses reactions just like bulk FRED. Its
+canonical keys intentionally match FRED (`macro:<metric>:initial:<period>`), so
+when both sources yield the same CPI or labor release the first accepted row is
+kept rather than persisting a second cross-check row. BLS is the primary
+publisher and also publishes an official release calendar; resolving that
+calendar/archive into authoritative historical timing is **Researching**.
 
 ### FOMC / Federal Reserve · **Integrated (indirectly)**
 
-Rate decisions are currently derived by walking the FRED `DFEDTARU` daily
-series and emitting an event on each step change. This is accurate for the
-target rate and the decision date, but **omits meetings that held rates
-steady** — often the most interesting ones.
+Rate decisions are currently derived by walking the FRED `DFEDTARU` daily target
+upper-bound series and emitting an event on each step change. The observation
+proves the date on which the new target became effective; it does **not** prove
+the FOMC statement timestamp. The source subtracts one calendar day and formats
+14:00 ET only as an `INFERRED` display value, stores the same inferred day in
+`releaseDate`, leaves `releaseAt` null, and suppresses reactions. It also
+**omits meetings that held rates steady** — often the most interesting ones.
 
 **Planned** improvements: the official FOMC calendar and statement archive at
 `federalreserve.gov` (free, HTML/RSS, no formal API *(verify)*) for meeting
 dates including holds, statements, dot plots and minutes.
+
+The repository now has a source-agnostic historical release-calendar contract,
+but no adapter is wired to any publisher. It identifies a release by canonical
+metric, reference period and normalized stage; accepts exact `VERIFIED` timing
+only from an official release record, `SCHEDULED` timing only from an official
+schedule, and preserves official date metadata as `DATE_ONLY` with
+`releaseAt = null`. Provider identity, credential-free HTTPS citation,
+retrieval instant and New York date/instant consistency are validated before a
+result could reach ingestion. There is deliberately no fallback clock.
 
 ### BEA — Bureau of Economic Analysis · **Researching**
 
@@ -101,8 +134,12 @@ whole research thesis.**
 
 `surprise = actual − forecast`. Every free government source publishes the
 actual and nothing else. Consensus forecasts are commercial products.
-Currently `expectedValue` is hand-typed into `events-seed.ts` for a handful of
-events, which does not scale past the seed list.
+Currently `expectedValue` is hand-typed into `events-seed.ts` for 20 of the 51
+events, which does not scale past the seed list. Those legacy values have no
+retained citation and are stored as `UNVERIFIED`; every bulk FRED, BLS and FOMC
+row stores `MISSING`. The UI may show an unverified value and its arithmetic,
+but labels both the estimate and surprise rather than silently promoting them
+to consensus.
 
 Candidate paths, none yet chosen:
 
@@ -115,9 +152,14 @@ Candidate paths, none yet chosen:
 | Market-implied expectations (fed funds futures, inflation breakevens/swaps) | Rates and inflation | Free via FRED for some series | Not a "consensus number", but arguably a better measure of what was priced in. Worth having regardless of what else is chosen | **Planned** |
 | Derive a naive baseline (e.g. prior value, trailing average) | Complete | Free | Honest fallback, clearly labelled as *not* consensus. Useful for coverage, weak as a surprise measure | **Planned** |
 
-Interim recommendation: store forecasts with an explicit source and method
-field so consensus, nowcast, market-implied and naive baselines never get
-silently mixed.
+The storage contract is now built. Each release carries `consensusStatus`,
+`consensusSource`, `consensusSourceUrl` and `consensusAsOf`. The curated writer
+requires all three provenance fields before setting `VERIFIED`; otherwise a
+non-null estimate is `UNVERIFIED`. A provider interface and validator are ready
+for a future integration and require a finite value, named source, HTTPS URL and
+an as-of timestamp no later than a known release instant. No historical
+consensus provider is wired in yet, and the schema does not yet distinguish
+consensus from nowcast or market-implied methodology beyond the source fields.
 
 ---
 
@@ -136,7 +178,17 @@ silently mixed.
 break without notice; throttles under load (the pipeline waits 500 ms per
 symbol and backs off 30 s after repeated failures); no guarantee of
 adjustment/dividend consistency; **commercial use terms need verification**
-before this becomes production infrastructure.
+before this becomes production infrastructure. The pipeline calls it only for
+events with a sourced exact `releaseAt` and eligible timing; reference-only,
+inferred and unverified records are intentionally not anchored to market data.
+
+Calculation version 2 requires a strictly pre-release baseline: a recent
+intraday open (within two hours) or the preceding session's close (provider bar
+within four calendar days). The 1-hour endpoint is release-time-relative;
+1-day/1-week use the release session, preserving pre-market and weekend gaps.
+For a daily-close fallback Yahoo exposes only the daily bar's timestamp,
+normally at session open, so `anchorAt` identifies the bar rather than an exact
+closing tick.
 
 Missing from the universe and needed for Phase 2: **VIX and Treasury yields**.
 
@@ -235,7 +287,7 @@ a FRED series.
 | **GDELT** | Global event and news database, structured | Free | **Researching** — very broad, needs heavy filtering |
 | **NewsAPI / Alpha Vantage news** | Headlines, some sentiment | Freemium *(verify history depth)* | **Researching** — free tiers usually cap historical lookback, which is the part that matters here |
 | **RavenPack, Benzinga, Bloomberg** | Curated, timestamped, market-grade news | Enterprise pricing | **Rejected** for now on cost |
-| **Hand-curated seed list** | ~51 events in `events-seed.ts` | Free | **Integrated** — accurate, does not scale |
+| **Hand-curated seed list** | ~51 events in `events-seed.ts` | Free | **Integrated** — does not scale; legacy timestamps and uncited forecasts remain explicitly unverified |
 
 Discretionary events will likely stay partly hand-curated for a while. That is
 acceptable if provenance is recorded: a hand-entered event and an
@@ -249,10 +301,10 @@ API-sourced one should be distinguishable in the database.
 | --- | --- | --- |
 | FRED | Macro | **Integrated** |
 | BLS | Macro | **Integrated** |
-| FOMC via `DFEDTARU` | Macro | **Integrated** (holds missing) |
+| FOMC via `DFEDTARU` | Macro | **Integrated** (timing inferred; holds missing) |
 | Yahoo Finance | Prices | **Integrated** |
-| Hand-curated seed events | News | **Integrated** |
-| FRED ALFRED vintages | Macro | **Planned** |
+| Hand-curated seed events | News | **Integrated** (legacy timing unverified) |
+| FRED ALFRED vintages | Macro | **Integrated** for curated monthly fetches, with current-vintage fallback |
 | FRED market series (VIX, yields, breakevens) | Market | **Planned** |
 | Federal Register | News | **Planned** |
 | Fed press releases | News | **Planned** |
@@ -275,10 +327,17 @@ API-sourced one should be distinguishable in the database.
 
 ## Provenance requirement
 
-Whatever gets added, every stored value should eventually record **where it
-came from, when it was fetched, and which vintage it represents.** The schema
-has no `DataSource` concept today (see
-[architecture.md](architecture.md#database)). Adding it before the source list
-grows is much cheaper than backfilling provenance later — and without it,
-mixing a hand-typed consensus with a model nowcast and a revised actual becomes
-undetectable.
+The first provenance layer is built. Events distinguish exact release instant,
+date-only and reference-period timing and carry a status/source. Data releases
+carry stable metric identity, the period measured, actual source/URL, and
+consensus status/source/URL/as-of. Existing uncited forecasts were migrated to
+`UNVERIFIED`; missing forecasts remain `MISSING`. The migration did not invent
+identity, reference-period or actual-source metadata for legacy rows, so those
+fields remain null until independently enriched.
+
+The next layer still matters: persist **when a value was fetched, which
+vintage/revision and GDP estimate stage it represents, and what kind of
+expectation methodology produced it.** There is no normalized `DataSource` or
+release-stage model yet. Without those fields, two FRED vintages or a survey
+consensus and a model nowcast can still share a shape even though they are not
+interchangeable.

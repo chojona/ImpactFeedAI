@@ -17,7 +17,10 @@ into visual, cross-asset market reaction stories. Target user: retail trader lea
 - Active models: Event, AssetReaction, DataRelease (waitlist + email sending were removed)
 - DATABASE_URL = pooled, web app only. DIRECT_URL = direct, used by Prisma CLI + all scripts
 - Scripts must build clients via scripts/lib/prisma.ts (never read DATABASE_URL directly)
+- Dry-runs must use scripts/lib/readonly-prisma.ts (writes throw, reads work)
 - Market/macro data: yahoo-finance2 + FRED/BLS REST, ingestion scripts only
+- Tests: Vitest, `npm test`, unit only, in tests/. `npm run verify` = typecheck+lint+test
+- Node 22.12+ (engines). yahoo-finance2 v3 does not support Node 20.
 - State: React useState/useContext (no Redux yet)
 - AI: planned, not built. @anthropic-ai/sdk is installed but unused.
 - Price Data: Polygon.io is the intended provider but is NOT integrated yet.
@@ -25,21 +28,27 @@ into visual, cross-asset market reaction stories. Target user: retail trader lea
 ## Project Structure
 - src/app/ — Next.js routes, layouts, and route handlers (/api/*)
 - src/components/ — Reusable UI, grouped by domain (events/, charts/, landing/, patterns/, ui/)
-- src/lib/ — Third-party clients + app config (prisma.ts, eventCategories.ts)
-- src/lib/mock-data/ — PLACEHOLDER fixtures the UI renders today; delete once the DB is wired up
-- src/services/ — Business logic and external-API services (analytics/)
+- src/lib/ — Third-party clients + app config (prisma.ts, eventCategories.ts, assets.ts)
+- src/services/ — Business logic and external-API services:
+  - analytics/ — aggregate reaction stats
+  - events/ — Prisma queries, query-param parsing, DB row → UI mapping
+  - macro/ — canonical metric registry + DST-aware US-Eastern timestamps
 - src/types/ — Shared TypeScript types (events.ts)
+- scripts/lib/ — Prisma factories for scripts (prisma.ts, readonly-prisma.ts)
 - scripts/ingest/ — Macro + price ingestion pipelines (has its own README)
-- scripts/maintenance/ — DB verification and upkeep scripts
+- scripts/backfill/ — Price backfill for events ingested with --no-prices
+- scripts/maintenance/ — DB verification, smoke tests, data repair
+- tests/ — Vitest unit tests
 - prisma/schema.prisma — Database schema
 - docs/ — vision, architecture, data-sources, research-methodology, roadmap
 
 Read docs/architecture.md before adding a new file — it documents what is built
 vs. planned and where each kind of code belongs.
 
-Important: the UI does NOT read the database yet. Pages and /api/events render
-from src/lib/mock-data/; the ingestion scripts write to Postgres. Connecting
-them is the current priority.
+The UI reads the database. /feed, /events/[id], /patterns and /api/events all
+query Postgres via src/services/events/. There are no mock fixtures — do not
+reintroduce any. An empty database must render an empty state, never invented
+sample data.
 
 ## Coding Rules
 - Always use TypeScript with strict types — no `any`
@@ -59,9 +68,24 @@ them is the current priority.
     never raw actualValue > expectedValue comparison
 
 ## Current Phase
-MVP — Phase 1. Building the curated event library.
-Do NOT add AI features yet. Focus on core event card display,
-chart rendering, and the expectation vs reality component.
+MVP — Phase 1 is wired end to end. Do NOT add AI features yet.
+The highest-value remaining work is a consensus/forecast source:
+FRED and BLS publish actuals only, so most events have no expectedValue
+and therefore no surprise, which is what the whole research thesis rests on.
+
+## Data integrity rules (non-negotiable)
+- A value that cannot be measured is null, NEVER 0. A fabricated 0.00% price
+  move is indistinguishable from a measured flat market and poisons every
+  average computed over it.
+- Within one DataRelease row, expectedValue / actualValue / priorValue /
+  surpriseMagnitude are all in that metric's canonical unit (see
+  src/services/macro/metrics.ts). Never mix a raw index level with a headline
+  percentage.
+- Percentage surprises are quoted in percentage POINTS (pp), not percent.
+- A missing prior is unknown, not "unchanged" — omit the comparison.
+- Never write a metricName that metricByCanonicalName() cannot resolve; the app
+  needs it to recover the unit.
+- Never invent prose, numbers or dates to fill a null column.
 
 ## Design Direction
 Dark theme. Professional fintech aesthetic. Fast, clean, data-dense.

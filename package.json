@@ -2,13 +2,21 @@
   "name": "impactfeed-ai",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.8.2",
+  "engines": {
+    "node": "^22.12.0 || >=24.0.0"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "npm run typecheck && npm run lint && npm run test",
     "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:verify": "tsx scripts/maintenance/verify-db.ts",
@@ -16,6 +24,8 @@
     "smoke:dryrun": "tsx scripts/maintenance/smoke-dryrun-guard.ts",
     "repair:data-releases": "tsx scripts/maintenance/repair-data-releases.ts",
     "repair:data-releases:dry-run": "tsx scripts/maintenance/repair-data-releases.ts --dry-run",
+    "repair:reaction-timing": "tsx scripts/maintenance/repair-reaction-timing.ts",
+    "repair:reaction-timing:dry-run": "tsx scripts/maintenance/repair-reaction-timing.ts --dry-run",
     "backfill:prices": "tsx scripts/backfill/backfill-prices.ts",
     "backfill:prices:dry-run": "tsx scripts/backfill/backfill-prices.ts --dry-run",
     "ingest": "tsx scripts/ingest/ingest.ts",
@@ -28,7 +38,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
     "@prisma/adapter-pg": "^7.8.0",
-    "axios": "^1.16.0",
+    "@prisma/client": "^7.8.0",
     "framer-motion": "^12.38.0",
     "lightweight-charts": "^5.2.0",
     "lucide-react": "^1.14.0",
@@ -36,21 +46,21 @@
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "recharts": "^3.8.1",
     "yahoo-finance2": "^3.14.0"
   },
   "devDependencies": {
-    "@prisma/client": "^7.8.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

@@ -21,9 +21,14 @@
  * sources: FRED's CPIAUCNS and BLS's CUUR0000SA0 both resolve to the same
  * canonical name, which is what lets deduplication recognise them as the same
  * economic release while keeping headline CPI and Core CPI distinct.
+ *
+ * This module lives under `src/` rather than `scripts/` because both consumers
+ * need it: the ingestion CLIs derive values with it, and the web app formats
+ * stored `DataRelease` rows with it. A stored number is meaningless without the
+ * unit that produced it, so the registry has to be shared rather than copied.
  */
 
-import type { EventTypeLiteral } from "./auto-ingest-types";
+import type { EventTypeName } from "@/types/events";
 
 /** How a raw source series is converted into its headline number. */
 export type MetricTransform =
@@ -45,7 +50,7 @@ export interface CanonicalMetric {
   key: string;
   /** Persisted to DataRelease.metricName. Identical across sources. */
   canonicalName: string;
-  eventType: EventTypeLiteral;
+  eventType: EventTypeName;
   transform: MetricTransform;
   unit: MetricUnit;
   /** Human-readable unit, used in logs and smoke tests. */
@@ -220,13 +225,63 @@ export const BLS_SERIES_BINDINGS: readonly SeriesBinding[] = [
  * DataRelease from FRED.
  */
 export const CURATED_SERIES_BY_EVENT_TYPE: Partial<
-  Record<EventTypeLiteral, SeriesBinding>
+  Record<EventTypeName, SeriesBinding>
 > = {
   CPI: { seriesId: "CPIAUCNS", metric: METRICS.CPI_HEADLINE },
   PPI: { seriesId: "PPIFIS", metric: METRICS.PPI_HEADLINE },
   NFP: { seriesId: "PAYEMS", metric: METRICS.PAYROLLS },
   FED_DECISION: { seriesId: "DFEDTARU", metric: METRICS.FED_TARGET_UPPER },
 };
+
+/* ──────────────────────── source window sizing ──────────────────────── */
+
+/**
+ * How many observations of history a transform needs *before* the one it is
+ * deriving. `yoy_pct` needs 13: index−12 for the year-ago comparison and
+ * index−13 so the previous month's YoY (the `prior`) is also computable.
+ */
+export function transformLookback(transform: MetricTransform): number {
+  switch (transform) {
+    case "yoy_pct":
+      return 13;
+    case "qoq_pct_annualized":
+      return 2;
+    case "mom_diff_thousands":
+      return 2;
+    case "level_pct":
+    case "level":
+      return 1;
+  }
+}
+
+/** Observation spacing implied by a transform. */
+export function transformPeriodMonths(transform: MetricTransform): number {
+  return transform === "qoq_pct_annualized" ? 3 : 1;
+}
+
+/**
+ * Earliest observation date a source must fetch so that an event dated `since`
+ * is actually derivable.
+ *
+ * Without this, `--since 2024-01-01` silently produced no CPI events until
+ * 2025-01: the fetch started at the cutoff, so the first 13 observations had no
+ * year-ago comparison and `deriveMetric` returned null for every one of them.
+ * A whole year of the requested range went missing with no warning. Callers
+ * fetch from here and let the orchestrator drop candidates before `since`.
+ */
+export function observationStartFor(
+  metric: CanonicalMetric,
+  since: string,
+): string {
+  const months =
+    transformLookback(metric.transform) *
+    transformPeriodMonths(metric.transform);
+  const d = new Date(`${since}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return since;
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() - months);
+  return d.toISOString().slice(0, 10);
+}
 
 /* ─────────────────────────── transformation ─────────────────────────── */
 
@@ -341,12 +396,22 @@ function headlineTolerance(transform: MetricTransform): number {
   }
 }
 
+/**
+ * Direction of a print against its prior, or null when there is no prior to
+ * compare against.
+ *
+ * Null is deliberately distinct from "in line with". A missing prior is an
+ * unknown, not an unchanged reading — BLS returned no October 2025
+ * unemployment observation at all, and the previous behaviour rendered the
+ * November print as "in line with prior", asserting a comparison that had
+ * never been made.
+ */
 export function directionVsPrior(
   current: number,
   prior: number | null,
   tolerance: number,
-): "above" | "below" | "in line with" {
-  if (prior === null) return "in line with";
+): "above" | "below" | "in line with" | null {
+  if (prior === null) return null;
   const diff = current - prior;
   if (Math.abs(diff) <= tolerance) return "in line with";
   return diff > 0 ? "above" : "below";
@@ -365,7 +430,12 @@ function quarterLabel(iso: string): string {
   return `Q${Math.floor(d.getUTCMonth() / 3) + 1} ${d.getUTCFullYear()}`;
 }
 
-/** Shared headline text so FRED and BLS prints of the same metric read alike. */
+/**
+ * Shared headline text so FRED and BLS prints of the same metric read alike.
+ *
+ * The "— above/below/in line with prior" clause is omitted entirely when the
+ * prior is unknown, rather than defaulting to a comparison that was never made.
+ */
 export function makeMetricHeadline(
   metric: CanonicalMetric,
   value: number,
@@ -373,20 +443,21 @@ export function makeMetricHeadline(
   iso: string,
 ): string {
   const dir = directionVsPrior(value, prior, headlineTolerance(metric.transform));
+  const vsPrior = dir === null ? "" : ` — ${dir} prior`;
   switch (metric.transform) {
     case "yoy_pct":
-      return `${metric.headlineNoun} prints ${value.toFixed(1)}% YoY — ${dir} prior (${formatMonth(iso)})`;
+      return `${metric.headlineNoun} prints ${value.toFixed(1)}% YoY${vsPrior} (${formatMonth(iso)})`;
     case "qoq_pct_annualized":
-      return `${metric.headlineNoun} ${value >= 0 ? "+" : ""}${value.toFixed(1)}% annualised — ${dir} prior (${quarterLabel(iso)})`;
+      return `${metric.headlineNoun} ${value >= 0 ? "+" : ""}${value.toFixed(1)}% annualised${vsPrior} (${quarterLabel(iso)})`;
     case "mom_diff_thousands": {
       const sign = value >= 0 ? "+" : "";
       const formatted = `${sign}${Math.abs(value) >= 1000 ? `${(value / 1000).toFixed(0)}M` : `${value}k`}`;
-      return `${metric.headlineNoun} ${formatted} — ${dir} prior (${formatMonth(iso)})`;
+      return `${metric.headlineNoun} ${formatted}${vsPrior} (${formatMonth(iso)})`;
     }
     case "level_pct":
-      return `${metric.headlineNoun} ${value.toFixed(2)}% — ${dir} prior (${formatMonth(iso)})`;
+      return `${metric.headlineNoun} ${value.toFixed(2)}%${vsPrior} (${formatMonth(iso)})`;
     case "level":
-      return `${metric.headlineNoun} ${value.toFixed(1)} — ${dir} prior (${formatMonth(iso)})`;
+      return `${metric.headlineNoun} ${value.toFixed(1)}${vsPrior} (${formatMonth(iso)})`;
   }
 }
 
@@ -406,5 +477,76 @@ export function formatWithUnit(
       return `${value >= 0 ? "+" : ""}${value}k`;
     case "index_points":
       return value.toFixed(1);
+  }
+}
+
+/* ─────────────────────── reading stored rows back ───────────────────── */
+
+const BY_CANONICAL_NAME: ReadonlyMap<string, CanonicalMetric> = new Map(
+  Object.values(METRICS).map((m) => [m.canonicalName, m]),
+);
+
+/**
+ * Resolve a stored `DataRelease.metricName` back to its canonical metric.
+ *
+ * Returns undefined for names this registry does not know — rows written before
+ * a metric was renamed, or a hand-entered `metricName` override on a curated
+ * seed event. Callers must degrade to a unit-less display rather than guessing
+ * a unit, because guessing is how a percentage gets rendered as index points.
+ */
+export function metricByCanonicalName(
+  name: string,
+): CanonicalMetric | undefined {
+  return BY_CANONICAL_NAME.get(name);
+}
+
+/**
+ * Format a stored value for display, in the unit the metric is stored in.
+ *
+ * Falls back to a plain number when the metric is unknown: a bare `3.5` is
+ * honest about what is known, where `3.5%` would be an assertion.
+ */
+export function formatMetricValue(
+  metricName: string,
+  value: number | null,
+): string | null {
+  if (value === null) return null;
+  const metric = metricByCanonicalName(metricName);
+  if (!metric) return String(value);
+  switch (metric.unit) {
+    case "pct_yoy":
+    case "pct_saar":
+      return `${value.toFixed(1)}%`;
+    case "pct_level":
+      return `${value.toFixed(2)}%`;
+    case "thousands_mom":
+      return `${value >= 0 ? "+" : ""}${Math.round(value)}k`;
+    case "index_points":
+      return value.toFixed(1);
+  }
+}
+
+/**
+ * Format a surprise (actual − expected). Percentage metrics are quoted in
+ * percentage *points*, not percent: a 2.4% consensus printing 2.3% is a
+ * −0.1pp surprise, and calling it −0.1% would imply a relative change.
+ */
+export function formatMetricSurprise(
+  metricName: string,
+  value: number | null,
+): string | null {
+  if (value === null) return null;
+  const sign = value > 0 ? "+" : "";
+  const metric = metricByCanonicalName(metricName);
+  if (!metric) return `${sign}${value}`;
+  switch (metric.unit) {
+    case "pct_yoy":
+    case "pct_saar":
+    case "pct_level":
+      return `${sign}${Number(value.toFixed(2))}pp`;
+    case "thousands_mom":
+      return `${sign}${Math.round(value)}k`;
+    case "index_points":
+      return `${sign}${value.toFixed(1)}`;
   }
 }

@@ -29,8 +29,13 @@ export function PatternCard({ pattern }: Props) {
           {pattern.category}
         </span>
         <span className="font-mono text-xs tabular-nums text-zinc-500">
-          {pattern.sampleSize}{" "}
-          {pattern.sampleSize === 1 ? "event" : "events"}
+          {pattern.measuredSampleSize}{" "}
+          {pattern.measuredSampleSize === 1 ? "event" : "events"}
+          {pattern.sampleSize > pattern.measuredSampleSize && (
+            <span className="ml-1 text-zinc-600">
+              of {pattern.sampleSize} measured
+            </span>
+          )}
         </span>
       </div>
 
@@ -49,7 +54,7 @@ export function PatternCard({ pattern }: Props) {
       </div>
 
       <Link
-        href={`/?cat=${pattern.category}`}
+        href={`/feed?cat=${pattern.category}`}
         className="text-xs font-semibold uppercase tracking-wider text-[#00FF94] transition hover:text-[#00FF94]/80"
       >
         View all {pattern.category} events →
@@ -85,7 +90,7 @@ function BarRow({ asset, maxAbs }: { asset: AssetPattern; maxAbs: number }) {
           />
         </div>
         <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
-          consistent {Math.round(asset.winRate * 100)}%
+          consistent {Math.round(asset.winRate * 100)}% · n={asset.eventCount}
         </div>
       </div>
       <span

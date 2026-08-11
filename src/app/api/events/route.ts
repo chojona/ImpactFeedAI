@@ -1,99 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { mockEvents } from "@/lib/mock-data/events";
-import type { EventCategory, NewsEvent } from "@/types/events";
+import { isDatabaseConfigured } from "@/lib/prisma";
+import { listEvents } from "@/services/events/eventQueries";
+import { parseEventListQuery } from "@/services/events/queryParams";
 
-type SortMode = "newest" | "biggest";
-type CategoryParam = EventCategory | "ALL";
+/**
+ * GET /api/events — filter / search / sort / paginate the event library.
+ *
+ * Reads Postgres. Previously served `src/lib/mock-data/events.ts`; the query
+ * contract and response envelope were kept identical so the client did not
+ * change with the data source.
+ *
+ * The handler stays thin on purpose: parse, delegate, shape. Validation and the
+ * queries live in `src/services/events/eventQueries.ts` where they are testable
+ * without a request.
+ */
+export const dynamic = "force-dynamic";
 
-const VALID_CATEGORIES: ReadonlySet<CategoryParam> = new Set<CategoryParam>([
-  "ALL",
-  "TARIFF",
-  "FED",
-  "INFLATION",
-  "GEOPOLITICAL",
-  "EARNINGS",
-  "OTHER",
-]);
-
-const isCategory = (v: string | null): v is CategoryParam =>
-  v !== null && VALID_CATEGORIES.has(v as CategoryParam);
-
-const isSort = (v: string | null): v is SortMode =>
-  v === "newest" || v === "biggest";
-
-const maxAbsMove = (event: NewsEvent): number => {
-  let m = 0;
-  for (const a of event.assets) {
-    const x = Math.abs(a.percentChange);
-    if (x > m) m = x;
-  }
-  return m;
-};
-
-const parseNonNegativeInt = (
-  raw: string | null,
-  fallback: number,
-  max?: number,
-): number => {
-  if (raw === null) return fallback;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) return fallback;
-  if (max !== undefined && n > max) return max;
-  return n;
-};
-
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const query = parseEventListQuery(searchParams);
 
-  const offset = parseNonNegativeInt(searchParams.get("offset"), 0);
-  const limit = parseNonNegativeInt(searchParams.get("limit"), 12, 100);
-
-  const typeRaw = searchParams.get("type");
-  const type: CategoryParam = isCategory(typeRaw) ? typeRaw : "ALL";
-
-  const sortRaw = searchParams.get("sort");
-  const sort: SortMode = isSort(sortRaw) ? sortRaw : "newest";
-
-  const q = (searchParams.get("q") ?? "").toLowerCase().trim();
-
-  const filtered = mockEvents.filter((e) => {
-    if (type !== "ALL" && e.category !== type) return false;
-    if (q.length > 0) {
-      const hay = `${e.title} ${e.summary} ${e.explanation}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  const sorted = [...filtered].sort((a, b) => {
-    if (sort === "newest") {
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    }
-    return maxAbsMove(b) - maxAbsMove(a);
-  });
-
-  const total = sorted.length;
-  const events = sorted.slice(offset, offset + limit);
-
-  const counts: Record<CategoryParam, number> = {
-    ALL: mockEvents.length,
-    TARIFF: 0,
-    FED: 0,
-    INFLATION: 0,
-    GEOPOLITICAL: 0,
-    EARNINGS: 0,
-    OTHER: 0,
-  };
-  for (const e of mockEvents) {
-    counts[e.category] += 1;
+  // A missing connection string is a deployment mistake, not an empty library.
+  // Reporting it as 503 with a distinct code keeps it from rendering as "no
+  // events match your search", which sent people looking for the wrong bug.
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json(
+      {
+        error: "database_not_configured",
+        message:
+          "DATABASE_URL is not set. See .env.example — the event library is served from Postgres.",
+      },
+      { status: 503 },
+    );
   }
 
-  return NextResponse.json({
-    events,
-    total,
-    offset,
-    limit,
-    counts,
-  });
+  try {
+    const result = await listEvents(query);
+    return NextResponse.json(result);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[/api/events] query failed:", detail);
+    return NextResponse.json(
+      {
+        error: "query_failed",
+        message: "Could not read the event library.",
+      },
+      { status: 502 },
+    );
+  }
 }

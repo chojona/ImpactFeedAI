@@ -123,16 +123,21 @@ async function main(): Promise<void> {
   const before = await prisma.event.count();
 
   for (const check of checks) {
-    let outcome: "allowed" | "blocked";
+    // "errored" is a third, distinct outcome that matches neither expectation.
+    // Folding it into "allowed" made a read that failed for an unrelated reason
+    // (an unreachable database, a schema drift) report as a pass, so the guard
+    // looked verified while nothing had actually been exercised.
+    let outcome: "allowed" | "blocked" | "errored";
     let detail = "";
     try {
       await check.run();
       outcome = "allowed";
     } catch (err) {
-      outcome = err instanceof DryRunWriteError ? "blocked" : "allowed";
-      if (!(err instanceof DryRunWriteError)) {
-        detail = ` (threw a non-guard error: ${err instanceof Error ? err.message.slice(0, 70) : String(err)})`;
-        outcome = "allowed"; // not blocked *by the guard* — treat as failure below
+      if (err instanceof DryRunWriteError) {
+        outcome = "blocked";
+      } else {
+        outcome = "errored";
+        detail = ` (non-guard error: ${err instanceof Error ? err.message.slice(0, 70) : String(err)})`;
       }
     }
     const ok = outcome === check.expect;

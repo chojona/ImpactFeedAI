@@ -28,7 +28,8 @@ import {
   deriveMetric,
   type CanonicalMetric,
   type Observation,
-} from "./metrics";
+} from "@/services/macro/metrics";
+import { validateConsensusEstimate } from "@/services/macro/consensus";
 import type { MacroRelease } from "./types";
 
 const FRED_BASE = "https://api.stlouisfed.org/fred";
@@ -48,8 +49,14 @@ interface FredResponse {
 export interface MacroFetchInput {
   eventType: string;
   occurredAt: Date;
+  /** Independently verified release instant, never the legacy occurrence fallback. */
+  releaseAt?: Date | null;
   expectedValue: number | null;
   metricNameOverride: string | null;
+  referencePeriodStart?: Date | null;
+  consensusSource?: string | null;
+  consensusSourceUrl?: string | null;
+  consensusAsOf?: Date | null;
 }
 
 const isoDate = (d: Date): string => d.toISOString().slice(0, 10);
@@ -137,7 +144,15 @@ function indexAtOrBefore(obs: readonly Observation[], when: Date): number {
 function indexOfReferencePeriod(
   obs: readonly Observation[],
   releaseDate: Date,
+  explicitReferencePeriod?: Date | null,
 ): number {
+  if (
+    explicitReferencePeriod &&
+    !Number.isNaN(explicitReferencePeriod.getTime())
+  ) {
+    const wanted = isoDate(explicitReferencePeriod);
+    return obs.findIndex((observation) => observation.iso === wanted);
+  }
   const y = releaseDate.getUTCFullYear();
   const m = String(releaseDate.getUTCMonth() + 1).padStart(2, "0");
   const firstOfReleaseMonth = `${y}-${m}-01`;
@@ -209,13 +224,67 @@ export async function fetchMacroRelease(
 
   const metric: CanonicalMetric = binding.metric;
   const metricName = input.metricNameOverride ?? metric.canonicalName;
+  const actualSourceUrl = `https://fred.stlouisfed.org/series/${binding.seriesId}`;
+  let consensusStatus: "VERIFIED" | "UNVERIFIED" | "MISSING" =
+    input.expectedValue === null ? "MISSING" : "UNVERIFIED";
+  let consensusSource = input.consensusSource ?? null;
+  let consensusSourceUrl = input.consensusSourceUrl ?? null;
+  let consensusAsOf = input.consensusAsOf ?? null;
+
+  // A number is promoted to verified consensus only when its citation and
+  // snapshot time validate against an independently established release
+  // instant. Invalid metadata remains visible as UNVERIFIED instead of being
+  // silently laundered into surprise analysis.
+  if (
+    input.expectedValue !== null &&
+    input.releaseAt &&
+    input.consensusSource &&
+    input.consensusSourceUrl &&
+    input.consensusAsOf
+  ) {
+    try {
+      const estimate = validateConsensusEstimate(
+        {
+          value: input.expectedValue,
+          source: input.consensusSource,
+          sourceUrl: input.consensusSourceUrl,
+          asOf: input.consensusAsOf,
+        },
+        input.releaseAt,
+      );
+      consensusStatus = "VERIFIED";
+      consensusSource = estimate.source;
+      consensusSourceUrl = estimate.sourceUrl;
+      consensusAsOf = estimate.asOf;
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      console.warn(`  ⚠ consensus provenance rejected: ${detail}`);
+    }
+  }
+
+  const baseProvenance = {
+    metricKey: metric.key,
+    actualSource: "FRED",
+    actualSourceUrl,
+    consensusStatus,
+    consensusSource:
+      input.expectedValue === null
+        ? null
+        : (consensusSource ?? "Curated seed (citation not recorded)"),
+    consensusSourceUrl,
+    consensusAsOf,
+  } as const;
 
   const apiKey = process.env.FRED_API_KEY;
   if (!apiKey) {
     // Still emit an expected-only row if the curator supplied consensus.
     if (input.expectedValue === null) return null;
     return {
+      ...baseProvenance,
+      actualSource: null,
+      actualSourceUrl: null,
       metricName,
+      referencePeriodStart: input.referencePeriodStart ?? null,
       actualValue: null,
       priorValue: null,
       expectedValue: input.expectedValue,
@@ -263,6 +332,7 @@ export async function fetchMacroRelease(
 
   let actualValue: number | null = null;
   let priorValue: number | null = null;
+  let referencePeriodStart: Date | null = input.referencePeriodStart ?? null;
 
   if (isFed) {
     const resolved = resolveFedDecision(obs, input.occurredAt);
@@ -271,12 +341,17 @@ export async function fetchMacroRelease(
       actualValue = resolved.actual;
     }
   } else {
-    const idx = indexOfReferencePeriod(obs, input.occurredAt);
+    const idx = indexOfReferencePeriod(
+      obs,
+      input.occurredAt,
+      input.referencePeriodStart,
+    );
     if (idx >= 0) {
       const derived = deriveMetric(metric.transform, idx, obs);
       if (derived) {
         actualValue = derived.value;
         priorValue = derived.prior;
+        referencePeriodStart = new Date(`${obs[idx].iso}T00:00:00Z`);
       }
     }
   }
@@ -284,7 +359,9 @@ export async function fetchMacroRelease(
   if (actualValue === null && input.expectedValue === null) return null;
 
   return {
+    ...baseProvenance,
     metricName,
+    referencePeriodStart,
     actualValue,
     priorValue,
     expectedValue: input.expectedValue,

@@ -2,19 +2,20 @@
 
 import { useId } from "react";
 import { motion } from "framer-motion";
-import { CATEGORY_CONFIG } from "@/lib/eventCategories";
+import {
+  CATEGORY_CONFIG,
+  FILTERABLE_CATEGORIES,
+} from "@/lib/eventCategories";
 import type { EventCategory } from "@/types/events";
 
-export type CategoryFilter = "ALL" | Exclude<EventCategory, "OTHER">;
+export type CategoryFilter = "ALL" | EventCategory;
 
-const FILTER_ORDER: readonly CategoryFilter[] = [
-  "ALL",
-  "TARIFF",
-  "INFLATION",
-  "FED",
-  "GEOPOLITICAL",
-  "EARNINGS",
-];
+/**
+ * Derived from `FILTERABLE_CATEGORIES` rather than re-listed, so adding a
+ * category (JOBS, when NFP stopped collapsing into OTHER) surfaces in the filter
+ * bar without a second edit that is easy to forget.
+ */
+const FILTER_ORDER: readonly CategoryFilter[] = ["ALL", ...FILTERABLE_CATEGORIES];
 
 const ALL_COLOR = "#FAFAFA";
 

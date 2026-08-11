@@ -17,25 +17,27 @@ it does not work reliably.
 *Mostly complete.*
 
 - [x] Repository organisation — `src/{app,components,lib,services,types}`,
-      `scripts/{ingest,maintenance}`, placeholder data isolated in
-      `src/lib/mock-data/`
+      `scripts/{lib,ingest,backfill,maintenance}`, `tests/`
 - [x] Documentation — README plus `docs/{vision,architecture,data-sources,research-methodology,roadmap}.md`
 - [x] Environment variables — every variable the code reads documented in
       `.env.example` and the README
 - [x] Database foundation — Prisma 7 + Postgres, schema and migrations for
-      events, asset reactions, data releases
+      events, fail-closed timing, versioned asset reactions, release provenance
+      and consensus status
 - [x] Development workflow — `dev`, `build`, `lint`, `typecheck`,
-      `db:generate`, `db:migrate`, `db:deploy`, `db:verify`, `ingest`,
-      `auto-ingest`
-- [ ] Fix the two pre-existing lint errors (`AssetChart.tsx` refs-during-render,
-      `EventBrowser.tsx` setState-in-effect)
-- [ ] Declare `dotenv` as a devDependency; move `@prisma/client` to
-      `dependencies`
-- [ ] Split the 840-line `src/app/page.tsx` into `components/landing/`
-- [ ] Commit the working tree — the entire ingestion pipeline is currently
-      untracked
-- [ ] Test framework (Vitest) covering the reaction and surprise math
-- [ ] CI running typecheck + lint + test
+      `db:generate`, `db:validate`, `db:migrate`, `db:deploy`, `db:verify`,
+      `ingest`, `auto-ingest`
+- [x] Fix the two pre-existing lint errors (refs-during-render in the chart
+      component, setState-in-effect in `EventBrowser.tsx`)
+- [x] Declare `dotenv` as a devDependency; move `@prisma/client` to
+      `dependencies`. Dropped `axios` and `recharts`, which nothing imported
+- [x] Test framework — Vitest, `npm test`. Covers the macro transforms, the
+      price window resolution, the DB→UI mapper, query parsing and the pattern
+      aggregation
+- [x] CI — secret-free GitHub Actions runs explicit Prisma generation,
+      typecheck, lint, unit tests, schema validation and production build on
+      pushes and pull requests
+- [ ] Split the ~800-line `src/app/page.tsx` into `components/landing/`
 
 ---
 
@@ -48,43 +50,76 @@ Deliberately narrow scope: **CPI, PPI, NFP, FOMC, PCE, GDP.** Tariff,
 geopolitical and earnings events already in the seed data stay, but no effort
 goes into expanding them yet.
 
-- [ ] **Mapping layer** between Prisma rows and UI types — reconcile
-      `EventType` (`FED_DECISION`, `CPI`, …) with `EventCategory` (`FED`,
-      `INFLATION`, …), or converge on one vocabulary and delete the other
-- [ ] **`/api/events` reads Postgres** — same query contract (`type`, `q`,
-      `sort`, `offset`, `limit`), same response envelope, Prisma underneath
-- [ ] **`/events/[id]` reads Postgres** — replace `generateStaticParams` over
-      fixtures with dynamic or ISR rendering
-- [ ] **Charts render stored reaction data** rather than synthetic series
-- [ ] **Delete `src/lib/mock-data/`** once nothing imports it
-- [ ] **Consensus/forecast source** — decide how `expectedValue` gets populated
-      at scale. Without it there is no surprise, and without surprise most of
-      the research thesis collapses. See
+- [x] **Mapping layer** between Prisma rows and UI types —
+      `src/services/events/mapEvent.ts`. Both vocabularies were kept: `EventTypeName`
+      mirrors the Prisma enum and is what filters translate into, `EventCategory`
+      is the coarser grouping the UI shows, and the many-to-one mapping lives in
+      `src/lib/eventCategories.ts`. `JOBS` was added so NFP stops collapsing into
+      `OTHER`
+- [x] **`/api/events` reads Postgres** — same query contract (`type`, `q`,
+      `sort`, `offset`, `limit`), same response envelope, Prisma underneath.
+      `sort=biggest` aggregates over `asset_reactions` in SQL
+- [x] **`/events/[id]` reads Postgres** — `generateStaticParams` removed; the id
+      space is now every row in `events`, so the route renders on demand
+- [x] **`/patterns` reads Postgres** — aggregates computed from stored reactions
+- [x] **Charts render stored reaction data** rather than synthetic series
+- [x] **Delete `src/lib/mock-data/`** — nothing imports it
+- [x] **Price backfill script** — `scripts/backfill/backfill-prices.ts`,
+      idempotent and resumable; it only considers events whose exact timing is
+      trusted
+- [x] **Timing/reference integrity plumbing** — separate `releaseAt`,
+      `releaseDate` and `referencePeriodStart`; require `VERIFIED`/`SCHEDULED`
+      exact timing plus a source before reactions; persist `anchorAt` and
+      `calculationVersion`; hide legacy/ineligible rows in every read path; and
+      validate official record/schedule/date-only results behind a
+      source-agnostic release-calendar contract
+- [x] **Legacy reaction repair** — dry-run-first report, explicit confirmed
+      deletion, then recompute only trusted events with `backfill:prices`
+- [ ] **Authoritative historical release timing** — resolve official dates and
+      exact market-facing instants. FRED/BLS bulk rows currently remain
+      `REFERENCE_PERIOD_ONLY`; `DFEDTARU` FOMC timing is `INFERRED`; legacy
+      curated timestamps are `UNVERIFIED`. The wall-clock helper can convert a
+      sourced Eastern time with DST, but it does not prove when a release
+      happened
+- [x] **Consensus safety plumbing** — persist `VERIFIED` / `UNVERIFIED` /
+      `MISSING`, source/URL/as-of metadata, actual provenance, and a provider
+      validation boundary; label unverified surprises in the UI
+- [ ] **Consensus/forecast provider** — populate verified historical estimates
+      at scale. FRED/BLS/FOMC bulk rows have `MISSING` consensus and uncited seed
+      values remain `UNVERIFIED`. Without a real forecast source, most events
+      have no defensible surprise. See
       [data-sources.md](data-sources.md#the-consensus-problem)
-- [ ] **Price backfill script** — `scripts/backfill/` for events that were
-      ingested with `--no-prices`
-- [ ] **Release-date accuracy** — FRED observation dates are reference periods,
-      not release timestamps; reaction windows need the moment the number hit
-      the tape
+- [ ] **Intraday candle storage** — the schema holds four prices per asset
+      (anchor, +1h, +1d, +1w), which is enough for the reaction table and a
+      sparkline but not for a true replay. A candle table (or the Polygon.io
+      integration named in the README) is what the animated replay needs
 
 Target record per event:
 
 | Field | Status |
 | --- | --- |
-| timestamp | ✅ `Event.occurredAt` |
+| compatibility/display timestamp | ✅ `Event.occurredAt` (never a reaction anchor by itself) |
+| exact release timestamp | 🟡 `Event.releaseAt` + eligibility guard built; authoritative coverage missing |
+| release date without time | 🟡 `Event.releaseDate` built; coverage missing |
+| timing status/source | 🟡 storage and UI built; current sources are mostly untrusted |
+| reference period | ✅ `DataRelease.referencePeriodStart`, separate from release timing |
 | event type | ✅ `Event.eventType` |
-| actual | ✅ `DataRelease.actualValue` |
-| forecast | 🟡 hand-entered only |
+| metric identity + actual provenance | 🟡 fields populated by new ingestion; migrated legacy rows remain null |
+| actual | ✅ `DataRelease.actualValue` when a source supplies one |
+| forecast | 🟡 hand-entered only; bulk is `MISSING` |
+| forecast provenance | ✅ status/source/URL/as-of shape; verified provider missing |
 | previous | ✅ `DataRelease.priorValue` |
-| surprise | 🟡 only where a forecast exists |
-| asset | ✅ `AssetReaction.assetSymbol` |
-| price before event | ✅ `priceAtEvent` |
-| price after event | ✅ `price1h`, `price1d`, `price1w` |
+| surprise | 🟡 only where a forecast exists; unverified arithmetic is labelled |
+| asset | ✅ `AssetReaction.assetSymbol` on timing-eligible events |
+| reaction anchor audit | ✅ `anchorAt` + `calculationVersion` |
+| price before event | 🟡 `priceAtEvent`, conditional on trusted timing |
+| price after event | 🟡 `price1h`, `price1d`, `price1w`, conditional on trusted timing |
 | short-term reaction | 🟡 1h is the shortest window; 5m/30m need intraday data |
 | longer-term reaction | 🟡 1w is the longest window |
 
-**Done when:** a user can browse, filter and open a database-backed event and
-see its real cross-asset reaction, with no fixture code left in the app.
+**Done when:** a user can browse, filter and open a database-backed event and,
+where authoritative release timing exists, see a current-version cross-asset
+reaction with its anchor provenance. No fixture code remains in the app.
 
 ---
 

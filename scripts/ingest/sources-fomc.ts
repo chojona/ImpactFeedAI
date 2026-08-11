@@ -1,10 +1,11 @@
 /**
  * FOMC source — emits one event per FOMC rate decision since `since`.
  *
- * Approach: walk daily DFEDTARU (Federal Funds Target Rate upper limit). This
- * series step-changes only on FOMC decision days, with the new rate taking
- * effect the *day after* the announcement. We subtract one calendar day from
- * the change date to recover the announcement date, then stamp it 14:00 ET.
+ * Approach: walk daily DFEDTARU (Federal Funds Target Rate upper limit) and
+ * detect changes in the effective rate. FRED's observation date is the date the
+ * value is effective, not a statement timestamp. Subtracting one calendar day
+ * and displaying 14:00 ET is therefore explicitly an inference; it must never
+ * be used as a reaction anchor without a separate official-calendar resolver.
  *
  * Tradeoff: this captures every raise/cut but NOT "hold" meetings, since
  * those produce no series change. There is no clean FRED endpoint that
@@ -14,7 +15,8 @@
  */
 
 import type { CandidateEvent } from "./auto-ingest-types";
-import { METRICS } from "./metrics";
+import { METRICS } from "@/services/macro/metrics";
+import { fomcStatementTime, utcDateOnly } from "@/services/macro/time";
 
 const FRED_BASE = "https://api.stlouisfed.org/fred";
 
@@ -49,8 +51,9 @@ async function fetchTargetUpper(
   return json.observations ?? [];
 }
 
-function isoMinusOneDay(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
+function isoMinusOneDay(iso: string): string | null {
+  const d = utcDateOnly(iso);
+  if (Number.isNaN(d.getTime())) return null;
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
 }
@@ -108,23 +111,41 @@ export async function* yieldFomcEvents(
     const value = toFloat(obs.value);
     if (value === null) continue;
     if (prior !== null && Math.abs(value - prior) > 1e-6) {
-      // Decision day = previous business day.
+      // Inferred announcement day only; DFEDTARU itself proves neither the
+      // announcement date nor the time.
       const meetingIso = isoMinusOneDay(obs.date);
-      const occurredAt = new Date(`${meetingIso}T14:00:00-05:00`); // 2pm ET
-      if (Number.isNaN(occurredAt.getTime())) {
+      if (meetingIso === null) {
+        prior = value;
+        continue;
+      }
+      const occurredAt = fomcStatementTime(meetingIso); // 14:00 ET, DST-aware
+      const releaseDate = utcDateOnly(meetingIso);
+      if (
+        Number.isNaN(occurredAt.getTime()) ||
+        Number.isNaN(releaseDate.getTime())
+      ) {
         prior = value;
         continue;
       }
       const { bp } = classifyDelta(value, prior);
+      const seriesUrl = "https://fred.stlouisfed.org/series/DFEDTARU";
       yield {
+        // The effective-date change is the only identity DFEDTARU proves. Do
+        // not key this candidate by the inferred announcement timestamp.
+        eventKey: `macro:${METRICS.FED_TARGET_UPPER.key}:change:${obs.date}`,
         headline: makeHeadline(value, prior, meetingIso),
         eventType: "FED_DECISION",
         occurredAt,
-        sourceUrl: `https://www.federalreserve.gov/newsevents/pressreleases/monetary${meetingIso.replace(/-/g, "")}a.htm`,
+        releaseAt: null,
+        releaseDate,
+        timingStatus: "INFERRED",
+        timingSource: "INFERRED_FROM_FRED_DFEDTARU_EFFECTIVE_DATE",
+        sourceUrl: seriesUrl,
         source: "FOMC",
-        metricKey: METRICS.FED_TARGET_UPPER.key,
         data: {
+          metricKey: METRICS.FED_TARGET_UPPER.key,
           metricName: METRICS.FED_TARGET_UPPER.canonicalName,
+          referencePeriodStart: null,
           actualValue: Math.round(value * 100) / 100,
           priorValue: Math.round(prior * 100) / 100,
           expectedValue: null,
@@ -132,6 +153,12 @@ export async function* yieldFomcEvents(
           // (actual − expected) everywhere. The size of the move is still
           // derivable as (actual − prior).
           surpriseMagnitude: null,
+          actualSource: "FRED",
+          actualSourceUrl: seriesUrl,
+          consensusStatus: "MISSING",
+          consensusSource: null,
+          consensusSourceUrl: null,
+          consensusAsOf: null,
           rawActual: bp,
         },
       };

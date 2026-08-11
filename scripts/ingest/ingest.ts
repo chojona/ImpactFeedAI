@@ -6,9 +6,10 @@
  *   npx tsx scripts/ingest/ingest.ts --dry-run
  *   npx tsx scripts/ingest/ingest.ts --event-type CPI
  *
- * Reads SEED_EVENTS, fetches Yahoo prices for ASSET_UNIVERSE, fetches FRED
- * actuals where applicable, and writes Event / AssetReaction / DataRelease
- * rows via Prisma. Idempotent: re-runs skip events already in the DB.
+ * Reads SEED_EVENTS, fetches FRED actuals where applicable, and writes Event /
+ * DataRelease rows via Prisma. Yahoo reactions are fetched only for entries
+ * that have independently sourced release timing. Idempotent: re-runs skip
+ * events already in the DB even if a timestamp is later corrected.
  *
  * Behaviour:
  *   - Best-effort. A failed symbol → null fields + warning, never a crash.
@@ -32,6 +33,7 @@ import {
 import { fetchPriceSnapshot, sleep } from "./fetch-prices";
 import { fetchMacroRelease } from "./fetch-macro";
 import { buildAssetReaction } from "./compute-reactions";
+import { isReactionTimingEligible } from "@/services/events/timing";
 
 const PER_SYMBOL_DELAY_MS = 500;
 const PER_EVENT_DELAY_MS = 1000;
@@ -105,7 +107,18 @@ interface IngestStats {
   failed: number;
   assetRowsWritten: number;
   macroRowsWritten: number;
+  timingSuppressed: number;
 }
+
+const optionalDate = (value: string | undefined): Date | null => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+/** Stable across a later correction to timing; headlines are unique in the seed. */
+const curatedEventKey = (seed: SeedEvent): string =>
+  `curated:${seed.eventType}:${seed.headline.trim().replace(/\s+/g, " ")}`;
 
 async function ingestEvent(
   prisma: PrismaClient | null,
@@ -119,15 +132,28 @@ async function ingestEvent(
     stats.failed += 1;
     return;
   }
+  const releaseAt = optionalDate(seed.releaseAt);
+  const releaseDate = optionalDate(seed.releaseDate);
+  const referencePeriodStart = optionalDate(seed.referencePeriodStart);
+  const timingStatus = seed.timingStatus ?? "UNVERIFIED";
+  const timingSource = seed.timingSource ?? null;
+  const eventKey = curatedEventKey(seed);
+  const reactionEligible = isReactionTimingEligible({
+    releaseAt,
+    timingStatus,
+    timingSource,
+  });
 
   // Idempotency check (skipped only when there is no DB connection at all)
   if (prisma) {
-    const existing = await prisma.event.findUnique({
+    const existing = await prisma.event.findFirst({
       where: {
-        event_natural_key: {
-          headline: seed.headline,
-          occurredAt,
-        },
+        OR: [
+          { eventKey },
+          // Legacy curated rows predate event_key. Their hand-written
+          // headlines are unique, so this remains stable if timing is fixed.
+          { headline: seed.headline },
+        ],
       },
       select: { id: true },
     });
@@ -142,22 +168,34 @@ async function ingestEvent(
 
   // ── Prices ──────────────────────────────────────────────────────────────
   const assetRows: ReturnType<typeof buildAssetReaction>[] = [];
-  for (const symbol of ASSET_UNIVERSE) {
-    const snapshot = await fetchPriceSnapshot(symbol, occurredAt);
-    if (snapshot === null) {
-      console.warn(`  ⚠ ${symbol}: no anchor price — skipping asset`);
-    } else {
-      assetRows.push(buildAssetReaction(symbol, snapshot));
+  if (reactionEligible && releaseAt) {
+    for (const symbol of ASSET_UNIVERSE) {
+      const snapshot = await fetchPriceSnapshot(symbol, releaseAt);
+      if (snapshot === null) {
+        console.warn(`  ⚠ ${symbol}: no anchor price — skipping asset`);
+      } else {
+        assetRows.push(buildAssetReaction(symbol, snapshot));
+      }
+      await sleep(PER_SYMBOL_DELAY_MS);
     }
-    await sleep(PER_SYMBOL_DELAY_MS);
+  } else {
+    stats.timingSuppressed += 1;
+    console.warn(
+      `  ⚠ reactions suppressed: timing=${timingStatus}; no sourced exact release timestamp`,
+    );
   }
 
   // ── Macro (FRED) ────────────────────────────────────────────────────────
   const macro = await fetchMacroRelease({
     eventType: seed.eventType,
     occurredAt,
+    releaseAt,
     expectedValue: seed.expectedValue ?? null,
     metricNameOverride: seed.metricName ?? null,
+    referencePeriodStart,
+    consensusSource: seed.consensusSource ?? null,
+    consensusSourceUrl: seed.consensusSourceUrl ?? null,
+    consensusAsOf: optionalDate(seed.consensusAsOf),
   });
 
   if (dryRun) {
@@ -189,6 +227,11 @@ async function ingestEvent(
           headline: seed.headline,
           eventType: seed.eventType,
           occurredAt,
+          eventKey,
+          releaseAt,
+          releaseDate,
+          timingStatus,
+          timingSource,
           sourceUrl: seed.sourceUrl ?? null,
         },
         select: { id: true },
@@ -199,6 +242,8 @@ async function ingestEvent(
           data: assetRows.map((row) => ({
             eventId: event.id,
             assetSymbol: row.assetSymbol,
+            anchorAt: row.anchorAt,
+            calculationVersion: row.calculationVersion,
             priceAtEvent: row.priceAtEvent,
             price1h: row.price1h,
             price1d: row.price1d,
@@ -214,9 +259,17 @@ async function ingestEvent(
         await tx.dataRelease.create({
           data: {
             eventId: event.id,
+            metricKey: macro.metricKey,
             metricName: macro.metricName,
+            referencePeriodStart: macro.referencePeriodStart,
             actualValue: macro.actualValue,
+            actualSource: macro.actualSource,
+            actualSourceUrl: macro.actualSourceUrl,
             expectedValue: macro.expectedValue,
+            consensusStatus: macro.consensusStatus,
+            consensusSource: macro.consensusSource,
+            consensusSourceUrl: macro.consensusSourceUrl,
+            consensusAsOf: macro.consensusAsOf,
             priorValue: macro.priorValue,
             surpriseMagnitude: macro.surpriseMagnitude,
           },
@@ -265,6 +318,7 @@ async function main(): Promise<void> {
     failed: 0,
     assetRowsWritten: 0,
     macroRowsWritten: 0,
+    timingSuppressed: 0,
   };
 
   try {
@@ -279,7 +333,8 @@ async function main(): Promise<void> {
   console.log("");
   console.log(
     `Done. processed=${stats.processed} skipped=${stats.skipped} failed=${stats.failed} ` +
-      `asset_rows=${stats.assetRowsWritten} macro_rows=${stats.macroRowsWritten}`,
+      `asset_rows=${stats.assetRowsWritten} macro_rows=${stats.macroRowsWritten} ` +
+      `timing_suppressed=${stats.timingSuppressed}`,
   );
 }
 

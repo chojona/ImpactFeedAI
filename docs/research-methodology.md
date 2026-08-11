@@ -19,10 +19,10 @@ the number and what was already priced.
 surprise = actual − forecast
 ```
 
-Implemented today in `scripts/ingest/compute-reactions.ts` as exactly that,
-stored as `DataRelease.surpriseMagnitude`, and only populated where someone
-hand-entered a forecast (see
-[data-sources.md](data-sources.md#the-consensus-problem)).
+Implemented today and stored as `DataRelease.surpriseMagnitude` when both sides
+exist in the metric's canonical unit. The 20 seed forecasts are hand-entered and
+explicitly `UNVERIFIED`; no external historical consensus provider is wired yet
+(see [data-sources.md](data-sources.md#the-consensus-problem)).
 
 ### Why raw surprise is not enough
 
@@ -82,16 +82,19 @@ provider.
 
 Details that decide whether the numbers mean anything:
 
-- **Anchor price.** Currently the first candle at or after the event timestamp.
-  For a scheduled 08:30 release this includes the reaction itself if the candle
-  straddles the release. The cleaner anchor is the last price *before* the
-  release; the current choice needs revisiting when intraday data improves.
+- **Anchor price.** Calculation version 2 requires a bounded price strictly
+  before a sourced `releaseAt`: the latest usable intraday open no more than two
+  hours old, otherwise the immediately preceding session close whose provider
+  bar is no more than four calendar days old. A first post-release candle is
+  never the denominator, so an opening/weekend gap stays in the return.
 - **Trading days, not calendar days.** A Friday event's "1 day" is Monday. A
   window crossing a holiday is longer in wall-clock time than one that does
   not.
-- **Session boundaries.** For an 08:30 ET release, the first hour is
-  pre-market: real for ES/NQ futures, meaningless for an ETF that has not
-  opened. This is a concrete reason to prefer futures over ETF proxies.
+- **Session boundaries.** For an 08:30 ET release, the 1-hour target coincides
+  with the 09:30 cash open. Futures/crypto may have a true intraday endpoint;
+  ETF proxies generally express the first-hour repricing as an opening gap.
+  Those are different microstructures and should not be over-interpreted as
+  equivalent paths.
 - **Overlapping events.** CPI at 08:30 and a Fed speaker at 10:00 contaminate
   each other's windows. Contamination should be flagged, not silently averaged
   away.

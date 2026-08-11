@@ -28,6 +28,7 @@ import { buildAssetReaction } from "../ingest/compute-reactions";
 import { fetchPriceSnapshot, sleep } from "../ingest/fetch-prices";
 import { createScriptPrismaClient } from "../lib/prisma";
 import { createDryRunPrismaClient } from "../lib/readonly-prisma";
+import { isReactionTimingEligible } from "@/services/events/timing";
 
 const PER_SYMBOL_DELAY_MS = 500;
 const PER_EVENT_DELAY_MS = 1000;
@@ -38,6 +39,7 @@ interface Flags {
   onlyEmpty: boolean;
   since: string | null;
   eventType: string | null;
+  eventIds: string[];
 }
 
 function parseFlags(argv: string[]): Flags {
@@ -47,6 +49,7 @@ function parseFlags(argv: string[]): Flags {
     onlyEmpty: false,
     since: null,
     eventType: null,
+    eventIds: [],
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -73,6 +76,13 @@ function parseFlags(argv: string[]): Flags {
         process.exit(2);
       }
       flags.eventType = v.toUpperCase();
+    } else if (arg === "--event-id") {
+      const v = argv[++i];
+      if (!v) {
+        console.error("--event-id requires a value");
+        process.exit(2);
+      }
+      flags.eventIds.push(v);
     } else if (arg === "-h" || arg === "--help") {
       console.log(`Usage: tsx scripts/backfill/backfill-prices.ts [options]
 
@@ -83,6 +93,7 @@ Options:
                          (default: also top up events missing some symbols).
   --since <YYYY-MM-DD>   Only events on or after this date.
   --event-type <TYPE>    Restrict to one EventType.
+  --event-id <uuid>      Restrict to one event; may be repeated.
   -h, --help             Show this help.`);
       process.exit(0);
     } else {
@@ -129,7 +140,15 @@ async function main(): Promise<void> {
     // Oldest first so an interrupted run resumes predictably.
     const events = await prisma.event.findMany({
       where: {
-        ...(flags.since ? { occurredAt: { gte: new Date(flags.since) } } : {}),
+        timingStatus: { in: ["VERIFIED", "SCHEDULED"] },
+        releaseAt: {
+          not: null,
+          ...(flags.since ? { gte: new Date(flags.since) } : {}),
+        },
+        timingSource: { not: null },
+        ...(flags.eventIds.length > 0
+          ? { id: { in: flags.eventIds } }
+          : {}),
         ...(flags.eventType
           ? { eventType: flags.eventType as never }
           : {}),
@@ -138,10 +157,12 @@ async function main(): Promise<void> {
       select: {
         id: true,
         headline: true,
-        occurredAt: true,
+        releaseAt: true,
+        timingStatus: true,
+        timingSource: true,
         assetReactions: { select: { assetSymbol: true } },
       },
-      orderBy: { occurredAt: "asc" },
+      orderBy: { releaseAt: "asc" },
     });
 
     stats.scanned = events.length;
@@ -167,12 +188,25 @@ async function main(): Promise<void> {
     }
 
     for (const { event, missing } of queue) {
+      if (
+        !isReactionTimingEligible({
+          releaseAt: event.releaseAt,
+          timingStatus: event.timingStatus,
+          timingSource: event.timingSource,
+        }) ||
+        event.releaseAt === null
+      ) {
+        // Query predicates should make this unreachable; keep the writer
+        // fail-closed if a future refactor broadens them.
+        console.warn(`⊘ ${event.headline}: release timing is not reaction-safe`);
+        continue;
+      }
       const label = event.headline.slice(0, 62);
       console.log(`→ ${label} — missing ${missing.length}: ${missing.join(", ")}`);
 
       const rows: ReturnType<typeof buildAssetReaction>[] = [];
       for (const symbol of missing) {
-        const snapshot = await fetchPriceSnapshot(symbol, event.occurredAt);
+        const snapshot = await fetchPriceSnapshot(symbol, event.releaseAt);
         if (snapshot === null) {
           console.warn(`  ⚠ ${symbol}: still no anchor price — leaving absent`);
           stats.rowsStillMissing += 1;
@@ -204,6 +238,8 @@ async function main(): Promise<void> {
           data: rows.map((r) => ({
             eventId: event.id,
             assetSymbol: r.assetSymbol,
+            anchorAt: r.anchorAt,
+            calculationVersion: r.calculationVersion,
             priceAtEvent: r.priceAtEvent,
             price1h: r.price1h,
             price1d: r.price1d,

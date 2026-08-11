@@ -11,14 +11,19 @@
  * BLS CPI-U print and a FRED CPIAUCSL print as one economic release.
  */
 
-import type { CandidateEvent } from "./auto-ingest-types";
+import {
+  macroInitialEventKey,
+  type CandidateEvent,
+} from "./auto-ingest-types";
 import {
   BLS_SERIES_BINDINGS,
   computeSurpriseInCanonicalUnit,
   deriveMetric,
   makeMetricHeadline,
+  observationStartFor,
   type Observation,
-} from "./metrics";
+} from "@/services/macro/metrics";
+import { utcDateOnly } from "@/services/macro/time";
 
 const BLS_BASE = "https://api.bls.gov/publicAPI/v2/timeseries/data/";
 
@@ -106,9 +111,8 @@ const CHUNK_YEARS = 10;
 export async function* yieldBlsEvents(
   opts: BlsSourceOptions,
 ): AsyncGenerator<CandidateEvent> {
-  const sinceYear = new Date(opts.since).getUTCFullYear();
   const endYear = new Date().getUTCFullYear();
-  if (!Number.isFinite(sinceYear)) {
+  if (Number.isNaN(new Date(opts.since).getTime())) {
     opts.log(`[BLS] ⚠ Invalid --since "${opts.since}"; skipping BLS source.`);
     return;
   }
@@ -116,6 +120,11 @@ export async function* yieldBlsEvents(
   for (const binding of BLS_SERIES_BINDINGS) {
     const { seriesId, metric } = binding;
     opts.log(`[BLS]  Fetching ${seriesId} (${metric.canonicalName})…`);
+    // Start earlier than `since` so the transform has its lookback; the
+    // orchestrator drops anything that resolves before the cutoff.
+    const sinceYear = new Date(
+      `${observationStartFor(metric, opts.since)}T00:00:00Z`,
+    ).getUTCFullYear();
     const merged: BlsDatum[] = [];
     for (let y = sinceYear; y <= endYear; y += CHUNK_YEARS) {
       const chunkEnd = Math.min(y + CHUNK_YEARS - 1, endYear);
@@ -137,22 +146,38 @@ export async function* yieldBlsEvents(
       const obs = ordered[i];
       const derived = deriveMetric(metric.transform, i, ordered);
       if (!derived) continue;
-      const occurredAt = new Date(`${obs.iso}T08:30:00-05:00`);
-      if (Number.isNaN(occurredAt.getTime())) continue;
+      // BLS `year` + `period` identify the period measured. The time-series API
+      // does not return a publication date/time, so never turn this date into a
+      // conventional 08:30 release timestamp.
+      const referencePeriodStart = utcDateOnly(obs.iso);
+      if (Number.isNaN(referencePeriodStart.getTime())) continue;
+      const seriesUrl = `https://data.bls.gov/timeseries/${seriesId}`;
 
       yield {
+        eventKey: macroInitialEventKey(metric.key, obs.iso),
         headline: makeMetricHeadline(metric, derived.value, derived.prior, obs.iso),
         eventType: metric.eventType,
-        occurredAt,
-        sourceUrl: `https://data.bls.gov/timeseries/${seriesId}`,
+        occurredAt: referencePeriodStart,
+        releaseAt: null,
+        releaseDate: null,
+        timingStatus: "REFERENCE_PERIOD_ONLY",
+        timingSource: "BLS_SERIES_PERIOD",
+        sourceUrl: seriesUrl,
         source: "BLS",
-        metricKey: metric.key,
         data: {
+          metricKey: metric.key,
           metricName: metric.canonicalName,
+          referencePeriodStart,
           actualValue: derived.value,
           priorValue: derived.prior,
           expectedValue: null,
           surpriseMagnitude: computeSurpriseInCanonicalUnit(derived.value, null),
+          actualSource: "BLS",
+          actualSourceUrl: seriesUrl,
+          consensusStatus: "MISSING",
+          consensusSource: null,
+          consensusSourceUrl: null,
+          consensusAsOf: null,
           rawActual: obs.value,
         },
       };

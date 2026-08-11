@@ -8,14 +8,19 @@
  * thing regardless of which pipeline produced the row.
  */
 
-import type { CandidateEvent } from "./auto-ingest-types";
+import {
+  macroInitialEventKey,
+  type CandidateEvent,
+} from "./auto-ingest-types";
 import {
   FRED_SERIES_BINDINGS,
   computeSurpriseInCanonicalUnit,
   deriveMetric,
   makeMetricHeadline,
+  observationStartFor,
   type Observation,
-} from "./metrics";
+} from "@/services/macro/metrics";
+import { utcDateOnly } from "@/services/macro/time";
 
 const FRED_BASE = "https://api.stlouisfed.org/fred";
 
@@ -69,9 +74,16 @@ export async function* yieldFredEvents(
     const { seriesId, metric } = binding;
     opts.log(`[FRED] Fetching ${seriesId} (${metric.canonicalName})…`);
 
+    // Fetch further back than `since` so the first requested period is actually
+    // derivable — a YoY transform needs 13 prior observations. Candidates before
+    // `since` are dropped by the orchestrator.
     let observations: Observation[];
     try {
-      observations = await fetchObservations(seriesId, opts.apiKey, opts.since);
+      observations = await fetchObservations(
+        seriesId,
+        opts.apiKey,
+        observationStartFor(metric, opts.since),
+      );
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       opts.log(`[FRED] ⚠ ${seriesId}: ${detail}`);
@@ -86,18 +98,29 @@ export async function* yieldFredEvents(
       const derived = deriveMetric(metric.transform, i, observations);
       if (!derived) continue;
 
-      const occurredAt = new Date(`${obs.iso}T08:30:00-05:00`); // 8:30 ET
-      if (Number.isNaN(occurredAt.getTime())) continue;
+      // FRED's observation `date` is the period the value measures. This
+      // endpoint does not return the historical publication timestamp, so keep
+      // the reference day only as a UTC display/order fallback and fail closed
+      // for reaction timing.
+      const referencePeriodStart = utcDateOnly(obs.iso);
+      if (Number.isNaN(referencePeriodStart.getTime())) continue;
+      const seriesUrl = `https://fred.stlouisfed.org/series/${seriesId}`;
 
       yield {
+        eventKey: macroInitialEventKey(metric.key, obs.iso),
         headline: makeMetricHeadline(metric, derived.value, derived.prior, obs.iso),
         eventType: metric.eventType,
-        occurredAt,
-        sourceUrl: `https://fred.stlouisfed.org/series/${seriesId}`,
+        occurredAt: referencePeriodStart,
+        releaseAt: null,
+        releaseDate: null,
+        timingStatus: "REFERENCE_PERIOD_ONLY",
+        timingSource: "FRED_OBSERVATION_DATE",
+        sourceUrl: seriesUrl,
         source: "FRED",
-        metricKey: metric.key,
         data: {
+          metricKey: metric.key,
           metricName: metric.canonicalName,
+          referencePeriodStart,
           actualValue: derived.value,
           priorValue: derived.prior,
           // FRED publishes no consensus, so there is nothing to be surprised
@@ -105,6 +128,12 @@ export async function* yieldFredEvents(
           // the change vs prior stays derivable as (actual − prior).
           expectedValue: null,
           surpriseMagnitude: computeSurpriseInCanonicalUnit(derived.value, null),
+          actualSource: "FRED",
+          actualSourceUrl: seriesUrl,
+          consensusStatus: "MISSING",
+          consensusSource: null,
+          consensusSourceUrl: null,
+          consensusAsOf: null,
           rawActual: obs.value,
         },
       };

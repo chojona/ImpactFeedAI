@@ -54,6 +54,12 @@ const WRITE_OPERATIONS: ReadonlySet<string> = new Set([
 export function createDryRunPrismaClient(): PrismaClient {
   const base = createScriptPrismaClient();
 
+  return guardPrismaClient(base);
+}
+
+/** Wrap an explicitly constructed client (for example, a repair-only URL). */
+export function guardPrismaClient(base: PrismaClient): PrismaClient {
+
   const guarded = base.$extends({
     name: "dry-run-write-guard",
     query: {

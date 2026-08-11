@@ -27,52 +27,89 @@ enum EventType {
   MACRO_DATA
 }
 
+enum EventTimingStatus {
+  VERIFIED
+  SCHEDULED
+  INFERRED
+  DATE_ONLY
+  REFERENCE_PERIOD_ONLY
+  UNVERIFIED
+}
+
+enum ConsensusStatus {
+  VERIFIED
+  UNVERIFIED
+  MISSING
+}
+
 model Event {
-  id          String    @id @default(uuid())
-  headline    String
-  eventType   EventType @map("event_type")
-  occurredAt  DateTime  @map("occurred_at")
-  sourceUrl   String?   @map("source_url")
-  explanation String?
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id           String            @id @default(uuid())
+  eventKey     String?           @unique @map("event_key")
+  headline     String
+  eventType    EventType         @map("event_type")
+  occurredAt   DateTime          @map("occurred_at") @db.Timestamptz(3)
+  releaseAt    DateTime?         @map("release_at") @db.Timestamptz(3)
+  releaseDate  DateTime?         @map("release_date") @db.Date
+  timingStatus EventTimingStatus @default(UNVERIFIED) @map("timing_status")
+  timingSource String?           @map("timing_source")
+  sourceUrl    String?           @map("source_url")
+  explanation  String?
+  createdAt    DateTime          @default(now()) @map("created_at")
 
   assetReactions AssetReaction[]
   dataReleases   DataRelease[]
 
   @@unique([headline, occurredAt], name: "event_natural_key")
   @@index([occurredAt])
+  @@index([releaseAt])
+  @@index([releaseDate])
+  @@index([timingStatus])
   @@index([eventType])
   @@map("events")
 }
 
 model AssetReaction {
-  id           String @id @default(uuid())
-  eventId      String @map("event_id")
-  event        Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  assetSymbol  String @map("asset_symbol")
-  priceAtEvent Float  @map("price_at_event")
-  price1h      Float? @map("price_1h")
-  price1d      Float? @map("price_1d")
-  price1w      Float? @map("price_1w")
-  pctChange1h  Float? @map("pct_change_1h")
-  pctChange1d  Float? @map("pct_change_1d")
-  pctChange1w  Float? @map("pct_change_1w")
+  id                 String    @id @default(uuid())
+  eventId            String    @map("event_id")
+  event              Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assetSymbol        String    @map("asset_symbol")
+  priceAtEvent       Float     @map("price_at_event")
+  price1h            Float?    @map("price_1h")
+  price1d            Float?    @map("price_1d")
+  price1w            Float?    @map("price_1w")
+  pctChange1h        Float?    @map("pct_change_1h")
+  pctChange1d        Float?    @map("pct_change_1d")
+  pctChange1w        Float?    @map("pct_change_1w")
+  anchorAt           DateTime? @map("anchor_at") @db.Timestamptz(3)
+  calculationVersion Int?      @map("calculation_version")
 
   @@unique([eventId, assetSymbol])
   @@index([assetSymbol])
+  @@index([calculationVersion])
   @@map("asset_reactions")
 }
 
 model DataRelease {
-  id                String @id @default(uuid())
-  eventId           String @map("event_id")
-  event             Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  metricName        String @map("metric_name")
-  expectedValue     Float? @map("expected_value")
-  actualValue       Float? @map("actual_value")
-  surpriseMagnitude Float? @map("surprise_magnitude")
-  priorValue        Float? @map("prior_value")
+  id                   String          @id @default(uuid())
+  eventId              String          @map("event_id")
+  event                Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  metricKey            String?         @map("metric_key")
+  metricName           String          @map("metric_name")
+  referencePeriodStart DateTime?       @map("reference_period_start") @db.Date
+  expectedValue        Float?          @map("expected_value")
+  actualValue          Float?          @map("actual_value")
+  surpriseMagnitude    Float?          @map("surprise_magnitude")
+  priorValue           Float?          @map("prior_value")
+  actualSource         String?         @map("actual_source")
+  actualSourceUrl      String?         @map("actual_source_url")
+  consensusStatus      ConsensusStatus @default(MISSING) @map("consensus_status")
+  consensusSource      String?         @map("consensus_source")
+  consensusSourceUrl   String?         @map("consensus_source_url")
+  consensusAsOf        DateTime?       @map("consensus_as_of") @db.Timestamptz(3)
 
   @@unique([eventId, metricName])
+  @@index([metricKey, referencePeriodStart])
+  @@index([referencePeriodStart])
+  @@index([consensusStatus])
   @@map("data_releases")
 }

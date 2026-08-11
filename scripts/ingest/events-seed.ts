@@ -1,17 +1,24 @@
 /**
- * 50 curated macro events to bootstrap the database.
+ * 51 curated macro/news events to bootstrap the database.
  *
- * Timestamps are ISO 8601 with an explicit offset (US Eastern). The pipeline
- * parses them to UTC via `new Date(occurredAt)`. Times are best-effort — use
- * the conventional release time for the event type:
- *   - US economic data: 08:30 ET
- *   - Fed FOMC statement: 14:00 ET
- *   - Earnings: 16:00 ET (after-the-bell call)
- *   - Tariff / geopolitical: use the actual hour where known, else 00:00 ET
+ * Timestamps are ISO 8601 with an explicit offset (US Eastern), but the legacy
+ * list did not retain a citation for those times. They therefore remain
+ * `UNVERIFIED` by default and are NOT eligible for market-reaction calculation.
+ * To promote an entry, supply an independently checked `releaseAt`, a trusted
+ * timingStatus (`VERIFIED` or `SCHEDULED`) and the authoritative timingSource.
+ * A conventional hour by itself is not evidence.
  *
  * `expectedValue` may be filled in here for data releases — FRED only ships
  * actuals, so consensus has to be added manually. Leave null if unknown; the
  * pipeline will still record actual + prior from FRED.
+ *
+ * `metricName` is deliberately left unset on every entry. It exists as an
+ * escape hatch, but overriding it costs more than it looks: the canonical name
+ * from `src/services/macro/metrics.ts` is what cross-source deduplication
+ * matches on, what `repair:data-releases` rewrites rows to, and what the web app
+ * resolves back into a *unit* when it formats the stored number. A row labelled
+ * "CPI YoY" instead of "CPI (headline, YoY)" renders as a bare `2.3` with no
+ * percent sign, because nothing can tell what unit it is in.
  */
 
 export type SeedEventType =
@@ -28,9 +35,28 @@ export interface SeedEvent {
   headline: string;
   eventType: SeedEventType;
   occurredAt: string; // ISO 8601 with offset
+  /** Exact reaction timestamp; omitted until independently sourced. */
+  releaseAt?: string;
+  /** Official date when known even if time-of-day is unavailable. */
+  releaseDate?: string;
+  timingStatus?:
+    | "VERIFIED"
+    | "SCHEDULED"
+    | "INFERRED"
+    | "DATE_ONLY"
+    | "REFERENCE_PERIOD_ONLY"
+    | "UNVERIFIED";
+  /** Authoritative URL or provider record supporting releaseAt/releaseDate. */
+  timingSource?: string;
+  /** Period described by the release (ISO YYYY-MM-DD), not its publication date. */
+  referencePeriodStart?: string;
   sourceUrl?: string;
   /** Manually-curated consensus value, if known. Used to populate DataRelease.expectedValue. */
   expectedValue?: number;
+  /** Source for expectedValue. Existing values have no citation and stay unverified. */
+  consensusSource?: string;
+  consensusSourceUrl?: string;
+  consensusAsOf?: string;
   /** Manually-curated metric name, if you want to override the default. */
   metricName?: string;
 }
@@ -100,42 +126,36 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "Fed hikes 75bps — fourth consecutive jumbo hike",
     eventType: "FED_DECISION",
     occurredAt: "2022-11-02T14:00:00-04:00",
-    metricName: "Fed Funds Rate target upper bound",
     expectedValue: 4.0,
   },
   {
     headline: "Fed pauses hiking cycle after ten consecutive hikes",
     eventType: "FED_DECISION",
     occurredAt: "2023-06-14T14:00:00-04:00",
-    metricName: "Fed Funds Rate target upper bound",
     expectedValue: 5.25,
   },
   {
     headline: "Fed cuts 50bps — first cut of the cycle, jumbo-sized",
     eventType: "FED_DECISION",
     occurredAt: "2024-09-18T14:00:00-04:00",
-    metricName: "Fed Funds Rate target upper bound",
     expectedValue: 5.25,
   },
   {
     headline: "Fed cuts 25bps as expected post-election",
     eventType: "FED_DECISION",
     occurredAt: "2024-11-07T14:00:00-05:00",
-    metricName: "Fed Funds Rate target upper bound",
     expectedValue: 4.75,
   },
   {
     headline: "Fed cuts 25bps, dot plot signals fewer 2025 cuts",
     eventType: "FED_DECISION",
     occurredAt: "2024-12-18T14:00:00-05:00",
-    metricName: "Fed Funds Rate target upper bound",
     expectedValue: 4.5,
   },
   {
     headline: "Fed holds rates, Powell signals extended pause through Q3",
     eventType: "FED_DECISION",
     occurredAt: "2025-05-07T14:00:00-04:00",
-    metricName: "Fed Funds Rate target upper bound",
     expectedValue: 4.5,
   },
   {
@@ -149,49 +169,49 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "June CPI hits 9.1% YoY — highest in 40 years",
     eventType: "CPI",
     occurredAt: "2022-07-13T08:30:00-04:00",
-    metricName: "CPI YoY",
+    referencePeriodStart: "2022-06-01",
     expectedValue: 8.8,
   },
   {
     headline: "October CPI cools to 7.7% YoY, biggest miss since 2008",
     eventType: "CPI",
     occurredAt: "2022-11-10T08:30:00-05:00",
-    metricName: "CPI YoY",
+    referencePeriodStart: "2022-10-01",
     expectedValue: 7.9,
   },
   {
     headline: "January CPI prints hotter at 3.1% YoY",
     eventType: "CPI",
     occurredAt: "2024-02-13T08:30:00-05:00",
-    metricName: "CPI YoY",
+    referencePeriodStart: "2024-01-01",
     expectedValue: 2.9,
   },
   {
     headline: "August CPI cools to 2.5% YoY — lowest since Feb 2021",
     eventType: "CPI",
     occurredAt: "2024-09-11T08:30:00-04:00",
-    metricName: "CPI YoY",
+    referencePeriodStart: "2024-08-01",
     expectedValue: 2.6,
   },
   {
     headline: "December CPI prints 2.9% YoY in line with expectations",
     eventType: "CPI",
     occurredAt: "2025-01-15T08:30:00-05:00",
-    metricName: "CPI YoY",
+    referencePeriodStart: "2024-12-01",
     expectedValue: 2.9,
   },
   {
     headline: "April CPI surprises cool at 2.3% YoY",
     eventType: "CPI",
     occurredAt: "2025-05-13T08:30:00-04:00",
-    metricName: "CPI YoY",
+    referencePeriodStart: "2025-04-01",
     expectedValue: 2.4,
   },
   {
     headline: "May CPI prints 2.4% YoY, tariffs yet to flow through",
     eventType: "CPI",
     occurredAt: "2025-06-11T08:30:00-04:00",
-    metricName: "CPI YoY",
+    referencePeriodStart: "2025-05-01",
     expectedValue: 2.5,
   },
 
@@ -200,35 +220,35 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "January 2023 NFP shocks at +517k, unemployment 3.4%",
     eventType: "NFP",
     occurredAt: "2023-02-03T08:30:00-05:00",
-    metricName: "Nonfarm payrolls",
+    referencePeriodStart: "2023-01-01",
     expectedValue: 187,
   },
   {
     headline: "January 2024 NFP +353k crushes consensus",
     eventType: "NFP",
     occurredAt: "2024-02-02T08:30:00-05:00",
-    metricName: "Nonfarm payrolls",
+    referencePeriodStart: "2024-01-01",
     expectedValue: 185,
   },
   {
     headline: "July 2024 NFP misses at +114k, unemployment up to 4.3%",
     eventType: "NFP",
     occurredAt: "2024-08-02T08:30:00-04:00",
-    metricName: "Nonfarm payrolls",
+    referencePeriodStart: "2024-07-01",
     expectedValue: 175,
   },
   {
     headline: "December 2024 NFP +256k, unemployment falls to 4.1%",
     eventType: "NFP",
     occurredAt: "2025-01-10T08:30:00-05:00",
-    metricName: "Nonfarm payrolls",
+    referencePeriodStart: "2024-12-01",
     expectedValue: 165,
   },
   {
     headline: "June 2025 NFP +147k, June revisions cut prior 110k",
     eventType: "NFP",
     occurredAt: "2025-07-03T08:30:00-04:00",
-    metricName: "Nonfarm payrolls",
+    referencePeriodStart: "2025-06-01",
     expectedValue: 110,
   },
 
@@ -237,14 +257,14 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "March 2024 PPI hotter at 2.1% YoY, services lead",
     eventType: "PPI",
     occurredAt: "2024-04-11T08:30:00-04:00",
-    metricName: "PPI YoY",
+    referencePeriodStart: "2024-03-01",
     expectedValue: 2.2,
   },
   {
     headline: "January 2025 PPI prints 3.5% YoY, tariff impact begins",
     eventType: "PPI",
     occurredAt: "2025-02-13T08:30:00-05:00",
-    metricName: "PPI YoY",
+    referencePeriodStart: "2025-01-01",
     expectedValue: 3.2,
   },
 
@@ -332,6 +352,7 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "Q1 2024 US GDP grows just 1.6%, stagflation talk returns",
     eventType: "MACRO_DATA",
     occurredAt: "2024-04-25T08:30:00-04:00",
+    referencePeriodStart: "2024-01-01",
   },
   {
     headline: "ISM Manufacturing PMI plunges to 46.7, contraction deepens",
@@ -342,6 +363,7 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "Q2 2025 GDP advance reading +2.8%, beats consensus",
     eventType: "MACRO_DATA",
     occurredAt: "2025-07-30T08:30:00-04:00",
+    referencePeriodStart: "2025-04-01",
   },
 ];
 

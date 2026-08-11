@@ -24,7 +24,7 @@ import {
   CURATED_SERIES_BY_EVENT_TYPE,
   formatWithUnit,
   type CanonicalMetric,
-} from "../ingest/metrics";
+} from "@/services/macro/metrics";
 
 /** One representative curated event per release type. */
 const SAMPLE_HEADLINE_FRAGMENTS = [
