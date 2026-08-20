@@ -4,7 +4,9 @@ import { buildAssetReaction } from "../scripts/ingest/compute-reactions";
 import {
   INTRADAY_BASELINE_MAX_AGE_MS,
   PRIOR_SESSION_BASELINE_MAX_AGE_MS,
+  intradayDailyBasisRatio,
   resolvePriceSnapshot,
+  seriesShareBasis,
   type Candle,
 } from "../scripts/ingest/fetch-prices";
 import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
@@ -358,5 +360,86 @@ describe("buildAssetReaction", () => {
     expect(row.priceAtEvent).toBe(100);
     expect(row.price1h).toBe(101);
     expect(row.price1w).toBeNull();
+  });
+});
+
+/**
+ * Split-adjustment mismatch between the provider's two series.
+ *
+ * Yahoo adjusts its daily bars for a share split but serves intraday bars
+ * unadjusted. XLK and XLE both split 2:1, and mixing an intraday baseline with
+ * a daily endpoint produced roughly -50% on every event inside the intraday
+ * horizon — a fabricated crash that is indistinguishable from a real one.
+ */
+describe("price-basis consistency", () => {
+  const releaseAt = new Date("2025-01-10T13:30:00Z"); // 08:30 EST
+
+  /** Intraday at true scale; daily halved by a 2:1 split adjustment. */
+  const splitMismatch = () => ({
+    intraday: [
+      hourlyBar("2025-01-10T14:30:00Z", 232.89, 233.4),
+      hourlyBar("2025-01-10T15:30:00Z", 233.1, 232.0),
+    ],
+    daily: [
+      dailyBar("2025-01-09", 113.0, 114.0),
+      dailyBar("2025-01-10", 114.2, 114.39),
+      dailyBar("2025-01-13", 112.55, 113.0),
+      dailyBar("2025-01-17", 115.0, 115.5),
+    ],
+  });
+
+  it("detects a series disagreement", () => {
+    const { intraday, daily } = splitMismatch();
+    const ratio = intradayDailyBasisRatio(intraday, daily);
+    expect(ratio).toBeGreaterThan(1.9);
+    expect(seriesShareBasis(ratio)).toBe(false);
+  });
+
+  it("treats matching series as one basis", () => {
+    const ratio = intradayDailyBasisRatio(
+      [hourlyBar("2025-01-10T14:30:00Z", 588.22)],
+      [dailyBar("2025-01-10", 588.0, 580.49)],
+    );
+    expect(seriesShareBasis(ratio)).toBe(true);
+  });
+
+  it("reports no ratio when the series do not overlap", () => {
+    expect(intradayDailyBasisRatio([], [dailyBar("2025-01-10", 1, 2)])).toBeNull();
+    expect(seriesShareBasis(null)).toBe(true);
+  });
+
+  it("never anchors a daily endpoint to a mismatched intraday baseline", () => {
+    const { intraday, daily } = splitMismatch();
+    const snapshot = resolvePriceSnapshot(intraday, daily, releaseAt);
+    expect(snapshot).not.toBeNull();
+    // Falls back to the prior daily close — the same basis as 1d and 1w.
+    expect(snapshot!.priceAtEvent).toBe(114.0);
+    const oneDay =
+      ((snapshot!.price1d as number) - snapshot!.priceAtEvent) /
+      snapshot!.priceAtEvent;
+    expect(Math.abs(oneDay)).toBeLessThan(0.05);
+  });
+
+  it("drops the 1h window rather than mixing bases", () => {
+    const { intraday, daily } = splitMismatch();
+    const snapshot = resolvePriceSnapshot(intraday, daily, releaseAt);
+    // Null, not a fabricated number: the only 1h source is on the wrong basis.
+    expect(snapshot!.price1h).toBeNull();
+  });
+
+  it("still prefers the intraday baseline when the bases agree", () => {
+    const snapshot = resolvePriceSnapshot(
+      [
+        hourlyBar("2025-01-10T13:00:00Z", 588.22, 588.5),
+        hourlyBar("2025-01-10T14:30:00Z", 588.6, 589.0),
+      ],
+      [
+        dailyBar("2025-01-09", 585.0, 586.0),
+        dailyBar("2025-01-10", 588.2, 580.49),
+        dailyBar("2025-01-13", 579.0, 581.0),
+      ],
+      releaseAt,
+    );
+    expect(snapshot!.priceAtEvent).toBe(588.22);
   });
 });

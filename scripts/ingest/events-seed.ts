@@ -1,12 +1,24 @@
 /**
  * 51 curated macro/news events to bootstrap the database.
  *
- * Timestamps are ISO 8601 with an explicit offset (US Eastern), but the legacy
- * list did not retain a citation for those times. They therefore remain
- * `UNVERIFIED` by default and are NOT eligible for market-reaction calculation.
- * To promote an entry, supply an independently checked `releaseAt`, a trusted
- * timingStatus (`VERIFIED` or `SCHEDULED`) and the authoritative timingSource.
+ * Timestamps are ISO 8601 with an explicit offset (US Eastern). The legacy list
+ * did not retain a citation for those times, so an entry is `UNVERIFIED` by
+ * default and NOT eligible for market-reaction calculation. To promote one,
+ * supply an independently checked `releaseAt`, a trusted timingStatus
+ * (`VERIFIED` or `SCHEDULED`) and the authoritative timingSource.
  * A conventional hour by itself is not evidence.
+ *
+ * The 20 CPI / PPI / Employment Situation / FOMC entries are promoted to
+ * `SCHEDULED`, because those releases genuinely have an official published
+ * schedule: BLS publishes its statistical releases at 8:30 a.m. ET, and every
+ * FOMC statement carries the line "For release at 2:00 p.m. ET". Each of those
+ * dates was checked against the issuing agency's own calendar before promotion,
+ * and `timingSource` cites it.
+ *
+ * The remaining entries — tariffs, geopolitical shocks, earnings — stay
+ * `UNVERIFIED` on purpose. A presidential announcement has no published release
+ * calendar, so there is nothing to cite and no defensible instant to anchor a
+ * price window to.
  *
  * `expectedValue` may be filled in here for data releases — FRED only ships
  * actuals, so consensus has to be added manually. Leave null if unknown; the
@@ -126,36 +138,66 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "Fed hikes 75bps — fourth consecutive jumbo hike",
     eventType: "FED_DECISION",
     occurredAt: "2022-11-02T14:00:00-04:00",
+    releaseAt: "2022-11-02T14:00:00-04:00",
+    releaseDate: "2022-11-02",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
     expectedValue: 4.0,
   },
   {
     headline: "Fed pauses hiking cycle after ten consecutive hikes",
     eventType: "FED_DECISION",
     occurredAt: "2023-06-14T14:00:00-04:00",
+    releaseAt: "2023-06-14T14:00:00-04:00",
+    releaseDate: "2023-06-14",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
     expectedValue: 5.25,
   },
   {
     headline: "Fed cuts 50bps — first cut of the cycle, jumbo-sized",
     eventType: "FED_DECISION",
     occurredAt: "2024-09-18T14:00:00-04:00",
+    releaseAt: "2024-09-18T14:00:00-04:00",
+    releaseDate: "2024-09-18",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
     expectedValue: 5.25,
   },
   {
     headline: "Fed cuts 25bps as expected post-election",
     eventType: "FED_DECISION",
     occurredAt: "2024-11-07T14:00:00-05:00",
+    releaseAt: "2024-11-07T14:00:00-05:00",
+    releaseDate: "2024-11-07",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
     expectedValue: 4.75,
   },
   {
     headline: "Fed cuts 25bps, dot plot signals fewer 2025 cuts",
     eventType: "FED_DECISION",
     occurredAt: "2024-12-18T14:00:00-05:00",
+    releaseAt: "2024-12-18T14:00:00-05:00",
+    releaseDate: "2024-12-18",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
     expectedValue: 4.5,
   },
   {
     headline: "Fed holds rates, Powell signals extended pause through Q3",
     eventType: "FED_DECISION",
     occurredAt: "2025-05-07T14:00:00-04:00",
+    releaseAt: "2025-05-07T14:00:00-04:00",
+    releaseDate: "2025-05-07",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
     expectedValue: 4.5,
   },
   {
@@ -169,6 +211,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "June CPI hits 9.1% YoY — highest in 40 years",
     eventType: "CPI",
     occurredAt: "2022-07-13T08:30:00-04:00",
+    releaseAt: "2022-07-13T08:30:00-04:00",
+    releaseDate: "2022-07-13",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
     referencePeriodStart: "2022-06-01",
     expectedValue: 8.8,
   },
@@ -176,6 +223,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "October CPI cools to 7.7% YoY, biggest miss since 2008",
     eventType: "CPI",
     occurredAt: "2022-11-10T08:30:00-05:00",
+    releaseAt: "2022-11-10T08:30:00-05:00",
+    releaseDate: "2022-11-10",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
     referencePeriodStart: "2022-10-01",
     expectedValue: 7.9,
   },
@@ -183,6 +235,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "January CPI prints hotter at 3.1% YoY",
     eventType: "CPI",
     occurredAt: "2024-02-13T08:30:00-05:00",
+    releaseAt: "2024-02-13T08:30:00-05:00",
+    releaseDate: "2024-02-13",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
     referencePeriodStart: "2024-01-01",
     expectedValue: 2.9,
   },
@@ -190,6 +247,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "August CPI cools to 2.5% YoY — lowest since Feb 2021",
     eventType: "CPI",
     occurredAt: "2024-09-11T08:30:00-04:00",
+    releaseAt: "2024-09-11T08:30:00-04:00",
+    releaseDate: "2024-09-11",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
     referencePeriodStart: "2024-08-01",
     expectedValue: 2.6,
   },
@@ -197,6 +259,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "December CPI prints 2.9% YoY in line with expectations",
     eventType: "CPI",
     occurredAt: "2025-01-15T08:30:00-05:00",
+    releaseAt: "2025-01-15T08:30:00-05:00",
+    releaseDate: "2025-01-15",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
     referencePeriodStart: "2024-12-01",
     expectedValue: 2.9,
   },
@@ -204,6 +271,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "April CPI surprises cool at 2.3% YoY",
     eventType: "CPI",
     occurredAt: "2025-05-13T08:30:00-04:00",
+    releaseAt: "2025-05-13T08:30:00-04:00",
+    releaseDate: "2025-05-13",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
     referencePeriodStart: "2025-04-01",
     expectedValue: 2.4,
   },
@@ -211,6 +283,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "May CPI prints 2.4% YoY, tariffs yet to flow through",
     eventType: "CPI",
     occurredAt: "2025-06-11T08:30:00-04:00",
+    releaseAt: "2025-06-11T08:30:00-04:00",
+    releaseDate: "2025-06-11",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
     referencePeriodStart: "2025-05-01",
     expectedValue: 2.5,
   },
@@ -220,6 +297,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "January 2023 NFP shocks at +517k, unemployment 3.4%",
     eventType: "NFP",
     occurredAt: "2023-02-03T08:30:00-05:00",
+    releaseAt: "2023-02-03T08:30:00-05:00",
+    releaseDate: "2023-02-03",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
     referencePeriodStart: "2023-01-01",
     expectedValue: 187,
   },
@@ -227,6 +309,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "January 2024 NFP +353k crushes consensus",
     eventType: "NFP",
     occurredAt: "2024-02-02T08:30:00-05:00",
+    releaseAt: "2024-02-02T08:30:00-05:00",
+    releaseDate: "2024-02-02",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
     referencePeriodStart: "2024-01-01",
     expectedValue: 185,
   },
@@ -234,6 +321,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "July 2024 NFP misses at +114k, unemployment up to 4.3%",
     eventType: "NFP",
     occurredAt: "2024-08-02T08:30:00-04:00",
+    releaseAt: "2024-08-02T08:30:00-04:00",
+    releaseDate: "2024-08-02",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
     referencePeriodStart: "2024-07-01",
     expectedValue: 175,
   },
@@ -241,6 +333,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "December 2024 NFP +256k, unemployment falls to 4.1%",
     eventType: "NFP",
     occurredAt: "2025-01-10T08:30:00-05:00",
+    releaseAt: "2025-01-10T08:30:00-05:00",
+    releaseDate: "2025-01-10",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
     referencePeriodStart: "2024-12-01",
     expectedValue: 165,
   },
@@ -248,6 +345,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "June 2025 NFP +147k, June revisions cut prior 110k",
     eventType: "NFP",
     occurredAt: "2025-07-03T08:30:00-04:00",
+    releaseAt: "2025-07-03T08:30:00-04:00",
+    releaseDate: "2025-07-03",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
     referencePeriodStart: "2025-06-01",
     expectedValue: 110,
   },
@@ -257,6 +359,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "March 2024 PPI hotter at 2.1% YoY, services lead",
     eventType: "PPI",
     occurredAt: "2024-04-11T08:30:00-04:00",
+    releaseAt: "2024-04-11T08:30:00-04:00",
+    releaseDate: "2024-04-11",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Producer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/ppi.htm)",
     referencePeriodStart: "2024-03-01",
     expectedValue: 2.2,
   },
@@ -264,6 +371,11 @@ export const SEED_EVENTS: SeedEvent[] = [
     headline: "January 2025 PPI prints 3.5% YoY, tariff impact begins",
     eventType: "PPI",
     occurredAt: "2025-02-13T08:30:00-05:00",
+    releaseAt: "2025-02-13T08:30:00-05:00",
+    releaseDate: "2025-02-13",
+    timingStatus: "SCHEDULED",
+    timingSource:
+      "BLS Producer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/ppi.htm)",
     referencePeriodStart: "2025-01-01",
     expectedValue: 3.2,
   },

@@ -220,6 +220,57 @@ function priceOnOrAfterSessionDay(
 }
 
 /**
+ * How far the intraday and daily series may disagree before they are treated as
+ * quoted on different bases. Same-session opens should be near-identical; five
+ * percent absorbs bar-boundary noise without admitting a corporate action.
+ */
+export const SERIES_BASIS_TOLERANCE = 0.05;
+
+/**
+ * Median ratio between the intraday and daily quote for the same session.
+ *
+ * Yahoo applies split adjustments to its daily bars but serves intraday bars
+ * unadjusted, so after a share split the two series describe the same security
+ * at different scales. XLK and XLE both split 2:1, and a return taken from an
+ * intraday baseline against a daily endpoint reported roughly −50% on every
+ * event inside the intraday window — a fabricated move that looks exactly like
+ * a real one.
+ *
+ * Returns null when the series do not overlap, which is the normal case for an
+ * event older than the provider's intraday horizon.
+ */
+export function intradayDailyBasisRatio(
+  intraday: readonly Candle[],
+  daily: readonly Candle[],
+): number | null {
+  const dailyOpenByDay = new Map<string, number>();
+  for (const candle of daily) {
+    const open = usablePrice(candle.open);
+    if (open !== null) dailyOpenByDay.set(sessionDay(candle), open);
+  }
+
+  const ratios: number[] = [];
+  const seen = new Set<string>();
+  for (const candle of intraday) {
+    const day = sessionDay(candle);
+    if (seen.has(day)) continue;
+    const dailyOpen = dailyOpenByDay.get(day);
+    const price = intradayPrice(candle);
+    if (dailyOpen === undefined || price === null) continue;
+    seen.add(day);
+    ratios.push(price / dailyOpen);
+  }
+
+  if (ratios.length === 0) return null;
+  ratios.sort((a, b) => a - b);
+  return ratios[Math.floor(ratios.length / 2)];
+}
+
+/** Whether both series may contribute to one return. */
+export const seriesShareBasis = (ratio: number | null): boolean =>
+  ratio === null || Math.abs(ratio - 1) <= SERIES_BASIS_TOLERANCE;
+
+/**
  * Pure window resolution — the part tested without provider or database I/O.
  * Returns null when no bounded, strictly pre-release baseline exists.
  */
@@ -232,13 +283,23 @@ export function resolvePriceSnapshot(
 
   const intraday = sortedValidCandles(intradayCandles);
   const daily = sortedValidCandles(dailyCandles);
+
+  // A percent change is only meaningful when its numerator and denominator are
+  // quoted on the same basis. When the provider's two series disagree, the
+  // intraday one is discarded entirely rather than mixed: that costs the 1h
+  // window but keeps 1d and 1w internally consistent, which is the same
+  // daily-only footing an event older than the intraday horizon already uses.
+  const basisRatio = intradayDailyBasisRatio(intraday, daily);
+  const consistent = seriesShareBasis(basisRatio);
+  const usableIntraday = consistent ? intraday : [];
+
   const baseline =
-    recentIntradayBaseline(intraday, releaseAt) ??
+    recentIntradayBaseline(usableIntraday, releaseAt) ??
     priorSessionBaseline(daily, releaseAt);
   if (baseline === null) return null;
 
   const price1h = intradayEndpoint(
-    intraday,
+    usableIntraday,
     new Date(releaseAt.getTime() + HOUR_MS),
   );
 

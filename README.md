@@ -191,7 +191,8 @@ impactfeedai/
 │       ├── smoke-macro.ts         # live FRED transform sanity check
 │       ├── smoke-dryrun-guard.ts  # proves a dry-run cannot write
 │       ├── repair-data-releases.ts# recompute stored releases in canonical units
-│       └── repair-reaction-timing.ts # remove legacy/unsafe reaction rows
+│       ├── repair-reaction-timing.ts # remove legacy/unsafe reaction rows
+│       └── promote-seed-timing.ts # apply sourced seed timing to existing rows
 │
 ├── tests/                         # Vitest unit tests (pure logic only)
 │
@@ -337,8 +338,39 @@ npm run auto-ingest -- --no-prices --since 2020-01-01   # bulk macro metadata, ~
 npm run db:verify                                       # row counts + coverage
 ```
 
-The legacy curated timestamps have no retained citation and therefore default
-to `UNVERIFIED`. Bulk FRED/BLS rows have only a reference period, and the FOMC
+### Promoting release timing
+
+`ingest.ts` is create-only: it skips any seed whose headline already exists, so
+correcting timing in `events-seed.ts` does nothing to a database that was seeded
+before the correction. `promote:timing` is the update path.
+
+```bash
+npm run promote:timing:dry-run
+TIMING_PROMOTION_CONFIRM=PROMOTE_SEED_TIMING npm run promote:timing -- --apply
+```
+
+It copies only timing the seed itself declares, through the same
+`reactionTimingEligibility` gate the application uses, so it cannot promote a
+row the app would then refuse to trust. It touches five timing columns and a
+null `event_key`; never a reaction, a release, or an `occurredAt`.
+
+Promotion alone produces no reactions. Existing rows are legacy-version and
+`backfill:prices` is additive, so recomputation is a deliberate second step:
+
+```bash
+REACTION_REPAIR_CONFIRM=DELETE_UNTRUSTED_OR_LEGACY_REACTIONS \
+  npm run repair:reaction-timing -- --apply --event-id <uuid>
+npm run backfill:prices -- --event-id <uuid>
+```
+
+The 20 CPI / PPI / Employment Situation / FOMC seed entries are `SCHEDULED`:
+those releases have an official published schedule (BLS at 8:30 a.m. ET, FOMC
+statements at 2:00 p.m. ET), each date was checked against the issuing agency's
+calendar, and `timingSource` cites it. Tariff, geopolitical and earnings entries
+have no published calendar, so they stay `UNVERIFIED` and unpriced.
+
+The remaining legacy curated timestamps have no retained citation and therefore
+default to `UNVERIFIED`. Bulk FRED/BLS rows have only a reference period, and the FOMC
 source has only an inferred announcement date. All three paths persist the
 event/release metadata but suppress Yahoo fetching. Populate a sourced exact
 `releaseAt`, set `timingStatus` to `VERIFIED` or `SCHEDULED`, and record a

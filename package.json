@@ -26,6 +26,8 @@
     "repair:data-releases:dry-run": "tsx scripts/maintenance/repair-data-releases.ts --dry-run",
     "repair:reaction-timing": "tsx scripts/maintenance/repair-reaction-timing.ts",
     "repair:reaction-timing:dry-run": "tsx scripts/maintenance/repair-reaction-timing.ts --dry-run",
+    "promote:timing": "tsx scripts/maintenance/promote-seed-timing.ts",
+    "promote:timing:dry-run": "tsx scripts/maintenance/promote-seed-timing.ts --dry-run",
     "backfill:prices": "tsx scripts/backfill/backfill-prices.ts",
     "backfill:prices:dry-run": "tsx scripts/backfill/backfill-prices.ts --dry-run",
     "ingest": "tsx scripts/ingest/ingest.ts",
