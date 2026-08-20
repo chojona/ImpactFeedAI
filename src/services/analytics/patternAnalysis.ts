@@ -323,3 +323,123 @@ export function distributionFor(
   }
   return points.sort((a, b) => a.value - b.value);
 }
+
+/* ─────────────────── one canonical summary of a distribution ───────────── */
+
+/**
+ * Where one event's observation sits inside the distribution it belongs to.
+ *
+ * `rank` is 1-based from the most negative move, so rank 1 is the worst
+ * reaction in the set and `rank === count` is the best. It is resolved by
+ * identity rather than by value: two events that moved by exactly the same
+ * amount are still two distinct observations, and collapsing them would
+ * misreport the sample.
+ */
+export interface SelectedObservation {
+  eventId: string;
+  value: number;
+  /** 1-based position in ascending value order. */
+  rank: number;
+  /**
+   * Share of observations at or below this one, 0–1. Null below
+   * {@link MIN_DISTRIBUTION_SAMPLE} — a percentile over two observations is
+   * arithmetic, not a percentile.
+   */
+  percentile: number | null;
+  /** Signed distance from the median, in percentage points. */
+  vsMedian: number;
+}
+
+/**
+ * Every statistic a distribution view needs, computed once.
+ *
+ * Both the dot plot and its caption read this object rather than recomputing
+ * from the points, so the marks on the chart and the numbers underneath it
+ * cannot disagree — the failure mode that integrity rule 8 exists to prevent.
+ *
+ * `sufficient` is the honesty gate. Below {@link MIN_DISTRIBUTION_SAMPLE} the
+ * central-tendency fields are still populated (they are well-defined
+ * arithmetic) but callers must not present them as a typical reaction, and the
+ * mean in particular should be withheld: over two observations it is just the
+ * midpoint of two numbers wearing a statistical name.
+ */
+export interface DistributionSummary {
+  symbol: string;
+  window: ReactionWindow;
+  /** Observations behind every figure here. Never inferred upward. */
+  count: number;
+  median: number;
+  mean: number;
+  min: number;
+  max: number;
+  /** Observed spread, max − min, in percentage points. */
+  range: number;
+  positive: number;
+  negative: number;
+  flat: number;
+  /** False when the sample is too thin to describe as a distribution. */
+  sufficient: boolean;
+  /** The event being examined, when it is present in this set. */
+  selected: SelectedObservation | null;
+}
+
+export interface SummarizeDistributionOptions {
+  symbol: string;
+  window: ReactionWindow;
+  /** Event to locate within the set. Absent from the set means no selection. */
+  selectedEventId?: string | null;
+}
+
+/**
+ * Summarise a set of observations, optionally locating one of them.
+ *
+ * Returns null for an empty set rather than a zero-filled summary: a
+ * distribution of nothing has no median, and a `count: 0` object with `median:
+ * 0` is the exact shape that renders as a measured flat market.
+ */
+export function summarizeDistribution(
+  points: readonly DistributionPoint[],
+  { symbol, window, selectedEventId = null }: SummarizeDistributionOptions,
+): DistributionSummary | null {
+  if (points.length === 0) return null;
+
+  const ascending = [...points].sort(
+    (a, b) => a.value - b.value || a.eventId.localeCompare(b.eventId),
+  );
+  const values = ascending.map((p) => p.value);
+  const count = values.length;
+  const med = median(values);
+  const sufficient = count >= MIN_DISTRIBUTION_SAMPLE;
+
+  const index =
+    selectedEventId === null
+      ? -1
+      : ascending.findIndex((p) => p.eventId === selectedEventId);
+
+  const selected: SelectedObservation | null =
+    index === -1
+      ? null
+      : {
+          eventId: ascending[index].eventId,
+          value: ascending[index].value,
+          rank: index + 1,
+          percentile: sufficient ? (index + 1) / count : null,
+          vsMedian: ascending[index].value - med,
+        };
+
+  return {
+    symbol,
+    window,
+    count,
+    median: med,
+    mean: values.reduce((acc, v) => acc + v, 0) / count,
+    min: values[0],
+    max: values[count - 1],
+    range: values[count - 1] - values[0],
+    positive: values.filter((v) => v > 0).length,
+    negative: values.filter((v) => v < 0).length,
+    flat: values.filter((v) => v === 0).length,
+    sufficient,
+    selected,
+  };
+}

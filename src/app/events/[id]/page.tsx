@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/Header";
 import { EventHeader } from "@/components/events/EventHeader";
 import { ReleaseValueGrid } from "@/components/events/ReleaseValues";
+import { EventInHistory } from "@/components/patterns/EventInHistory";
 import { HorizonMatrix } from "@/components/patterns/HorizonMatrix";
 import { EventReactionExplorer } from "@/components/reactions/EventReactionExplorer";
 import { BackButton } from "@/components/ui/BackButton";
@@ -18,7 +19,7 @@ import {
 } from "@/services/events/eventQueries";
 import { releaseHasAnyValue } from "@/services/events/releaseView";
 import { reactionTimingIneligibilityExplanation } from "@/services/events/timing";
-import type { EventCategory } from "@/types/events";
+import type { AssetReaction, EventCategory } from "@/types/events";
 
 /**
  * Event detail — the primary research surface.
@@ -150,7 +151,11 @@ export default async function EventDetailPage({ params }: PageProps) {
             }
           >
             <Suspense fallback={<CategoryContextSkeleton />}>
-              <CategoryContext category={event.category} />
+              <CategoryContext
+                category={event.category}
+                eventId={event.id}
+                assets={event.assets}
+              />
             </Suspense>
           </PageSection>
         </div>
@@ -165,7 +170,15 @@ export default async function EventDetailPage({ params }: PageProps) {
  * event behind it would trade a fast, correct page for a comparison panel that
  * is usually empty today.
  */
-async function CategoryContext({ category }: { category: EventCategory }) {
+async function CategoryContext({
+  category,
+  eventId,
+  assets,
+}: {
+  category: EventCategory;
+  eventId: string;
+  assets: readonly AssetReaction[];
+}) {
   // Narrow query: three numbers per instrument per event, gated by the same
   // timing rules as everything else in the product.
   const observations = await listReactionObservations(category);
@@ -188,15 +201,24 @@ async function CategoryContext({ category }: { category: EventCategory }) {
   }
 
   return (
-    <div>
-      <p className="mb-4 text-sm text-zinc-400">
-        <span className="font-mono font-semibold tabular-nums text-zinc-100">
-          {profile.measuredEvents}
-        </span>{" "}
-        comparable {profile.measuredEvents === 1 ? "event" : "events"} with a
-        measured reaction.
-      </p>
-      <HorizonMatrix assets={peers} activeWindow="1d" />
+    <div className="space-y-10">
+      <div>
+        <p className="mb-4 text-sm text-zinc-400">
+          <span className="font-mono font-semibold tabular-nums text-zinc-100">
+            {profile.measuredEvents}
+          </span>{" "}
+          comparable {profile.measuredEvents === 1 ? "event" : "events"} with a
+          measured reaction.
+        </p>
+        <HorizonMatrix assets={peers} activeWindow="1d" />
+      </div>
+
+      <EventInHistory
+        eventId={eventId}
+        category={category}
+        assets={assets}
+        observations={observations}
+      />
     </div>
   );
 }

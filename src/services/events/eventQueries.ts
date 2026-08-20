@@ -31,6 +31,7 @@ import type { ReactionObservation } from "@/services/analytics/patternAnalysis";
 import { mapEvent, type EventRow } from "@/services/events/mapEvent";
 import {
   CURRENT_REACTION_CALCULATION_VERSION,
+  REACTION_ELIGIBLE_TIMING_STATUSES,
   reactionTimingEligibility,
 } from "@/services/events/timing";
 import type {
@@ -219,9 +220,6 @@ export async function countAllEvents(): Promise<number> {
 
 /* ─────────────────── narrow aggregates for the research views ─────────── */
 
-/** Statuses whose stored `releaseAt` may anchor a published reaction. */
-const TRUSTED_TIMING_STATUSES = ["VERIFIED", "SCHEDULED"] as const;
-
 /**
  * Every measured reaction in the library, as flat observations.
  *
@@ -244,7 +242,7 @@ export async function listReactionObservations(
   const rows = await prisma.event.findMany({
     where: {
       ...(category ? categoryFilter(category) : {}),
-      timingStatus: { in: [...TRUSTED_TIMING_STATUSES] },
+      timingStatus: { in: [...REACTION_ELIGIBLE_TIMING_STATUSES] },
       releaseAt: { not: null },
       timingSource: { not: null },
       assetReactions: {

@@ -6,6 +6,8 @@ import {
   formatNewYorkDateTime,
   formatPlainDate,
   formatReferencePeriod,
+  isReactionTimingEligible,
+  REACTION_ELIGIBLE_TIMING_STATUSES,
   reactionTimingIneligibilityExplanation,
   reactionTimingEligibility,
   timingStatusExplanation,
@@ -121,5 +123,56 @@ describe("timing presentation", () => {
 
   it("pins the version gate to the current calculation contract", () => {
     expect(CURRENT_REACTION_CALCULATION_VERSION).toBe(2);
+  });
+
+  /**
+   * The query layer prefilters on `REACTION_ELIGIBLE_TIMING_STATUSES` in SQL
+   * while every read path re-checks `reactionTimingEligibility` in JavaScript.
+   * If the two disagree the failure is silent: a prefilter that admits one
+   * extra status yields rows indistinguishable from eligible ones, and one that
+   * admits too few makes eligible events vanish with no error anywhere.
+   */
+  it("keeps the SQL prefilter and the eligibility predicate in agreement", () => {
+    const allStatuses: EventTimingStatus[] = [
+      "VERIFIED",
+      "SCHEDULED",
+      "INFERRED",
+      "DATE_ONLY",
+      "REFERENCE_PERIOD_ONLY",
+      "UNVERIFIED",
+    ];
+
+    for (const status of allStatuses) {
+      const prefilterAdmits = (
+        REACTION_ELIGIBLE_TIMING_STATUSES as readonly EventTimingStatus[]
+      ).includes(status);
+      const predicateAdmits = isReactionTimingEligible({
+        releaseAt: new Date("2025-05-13T12:30:00.000Z"),
+        timingStatus: status,
+        timingSource: "BLS release schedule",
+      });
+      expect(predicateAdmits).toBe(prefilterAdmits);
+    }
+  });
+
+  it("still fails closed on provenance the status alone cannot supply", () => {
+    // Passing the status prefilter is necessary, never sufficient — the
+    // instant and its source are checked independently.
+    for (const status of REACTION_ELIGIBLE_TIMING_STATUSES) {
+      expect(
+        isReactionTimingEligible({
+          releaseAt: null,
+          timingStatus: status,
+          timingSource: "BLS release schedule",
+        }),
+      ).toBe(false);
+      expect(
+        isReactionTimingEligible({
+          releaseAt: new Date("2025-05-13T12:30:00.000Z"),
+          timingStatus: status,
+          timingSource: "   ",
+        }),
+      ).toBe(false);
+    }
   });
 });

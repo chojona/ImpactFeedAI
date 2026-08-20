@@ -12,10 +12,23 @@ export type { ReactionTimingIneligibility } from "@/types/events";
  */
 export const CURRENT_REACTION_CALCULATION_VERSION = 2;
 
-const REACTION_ELIGIBLE_STATUSES: ReadonlySet<EventTimingStatus> = new Set([
+/**
+ * The only timing statuses that can anchor a published reaction.
+ *
+ * Exported because the query layer has to prefilter on it in SQL. Keeping a
+ * second literal list next to the Prisma `where` is how a database prefilter
+ * and the application predicate drift apart — and drift in this direction is
+ * silent, because a query that admits one status too many produces rows that
+ * look exactly like eligible ones.
+ */
+export const REACTION_ELIGIBLE_TIMING_STATUSES = [
   "VERIFIED",
   "SCHEDULED",
-]);
+] as const satisfies readonly EventTimingStatus[];
+
+const REACTION_ELIGIBLE_STATUSES: ReadonlySet<EventTimingStatus> = new Set(
+  REACTION_ELIGIBLE_TIMING_STATUSES,
+);
 
 export type ReactionTimingEligibility =
   | { eligible: true; reason: null }
