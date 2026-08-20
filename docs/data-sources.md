@@ -192,6 +192,33 @@ closing tick.
 
 Missing from the universe and needed for Phase 2: **VIX and Treasury yields**.
 
+### Yahoo Finance — candle storage · **Integrated (prototype)**
+
+Separate from the reaction path above, `scripts/backfill/backfill-candles.ts`
+persists OHLCV bars into the provider-agnostic `candles` table for future
+trading charts. Measured limits, not assumed:
+
+| Interval | Lookback | Volume | Basis |
+| --- | --- | --- | --- |
+| `1m` | 30 days | regular session only | as traded |
+| `5m` / `15m` / `30m` | 60 days | regular session only | as traded |
+| `1h` | 730 days | regular session only | as traded |
+| `1d` | full history | every bar | split-adjusted |
+
+Yahoo exposes **three** price bases and labels none of them: intraday OHLC is
+as-traded, daily OHLC is split-adjusted, and daily `adjclose` is split- and
+dividend-adjusted. The `Candle.priceBasis` column records which one a row holds;
+the backfill verifies intraday against daily before persisting and rejects the
+pair outright when they disagree, rather than inferring a split factor.
+
+Extended-hours bars carry real OHLC with `volume: 0`. That zero is the provider
+declining to report, not a measurement, so it is stored as `NULL`.
+
+**Prototype only.** No current event can reach 5-minute data, 9 of 20
+timing-eligible events are past even the hourly window, and the window rolls —
+history is lost permanently as events age. Commercial redistribution terms
+remain unverified.
+
 ### Polygon.io · **Planned**
 
 Named as the intended price provider in the project instructions; **no code

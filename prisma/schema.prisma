@@ -113,3 +113,89 @@ model DataRelease {
   @@index([consensusStatus])
   @@map("data_releases")
 }
+
+/// Interval of a persisted OHLCV bar. Provider-agnostic: an adapter maps its
+/// own interval vocabulary onto these before anything is stored.
+enum CandleInterval {
+  ONE_MINUTE
+  FIVE_MINUTE
+  FIFTEEN_MINUTE
+  THIRTY_MINUTE
+  ONE_HOUR
+  ONE_DAY
+}
+
+/// Where a bar sits relative to the US regular session. Yahoo returns
+/// extended-hours bars on every intraday interval and `includePrePost` has no
+/// observable effect, so this is a property of ~59% of intraday bars rather
+/// than optional metadata.
+enum MarketSession {
+  REGULAR
+  EXTENDED
+}
+
+/// Which corporate actions are already applied to a stored price.
+///
+/// Yahoo serves three distinct bases and labels none of them: intraday OHLC is
+/// as-traded, daily OHLC is split-adjusted, and daily adjclose is split- and
+/// dividend-adjusted. Recording the basis per row is what prevents a pre-split
+/// bar and a post-split bar from being compared as if they described the same
+/// scale.
+enum PriceBasis {
+  AS_TRADED
+  SPLIT_ADJUSTED
+  SPLIT_DIVIDEND_ADJUSTED
+}
+
+/// Historical OHLCV bars.
+///
+/// Deliberately *not* a child of Event: candles are reusable instrument
+/// time-series that many events query over overlapping windows. An Event FK
+/// would duplicate every shared bar and make "one bar, one row" unenforceable.
+model Candle {
+  id       String         @id @default(uuid())
+  symbol   String
+  interval CandleInterval
+  /// Bar OPEN instant, UTC. Providers differ on whether a bar is stamped at its
+  /// open or its close; normalising to the open at ingestion keeps two rows
+  /// from the same minute comparable across providers.
+  openTime DateTime       @map("open_time") @db.Timestamptz(3)
+
+  open   Float
+  high   Float
+  low    Float
+  close  Float
+  /// Null — never 0 — when the provider withheld a quantity. Yahoo reports
+  /// volume 0 on every extended-hours bar while returning real OHLC, and a
+  /// stored 0 is indistinguishable from a measured absence of trading.
+  volume Float?
+
+  session          MarketSession
+  priceBasis       PriceBasis    @map("price_basis")
+  /// Split factor already applied to these prices, when the provider discloses
+  /// one. 1.0 means none. Null means undisclosed, which is not the same as
+  /// "no split occurred" — the pipeline never infers this.
+  adjustmentFactor Float?        @map("adjustment_factor")
+
+  /// Provider identity and version, e.g. "yahoo-finance2@3.14.0".
+  provider         String
+  /// Bumped when the meaning of a stored candle changes, mirroring
+  /// AssetReaction.calculationVersion. Read paths discard non-current rows.
+  ingestionVersion Int      @map("ingestion_version")
+  /// When the provider was called. Providers silently revise intraday bars.
+  fetchedAt        DateTime @map("fetched_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// A bar is identified by instrument, interval, instant and basis. Basis is
+  /// part of the identity on purpose: the same minute quoted as-traded and
+  /// split-adjusted is two different facts, and collapsing them into one row is
+  /// the split defect made permanent.
+  @@unique([symbol, interval, openTime, priceBasis], name: "candle_natural_key")
+  /// Covers the only shape the read path uses: one symbol, one interval, a
+  /// time range, in order.
+  @@index([symbol, interval, openTime])
+  @@index([ingestionVersion])
+  @@map("candles")
+}

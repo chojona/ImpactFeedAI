@@ -259,6 +259,7 @@ through the pooler.
 | `Event` | `events` | Stable nullable `eventKey`; `headline`, `eventType`; compatibility/display `occurredAt`; exact `releaseAt`, date-only `releaseDate`, `timingStatus` and `timingSource`; source/explanation. `eventKey` is unique; `(headline, occurredAt)` remains a legacy backstop |
 | `AssetReaction` | `asset_reactions` | FK → `Event`; symbol, anchor/window prices and changes; `anchorAt` records the provider candle actually used and `calculationVersion` identifies the financial semantics; unique on `(eventId, assetSymbol)` |
 | `DataRelease` | `data_releases` | FK → `Event`; stable `metricKey` and `referencePeriodStart`; canonical values; actual source/URL; consensus status/source/URL/as-of; unique on `(eventId, metricName)` |
+| `Candle` | `candles` | Provider-agnostic OHLCV bars. No FK to `Event` — candles are reusable instrument time-series many events query over overlapping windows. Unique on `(symbol, interval, openTime, priceBasis)`; `priceBasis` is part of the identity because the same minute quoted as-traded and split-adjusted are two different facts. `volume` is nullable (the provider withholds extended-hours quantities), `session` records REGULAR/EXTENDED, and `ingestionVersion` gates reads exactly as `calculationVersion` does for reactions |
 
 `EventType` enum: `TARIFF`, `FED_DECISION`, `CPI`, `PPI`, `NFP`,
 `GEOPOLITICAL`, `EARNINGS_SURPRISE`, `MACRO_DATA`. `EventTimingStatus` is
@@ -401,8 +402,15 @@ connection, unparseable timestamps) halt the run. Re-runs are idempotent.
 - **Yahoo intraday history is ~730 days.** Events older than that get daily
   granularity only; `price1h` is null. It is null, not zero — see below.
 - **Only four prices per asset.** `price_at_event / 1h / 1d / 1w` is enough for
-  the reaction table and a sparkline, not for an animated replay. That needs
-  candle-level storage.
+  the reaction table and a sparkline, not for an animated replay. Candle-level
+  storage now exists in `candles` (see below), but the reaction pipeline does
+  not read from it — the two paths are independent today.
+- **Candle coverage is bounded by a rolling provider window.** Yahoo serves 1h
+  bars for 730 days, 5m/15m/30m for 60 and 1m for 30. No stored event is recent
+  enough for 5-minute data, and events leave the hourly window permanently as
+  they age. `scripts/backfill/backfill-candles.ts` therefore prioritises the
+  oldest reachable events, and `npm run probe:candles` reports what is still
+  retrievable.
 
 ### Data-integrity invariants the code enforces
 

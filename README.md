@@ -385,6 +385,78 @@ can write through a dry-run client. `npm run smoke:dryrun` proves it.
 See [scripts/ingest/README.md](scripts/ingest/README.md) for the full flag list,
 the failure model, and expected runtimes.
 
+### Candle storage (trading charts)
+
+Reaction rows hold four prices per instrument. Real candlestick charts need
+bars, which live in a separate, provider-agnostic `candles` table.
+
+```bash
+npm run probe:candles          # read-only: what can the provider still supply?
+npm run backfill:candles       # dry-run by default — writes nothing
+CANDLE_BACKFILL_CONFIRM=WRITE_CANDLES \
+  npm run backfill:candles -- --apply
+npm run verify:candles         # read-only: assert every stored invariant
+```
+
+Useful flags: `--symbol SPY` (repeatable, default `SPY QQQ`), `--interval 1h`
+(default), `--event-id <uuid>` (repeatable), `--limit <n>`.
+
+**Yahoo is a prototype provider here, not the production one.** Its intraday
+history is a *rolling* window that was measured, not assumed:
+
+| Interval | Lookback | Volume | Adjustment |
+| --- | --- | --- | --- |
+| `1m` | 30 days | regular session only | as traded |
+| `5m` / `15m` / `30m` | 60 days | regular session only | as traded |
+| `1h` | 730 days | regular session only | as traded |
+| `1d` | full history | every bar | split-adjusted (`adjclose` also dividend-adjusted) |
+
+Two consequences drive the whole design:
+
+- **No current event can reach 5-minute data.** The newest is over 400 days old
+  and the window is 60 days. `1h` is the finest interval any stored event can
+  still be charted at, and 9 of 20 timing-eligible events are past even that.
+- **The archive is a one-way ratchet.** An event drops out of the hourly window
+  730 days after it happened and cannot be recovered from this provider at any
+  price. The backfill processes oldest reachable events first for that reason.
+
+**Price basis is recorded per row, never inferred.** Yahoo serves three bases
+and labels none of them, so `PriceBasis` does it explicitly. Intraday OHLC is
+`AS_TRADED`; daily OHLC is `SPLIT_ADJUSTED`. Before persisting any intraday
+series the backfill compares it against the daily series using the same guard
+`fetch-prices.ts` applies to reactions. If they disagree, that symbol/event pair
+is **rejected outright** — no candles written, no split factor inferred, no
+prices rescaled. XLK and XLE split 2:1 on 2025-12-05, so every reachable event
+predates the split and all 22 pairs reject with a ratio near 2.0. That is the
+guard working, not a failure.
+
+**`volume` is nullable, and that is load-bearing.** Yahoo returns real OHLC with
+`volume: 0` on *every* extended-hours bar — 726 of the 1,276 rows currently
+stored. A stored zero is indistinguishable from a measured absence of trading,
+so those are persisted as `NULL`. Any future VWAP must therefore treat a null
+denominator as unknown rather than skipping it silently.
+
+Each row also carries `session` (`REGULAR` / `EXTENDED`, classified in
+America/New_York) and `ingestionVersion`. The read path,
+`getCandles()` in [src/services/market/candles.ts](src/services/market/candles.ts),
+filters to the current version so a semantics change makes older rows disappear
+rather than mixing two conventions in one series.
+
+Charts must read this table, never the provider: a page that fetched hundreds of
+bars per render would be slow, rate-limited, and — because the provider window
+rolls — would return different data over time for the same historical event.
+
+Known limitation: there is no exchange calendar, so early closes (the day after
+Thanksgiving, Christmas Eve) are not modelled and their afternoon hours would be
+classified `REGULAR`. The session is stored per row rather than recomputed on
+read, so a misclassification is auditable and fixable by re-ingestion.
+
+**Intended path:** the Yahoo adapter is a prototype. `CandleProvider` in
+[scripts/ingest/candle-provider.ts](scripts/ingest/candle-provider.ts) is the
+seam a Polygon adapter should be written against — Polygon has 1-minute history
+back to 2003, labels its adjustments explicitly, and reports extended-hours
+volume. **Polygon is not integrated; no code calls it.**
+
 ### Build and quality checks
 
 ```bash
