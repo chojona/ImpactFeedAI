@@ -1,32 +1,65 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 
 import { Header } from "@/components/Header";
 import { EventBrowser } from "@/components/events/EventBrowser";
 
+export const metadata: Metadata = {
+  title: "Event library — ImpactFeedAI",
+  description:
+    "Search and filter macro releases by category, and see the measured cross-asset reaction where release timing is sourced.",
+};
+
+/**
+ * The event library.
+ *
+ * The header states what the library is and what it deliberately withholds,
+ * because a reader who scrolls a page of cards reading "Reaction unavailable"
+ * without that context will conclude the product is broken rather than that the
+ * data is honest.
+ */
 export default function FeedPage() {
   return (
     <div className="flex flex-1 flex-col bg-[#080C10] text-zinc-100">
       <Header />
 
-      <section className="mx-auto w-full max-w-4xl px-6 pt-24 pb-20 text-center">
-        <span className="inline-block rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-zinc-400">
-          Curated Macro Event Library
-        </span>
-        <h1 className="mt-6 text-4xl font-semibold leading-tight tracking-tight text-zinc-50 sm:text-6xl">
-          Understand why <span className="text-[#00FF94]">markets move</span>.
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 sm:text-xl">
-          Every major news event, broken down into a cross-asset reaction story.
-          See how tariffs, Fed decisions, and geopolitical shocks ripple through
-          stocks, bonds, currencies, and commodities — in the moments that matter.
-        </p>
-      </section>
+      <main className="mx-auto w-full max-w-7xl px-5 pt-12 pb-24 sm:px-6">
+        <div className="max-w-3xl">
+          <h1 className="text-3xl font-semibold leading-tight tracking-tight text-zinc-50 sm:text-4xl">
+            Macro event library
+          </h1>
+          <p className="mt-3 text-base leading-relaxed text-zinc-400">
+            Every ingested release, with what it printed, what was expected
+            where a forecast exists, and how markets moved where the exact
+            release instant is sourced. Events whose timing cannot be verified
+            are kept and searchable, but show no price reaction — an unanchored
+            percentage is indistinguishable from a measured one.
+          </p>
+        </div>
 
-      <section className="mx-auto w-full max-w-7xl px-6 pb-24">
-        <Suspense fallback={null}>
-          <EventBrowser />
-        </Suspense>
-      </section>
+        <div className="mt-10">
+          <Suspense fallback={<BrowserSkeleton />}>
+            <EventBrowser />
+          </Suspense>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function BrowserSkeleton() {
+  return (
+    <div aria-hidden>
+      <div className="h-10 animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.02]" />
+      <div className="mt-4 h-9 animate-pulse rounded-full border border-white/[0.06] bg-white/[0.02]" />
+      <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div
+            key={i}
+            className="h-56 animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.02]"
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -62,11 +62,24 @@ with `"use client"`, used only where interactivity or a browser API is needed:
 | Client component | Why |
 | --- | --- |
 | `components/events/EventBrowser.tsx` | URL-synced filter/search/sort state, `fetch` to `/api/events` |
-| `components/events/EventCard.tsx` | hover animation |
 | `components/events/CategoryFilterBar.tsx`, `SearchBar.tsx` | input handling |
-| `components/charts/ReactionPanel.tsx` | window-selection state |
-| `components/charts/ReactionSparkline.tsx` | `lightweight-charts` needs a DOM node |
+| `components/reactions/EventReactionExplorer.tsx` | selected-asset and horizon state shared across three panels |
 | `components/ui/BackButton.tsx` | `router.back()` |
+| `components/ui/RouteError.tsx` | error boundaries must be Client Components |
+
+`EventCard` is no longer a Client Component: its hover lift is a CSS transform
+rather than a Framer Motion spring, which keeps per-card JavaScript out of a
+list that grows as the reader scrolls.
+
+The reaction visualizations (`ReactionChart`, `ReactionSummaryTable`,
+`CrossAssetReactionBars`, `MiniReactionBars`) are presentational and carry no
+`"use client"` of their own. They render on the server for the feed and the
+landing page, and are pulled into the client bundle only where
+`EventReactionExplorer` passes them handlers. They are inline SVG plus absolutely
+positioned HTML rather than a charting library: the schema holds three discrete
+observations per instrument, and evenly spaced ordinal slots with a dashed
+connector is the honest way to draw that. Geometry lives in
+`services/events/reactionChart.ts` as pure, tested functions.
 
 Everything else — the landing page, event detail, patterns page — is a Server
 Component reading Postgres directly. There are **no Server Actions**; the app
@@ -76,10 +89,10 @@ performs no writes at all.
 
 | Route | Type | What it does | Data source |
 | --- | --- | --- | --- |
-| `/` | RSC, static | Landing: hero, feature grid, pricing table | static |
+| `/` | RSC, ISR (`revalidate = 600`) | Landing: hero panel and figures from Postgres, capability grid, pricing | Postgres ✅, degrades to a no-database state |
 | `/feed` | RSC + client island | Event browser with category filter, search, sort, infinite scroll | `/api/events` |
 | `/events/[id]` | RSC, dynamic | Event detail, expectation vs. actual, cross-asset reaction | Postgres ✅ |
-| `/patterns` | RSC, dynamic | Per-category aggregate reaction stats | Postgres + `services/analytics` ✅ |
+| `/patterns` | RSC, dynamic | Library coverage plus per-category reaction aggregates; view state in the URL (`cat`, `sym`, `h`) | Postgres + `services/analytics` ✅ |
 | `/api/events` | Route Handler (GET) | Filter / search / sort / paginate the event list | Postgres ✅ |
 
 `/events/[id]` and `/patterns` are `force-dynamic`. `generateStaticParams` was

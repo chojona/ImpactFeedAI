@@ -150,7 +150,9 @@ export interface NewsEvent {
 /**
  * One point on an asset's reaction path: cumulative percent change from the
  * event anchor at a measured window. `label` carries the window identity
- * because the windows are unevenly spaced in time (see `ReactionSparkline`).
+ * because the windows are unevenly spaced in time, so the chart plots them on
+ * evenly spaced ordinal slots rather than on a time axis — see
+ * `src/services/events/reactionChart.ts`.
  */
 export interface ReactionSeriesPoint {
   label: string;

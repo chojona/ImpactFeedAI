@@ -24,10 +24,15 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   FILTERABLE_CATEGORIES,
+  categoryForEventType,
   eventTypesForCategory,
 } from "@/lib/eventCategories";
+import type { ReactionObservation } from "@/services/analytics/patternAnalysis";
 import { mapEvent, type EventRow } from "@/services/events/mapEvent";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import {
+  CURRENT_REACTION_CALCULATION_VERSION,
+  reactionTimingEligibility,
+} from "@/services/events/timing";
 import type {
   CategoryParam,
   EventListQuery,
@@ -207,25 +212,318 @@ export async function getEventById(id: string): Promise<NewsEvent | null> {
   return row === null ? null : mapEvent(row as EventRow);
 }
 
-/**
- * Every event in a category, for the pattern aggregates. Bounded by `take`
- * because the aggregation happens in memory — `analyzeCategory` needs each
- * event's reactions, not just a count.
- */
-export async function listEventsForCategory(
-  category: EventCategory,
-  take = 500,
-): Promise<NewsEvent[]> {
-  const rows = await prisma.event.findMany({
-    where: categoryFilter(category),
-    orderBy: [{ occurredAt: "desc" }, { id: "asc" }],
-    take,
-    include: EVENT_INCLUDE,
-  });
-  return rows.map((r) => mapEvent(r as EventRow));
-}
-
 /** Total row count, used to distinguish "no data yet" from "no matches". */
 export async function countAllEvents(): Promise<number> {
   return prisma.event.count();
+}
+
+/* ─────────────────── narrow aggregates for the research views ─────────── */
+
+/** Statuses whose stored `releaseAt` may anchor a published reaction. */
+const TRUSTED_TIMING_STATUSES = ["VERIFIED", "SCHEDULED"] as const;
+
+/**
+ * Every measured reaction in the library, as flat observations.
+ *
+ * Replaces the pattern page's previous approach of hydrating up to 500 fully
+ * included events per category — seven categories, twelve reactions and every
+ * data release each — only to read three numbers per row. This selects the
+ * three numbers.
+ *
+ * The SQL predicate mirrors `reactionTimingEligibility`, and the result is then
+ * passed through that function anyway. The duplication is deliberate: the query
+ * exists to avoid loading rows that will be discarded, and the function remains
+ * the single authority on whether a row is publishable. A blank-but-present
+ * `timing_source` is exactly the case SQL is clumsy at and the predicate is
+ * precise about.
+ */
+export async function listReactionObservations(
+  category?: EventCategory,
+  take = 2000,
+): Promise<ReactionObservation[]> {
+  const rows = await prisma.event.findMany({
+    where: {
+      ...(category ? categoryFilter(category) : {}),
+      timingStatus: { in: [...TRUSTED_TIMING_STATUSES] },
+      releaseAt: { not: null },
+      timingSource: { not: null },
+      assetReactions: {
+        some: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
+      },
+    },
+    orderBy: [{ releaseAt: "desc" }, { id: "asc" }],
+    take,
+    select: {
+      id: true,
+      headline: true,
+      eventType: true,
+      releaseAt: true,
+      timingStatus: true,
+      timingSource: true,
+      assetReactions: {
+        where: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
+        select: {
+          assetSymbol: true,
+          pctChange1h: true,
+          pctChange1d: true,
+          pctChange1w: true,
+        },
+      },
+    },
+  });
+
+  const observations: ReactionObservation[] = [];
+  for (const row of rows) {
+    const eligibility = reactionTimingEligibility({
+      releaseAt: row.releaseAt,
+      timingStatus: row.timingStatus,
+      timingSource: row.timingSource,
+    });
+    if (!eligibility.eligible || row.releaseAt === null) continue;
+    const at = row.releaseAt.toISOString();
+    const eventCategory = categoryForEventType(row.eventType);
+    for (const reaction of row.assetReactions) {
+      observations.push({
+        eventId: row.id,
+        title: row.headline,
+        at,
+        category: eventCategory,
+        symbol: reaction.assetSymbol,
+        values: {
+          "1h": finite(reaction.pctChange1h),
+          "1d": finite(reaction.pctChange1d),
+          "1w": finite(reaction.pctChange1w),
+        },
+      });
+    }
+  }
+  return observations;
+}
+
+const finite = (value: number | null): number | null =>
+  value !== null && Number.isFinite(value) ? value : null;
+
+/**
+ * What the library actually holds, per category.
+ *
+ * This is the honest answer to "what can I research here". Three grouped
+ * aggregate queries, no row hydration — the counts are computed by Postgres.
+ */
+export interface CategoryCoverage {
+  category: EventCategory;
+  events: number;
+  /** Events whose stored timing could anchor a reaction. */
+  trustedTiming: number;
+  /** Events with a publication date but no defensible instant. */
+  dateOnly: number;
+  /** Events known only by the period the statistic measures. */
+  referencePeriodOnly: number;
+  /** Events whose timing is inferred or simply unverified. */
+  untrustedTiming: number;
+  consensusVerified: number;
+  consensusUnverified: number;
+  consensusMissing: number;
+  /** Events with at least one current-version measured one-day move. */
+  measuredEvents: number;
+}
+
+export interface LibraryCoverage {
+  categories: CategoryCoverage[];
+  totals: Omit<CategoryCoverage, "category">;
+}
+
+interface CoverageRow {
+  event_type: EventTypeName;
+  n: number;
+}
+
+export async function getLibraryCoverage(): Promise<LibraryCoverage> {
+  const [byTiming, byConsensus, measured] = await Promise.all([
+    prisma.event.groupBy({
+      by: ["eventType", "timingStatus"],
+      _count: { _all: true },
+    }),
+    prisma.$queryRaw<
+      { event_type: EventTypeName; consensus_status: string; n: number }[]
+    >(Prisma.sql`
+      SELECT e.event_type, dr.consensus_status, COUNT(*)::int AS n
+      FROM data_releases dr
+      JOIN events e ON e.id = dr.event_id
+      GROUP BY e.event_type, dr.consensus_status
+    `),
+    prisma.$queryRaw<CoverageRow[]>(Prisma.sql`
+      SELECT e.event_type, COUNT(DISTINCT e.id)::int AS n
+      FROM events e
+      JOIN asset_reactions ar ON ar.event_id = e.id
+      WHERE ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+        AND ar.pct_change_1d IS NOT NULL
+        AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
+        AND e.release_at IS NOT NULL
+        AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
+      GROUP BY e.event_type
+    `),
+  ]);
+
+  const blank = (category: EventCategory): CategoryCoverage => ({
+    category,
+    events: 0,
+    trustedTiming: 0,
+    dateOnly: 0,
+    referencePeriodOnly: 0,
+    untrustedTiming: 0,
+    consensusVerified: 0,
+    consensusUnverified: 0,
+    consensusMissing: 0,
+    measuredEvents: 0,
+  });
+
+  const byCategory = new Map<EventCategory, CategoryCoverage>(
+    FILTERABLE_CATEGORIES.map((category) => [category, blank(category)]),
+  );
+  const bucket = (type: EventTypeName): CategoryCoverage | undefined =>
+    byCategory.get(categoryForEventType(type));
+
+  for (const row of byTiming) {
+    const entry = bucket(row.eventType);
+    if (!entry) continue;
+    const n = row._count._all;
+    entry.events += n;
+    switch (row.timingStatus) {
+      case "VERIFIED":
+      case "SCHEDULED":
+        entry.trustedTiming += n;
+        break;
+      case "DATE_ONLY":
+        entry.dateOnly += n;
+        break;
+      case "REFERENCE_PERIOD_ONLY":
+        entry.referencePeriodOnly += n;
+        break;
+      default:
+        entry.untrustedTiming += n;
+    }
+  }
+
+  for (const row of byConsensus) {
+    const entry = bucket(row.event_type);
+    if (!entry) continue;
+    if (row.consensus_status === "VERIFIED") entry.consensusVerified += row.n;
+    else if (row.consensus_status === "UNVERIFIED")
+      entry.consensusUnverified += row.n;
+    else entry.consensusMissing += row.n;
+  }
+
+  for (const row of measured) {
+    const entry = bucket(row.event_type);
+    if (entry) entry.measuredEvents += row.n;
+  }
+
+  const categories = [...byCategory.values()].sort((a, b) => b.events - a.events);
+  const totals = categories.reduce<Omit<CategoryCoverage, "category">>(
+    (acc, c) => ({
+      events: acc.events + c.events,
+      trustedTiming: acc.trustedTiming + c.trustedTiming,
+      dateOnly: acc.dateOnly + c.dateOnly,
+      referencePeriodOnly: acc.referencePeriodOnly + c.referencePeriodOnly,
+      untrustedTiming: acc.untrustedTiming + c.untrustedTiming,
+      consensusVerified: acc.consensusVerified + c.consensusVerified,
+      consensusUnverified: acc.consensusUnverified + c.consensusUnverified,
+      consensusMissing: acc.consensusMissing + c.consensusMissing,
+      measuredEvents: acc.measuredEvents + c.measuredEvents,
+    }),
+    {
+      events: 0,
+      trustedTiming: 0,
+      dateOnly: 0,
+      referencePeriodOnly: 0,
+      untrustedTiming: 0,
+      consensusVerified: 0,
+      consensusUnverified: 0,
+      consensusMissing: 0,
+      measuredEvents: 0,
+    },
+  );
+
+  return { categories, totals };
+}
+
+/**
+ * Headline library figures for the landing page.
+ *
+ * Every number is a count or an extreme of a real column. Nothing here is a
+ * target, a projection or a round number chosen because it reads well.
+ */
+export interface LibrarySummary {
+  events: number;
+  measuredEvents: number;
+  instruments: number;
+  categories: number;
+  earliest: string | null;
+  latest: string | null;
+}
+
+export async function getLibrarySummary(): Promise<LibrarySummary> {
+  const [events, span, instruments, measured, categories] = await Promise.all([
+    prisma.event.count(),
+    prisma.event.aggregate({
+      _min: { occurredAt: true },
+      _max: { occurredAt: true },
+    }),
+    prisma.assetReaction.findMany({
+      distinct: ["assetSymbol"],
+      select: { assetSymbol: true },
+    }),
+    prisma.$queryRaw<{ n: number }[]>(Prisma.sql`
+      SELECT COUNT(DISTINCT e.id)::int AS n
+      FROM events e
+      JOIN asset_reactions ar ON ar.event_id = e.id
+      WHERE ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+        AND ar.pct_change_1d IS NOT NULL
+        AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
+        AND e.release_at IS NOT NULL
+        AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
+    `),
+    prisma.event.groupBy({ by: ["eventType"], _count: { _all: true } }),
+  ]);
+
+  const distinctCategories = new Set(
+    categories.map((row) => categoryForEventType(row.eventType)),
+  );
+
+  return {
+    events,
+    measuredEvents: measured[0]?.n ?? 0,
+    instruments: instruments.length,
+    categories: distinctCategories.size,
+    earliest: span._min.occurredAt?.toISOString() ?? null,
+    latest: span._max.occurredAt?.toISOString() ?? null,
+  };
+}
+
+/**
+ * The event with the largest measured one-session move in the library.
+ *
+ * Used as the landing page's hero panel, so that the first thing a visitor sees
+ * is a real record rather than an illustration. Returns null when nothing in
+ * the library is priced yet, and the caller is expected to render something
+ * honest instead — inventing a plausible event for the marketing page is how a
+ * fabricated number ends up screenshotted as a product claim.
+ */
+export async function getFeaturedEvent(): Promise<NewsEvent | null> {
+  const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT e.id
+    FROM events e
+    JOIN asset_reactions ar ON ar.event_id = e.id
+    WHERE ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+      AND ar.pct_change_1d IS NOT NULL
+      AND ABS(ar.pct_change_1d) < 'Infinity'::double precision
+      AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
+      AND e.release_at IS NOT NULL
+      AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
+    GROUP BY e.id, e.release_at
+    ORDER BY MAX(ABS(ar.pct_change_1d)) DESC, e.release_at DESC, e.id ASC
+    LIMIT 1
+  `);
+  const id = rows[0]?.id;
+  return id === undefined ? null : getEventById(id);
 }

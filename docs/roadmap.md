@@ -37,7 +37,9 @@ it does not work reliably.
 - [x] CI — secret-free GitHub Actions runs explicit Prisma generation,
       typecheck, lint, unit tests, schema validation and production build on
       pushes and pull requests
-- [ ] Split the ~800-line `src/app/page.tsx` into `components/landing/`
+- [x] Split the ~800-line `src/app/page.tsx` into `components/landing/`. The
+      hardcoded statistics strip and preview card were replaced with database
+      reads that degrade to a no-database state
 
 ---
 

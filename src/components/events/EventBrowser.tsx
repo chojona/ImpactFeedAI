@@ -294,40 +294,66 @@ export function EventBrowser() {
         </div>
       )}
 
-      {!initialLoad && !error && events.length === 0 ? (
+      {initialLoad ? (
+        <SkeletonGrid />
+      ) : !error && events.length === 0 ? (
         <EmptyState hasLibrary={counts.ALL > 0} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence mode="popLayout">
-            {events.map((event) => (
-              <motion.div
-                key={event.id}
-                layout
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.94 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-              >
-                <Link
-                  href={`/events/${event.id}`}
-                  className="block h-full rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]/40"
-                >
-                  <EventCard event={event} />
-                </Link>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {events.map((event) => (
+            <Link
+              key={event.id}
+              href={`/events/${event.id}`}
+              className="block h-full rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]/40"
+            >
+              <EventCard event={event} />
+            </Link>
+          ))}
         </div>
       )}
 
       <div ref={loadSentinelRef} className="h-px" aria-hidden />
 
-      {loading && (
-        <div className="flex justify-center py-10">
+      <div aria-live="polite" className="flex justify-center py-8">
+        {loading && !initialLoad ? (
           <Spinner />
-        </div>
-      )}
+        ) : hasMore ? (
+          // Infinite scroll is a mouse affordance. The button is the same
+          // action reachable by keyboard and announced to assistive tech.
+          <button
+            type="button"
+            onClick={() => void loadMore()}
+            className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 font-mono text-xs font-semibold uppercase tracking-wider text-zinc-300 transition hover:border-white/20 hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]/40"
+          >
+            Load more events
+          </button>
+        ) : events.length > 0 ? (
+          <p className="font-mono text-[11px] uppercase tracking-wider text-zinc-600">
+            End of results
+          </p>
+        ) : null}
+      </div>
     </>
+  );
+}
+
+/**
+ * Shown only on the first load of a filter. Matching the card grid's shape
+ * keeps the layout from jumping when the real rows arrive.
+ */
+function SkeletonGrid() {
+  return (
+    <div
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      aria-hidden
+    >
+      {Array.from({ length: 6 }, (_, i) => (
+        <div
+          key={i}
+          className="h-56 animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.02]"
+        />
+      ))}
+    </div>
   );
 }
 

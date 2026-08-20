@@ -9,7 +9,9 @@ into visual, cross-asset market reaction stories. Target user: retail trader lea
 ## Tech Stack
 - Framework: Next.js 16 (App Router), React 19, TypeScript strict
 - Styling: Tailwind CSS v4
-- Charts: TradingView Lightweight Charts library
+- Charts: inline SVG in src/components/reactions/, geometry in
+  src/services/events/reactionChart.ts. lightweight-charts is installed but
+  unused — it is for the future intraday replay, not for 1h/1d/1w observations
 - Animations: Framer Motion
 - Database: Neon PostgreSQL via Prisma 7 + @prisma/adapter-pg + pg
 - PrismaClient requires adapter — no zero-arg constructor
@@ -27,7 +29,7 @@ into visual, cross-asset market reaction stories. Target user: retail trader lea
 
 ## Project Structure
 - src/app/ — Next.js routes, layouts, and route handlers (/api/*)
-- src/components/ — Reusable UI, grouped by domain (events/, charts/, landing/, patterns/, ui/)
+- src/components/ — Reusable UI, grouped by domain (events/, landing/, patterns/, reactions/, ui/)
 - src/lib/ — Third-party clients + app config (prisma.ts, eventCategories.ts, assets.ts)
 - src/services/ — Business logic and external-API services:
   - analytics/ — aggregate reaction stats

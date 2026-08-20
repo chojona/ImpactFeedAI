@@ -99,6 +99,45 @@ export const reactionTimingIneligibilityExplanation = (
   }
 };
 
+/**
+ * The timing story for one event, in one place.
+ *
+ * The detail page and the feed card were each deriving this independently and
+ * had already drifted on the "verified status but incomplete provenance" case.
+ * `tone` is deliberately binary — a reaction is either publishable or it is
+ * not, and a third shade would invite treating "nearly trusted" as trusted.
+ */
+export interface TimingDisplay {
+  label: string;
+  explanation: string;
+  tone: "trusted" | "caution";
+}
+
+export function timingDisplay(timing: {
+  status: EventTimingStatus;
+  reactionEligible: boolean;
+  ineligibilityReason: ReactionTimingIneligibility | null;
+}): TimingDisplay {
+  const claimsExactTiming =
+    timing.status === "VERIFIED" || timing.status === "SCHEDULED";
+
+  const label =
+    !timing.reactionEligible && claimsExactTiming
+      ? "Timing provenance incomplete"
+      : timingStatusLabel(timing.status);
+
+  const explanation =
+    timing.ineligibilityReason === null
+      ? timingStatusExplanation(timing.status)
+      : reactionTimingIneligibilityExplanation(timing.ineligibilityReason);
+
+  return {
+    label,
+    explanation,
+    tone: timing.reactionEligible ? "trusted" : "caution",
+  };
+}
+
 const newYorkDateTime = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
   month: "long",

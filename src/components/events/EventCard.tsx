@@ -1,168 +1,152 @@
-"use client";
-
-import { motion } from "framer-motion";
-
 import { CATEGORY_CONFIG } from "@/lib/eventCategories";
+import { MiniReactionBars } from "@/components/reactions/MiniReactionBars";
+import { ReleaseValueInline } from "./ReleaseValues";
 import {
-  formatNewYorkDateTime,
+  formatNewYorkDate,
   formatPlainDate,
   formatReferencePeriod,
-  timingStatusLabel,
+  timingDisplay,
 } from "@/services/events/timing";
-import { EventReleaseStats } from "./EventReleaseStats";
-import type { AssetReaction, NewsEvent } from "@/types/events";
+import { pctForWindow } from "@/services/events/reactionView";
+import type { NewsEvent } from "@/types/events";
 
 /**
  * Summary card for one event in the feed.
  *
- * Every block is conditional on the underlying column existing. Most events in
- * the library are bulk-ingested macro prints with no consensus and no
- * explanation, so a card with only a headline, a release line and a reaction row
- * is the normal shape rather than a degraded one.
+ * Built for scanning: category, when, the four release values, and the
+ * strongest measured reactions — enough to decide whether to open the event
+ * without opening it.
+ *
+ * Both the complete and the incomplete case are designed states. Most rows in
+ * the library are bulk-ingested macro prints with no consensus and untrusted
+ * timing, so a card reading "n/a" under Consensus and "Reaction unavailable"
+ * below is the *normal* shape, and it is laid out to look deliberate rather
+ * than broken. What it never does is fill either gap with a zero.
+ *
+ * Not a client component: the hover lift is a CSS transform rather than a
+ * Framer Motion spring, which removes per-card JavaScript from a list that
+ * grows without bound as the reader scrolls.
  */
 
-/** Assets shown on a card before collapsing into a "+N more" count. */
-const BADGE_LIMIT = 6;
+/** The horizon the feed headlines, matching `NewsEvent.primaryWindow`. */
+const FEED_WINDOW = "1d" as const;
 
-type Props = { event: NewsEvent };
-type MeasuredAsset = AssetReaction & { percentChange: number };
-
-const hasMeasuredOneDayMove = (
-  asset: AssetReaction,
-): asset is MeasuredAsset => asset.percentChange !== null;
-
-function timingLine(event: NewsEvent): string {
-  const status = timingStatusLabel(event.timing.status);
-  const displayedStatus =
-    !event.timing.reactionEligible &&
-    (event.timing.status === "VERIFIED" ||
-      event.timing.status === "SCHEDULED")
-      ? "Timing provenance incomplete"
-      : status;
-  const exact = formatNewYorkDateTime(event.timing.releaseAt);
-  if (exact !== null) {
-    if (event.timing.reactionEligible) return exact;
-    return `${exact} · ${displayedStatus}`;
-  }
-
-  const releaseDate = formatPlainDate(event.timing.releaseDate);
-  if (releaseDate !== null) return `${releaseDate} · ${displayedStatus}`;
-
-  const reference = event.releases
-    .map((release) => formatReferencePeriod(release.referencePeriodStart))
-    .find((value): value is string => value !== null);
-  if (reference !== undefined) {
-    return `Reference ${reference} · ${displayedStatus}`;
-  }
-  return displayedStatus;
+interface Props {
+  event: NewsEvent;
 }
 
 export function EventCard({ event }: Props) {
   const categoryColor = CATEGORY_CONFIG[event.category].color;
-  const measured = event.assets.filter(hasMeasuredOneDayMove);
-  const shown = measured.slice(0, BADGE_LIMIT);
-  const hidden = measured.length - shown.length;
+  const timing = timingDisplay(event.timing);
+  const measured = event.assets.filter(
+    (asset) => pctForWindow(asset, FEED_WINDOW) !== null,
+  );
 
   return (
-    <motion.article
-      whileHover={{ y: -4 }}
-      transition={{ type: "spring", stiffness: 320, damping: 24 }}
-      className="flex h-full flex-col gap-4 rounded-lg border border-white/5 bg-white/[0.02] p-5 transition-colors hover:border-white/10 hover:bg-white/[0.04]"
-    >
-      <div className="flex items-center justify-between gap-3">
+    <article className="flex h-full flex-col gap-3.5 rounded-lg border border-white/[0.06] bg-white/[0.015] p-4 transition duration-150 hover:-translate-y-0.5 hover:border-white/12 hover:bg-white/[0.035] sm:p-5">
+      <div className="flex items-start justify-between gap-3">
         <span
-          className="rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
+          className="shrink-0 rounded-md px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.16em]"
           style={{
-            backgroundColor: `${categoryColor}20`,
+            backgroundColor: `${categoryColor}1F`,
             color: categoryColor,
-            border: `1px solid ${categoryColor}40`,
+            border: `1px solid ${categoryColor}3D`,
           }}
         >
           {event.category}
         </span>
-        {event.timing.releaseAt !== null ? (
-          <time
-            className={`text-right text-xs ${
-              event.timing.reactionEligible
-                ? "text-zinc-500"
-                : "text-amber-300/70"
-            }`}
-            dateTime={event.timing.releaseAt}
-            title={timingStatusLabel(event.timing.status)}
-          >
-            {timingLine(event)}
-          </time>
-        ) : (
-          <span
-            className="text-right text-xs text-amber-300/70"
-            title={timingStatusLabel(event.timing.status)}
-          >
-            {timingLine(event)}
-          </span>
-        )}
+        <WhenLine event={event} />
       </div>
 
-      <h3 className="text-lg font-semibold leading-snug text-zinc-50">
+      <h3 className="text-[15px] font-semibold leading-snug text-zinc-50">
         {event.title}
       </h3>
 
-      {event.release && (
-        <EventReleaseStats
-          release={event.release}
-          category={event.category}
-          compact
-        />
-      )}
-
-      {event.explanation && (
-        <p className="line-clamp-3 text-sm leading-relaxed text-zinc-400">
-          {event.explanation}
-        </p>
-      )}
-
-      <div className="mt-auto">
-        {measured.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {shown.map((asset) => (
-              <AssetBadge key={asset.symbol} asset={asset} />
-            ))}
-            {hidden > 0 && (
-              <span className="flex items-center rounded-md bg-zinc-700/40 px-2 py-1 text-xs text-zinc-400">
-                +{hidden}
-              </span>
-            )}
-          </div>
-        ) : (
-          <p className="text-xs text-zinc-600">
-            {event.timing.reactionEligible
-              ? "No current-version 1D reactions measured"
-              : "Reactions suppressed — release timing is not trusted"}
+      {event.release !== null && (
+        <div className="rounded-md border border-white/[0.05] bg-black/20 px-3 py-2.5">
+          <p className="mb-1.5 truncate font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-600">
+            {event.release.metricName}
           </p>
+          <ReleaseValueInline
+            release={event.release}
+            category={event.category}
+          />
+        </div>
+      )}
+
+      <div className="mt-auto border-t border-white/[0.05] pt-3">
+        {measured.length > 0 ? (
+          <MiniReactionBars assets={event.assets} window={FEED_WINDOW} />
+        ) : (
+          <div>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+              Reaction unavailable
+            </p>
+            <p className="mt-1 text-[11px] leading-snug text-zinc-600">
+              {event.timing.reactionEligible
+                ? "No current-version price window is stored for this release."
+                : timing.label}
+            </p>
+          </div>
         )}
       </div>
-    </motion.article>
+    </article>
   );
 }
 
-function AssetBadge({ asset }: { asset: MeasuredAsset }) {
-  const pct = asset.percentChange;
-  const colorClass =
-    asset.direction === "UP"
-      ? "bg-[#00FF94]/10 text-[#00FF94]"
-      : asset.direction === "DOWN"
-        ? "bg-red-500/10 text-red-400"
-        : "bg-zinc-700/40 text-zinc-300";
+/**
+ * The most precise "when" the record supports, and no more. An exact instant
+ * where one is sourced; otherwise the publication date, the reference period,
+ * or nothing — each labelled with the timing status so the drop in precision is
+ * visible rather than silent.
+ */
+function WhenLine({ event }: { event: NewsEvent }) {
+  const timing = timingDisplay(event.timing);
+  const exact = formatNewYorkDate(event.timing.releaseAt);
+  const date = formatPlainDate(event.timing.releaseDate);
+  const reference = event.releases
+    .map((release) => formatReferencePeriod(release.referencePeriodStart))
+    .find((value): value is string => value !== null);
+
+  const tone =
+    timing.tone === "trusted" ? "text-zinc-400" : "text-amber-300/70";
+
+  const body =
+    exact !== null
+      ? exact
+      : date !== null
+        ? date
+        : reference !== undefined
+          ? `Ref ${reference}`
+          : "No release date";
+
+  const dateTime =
+    exact !== null
+      ? (event.timing.releaseAt ?? undefined)
+      : date !== null
+        ? (event.timing.releaseDate ?? undefined)
+        : undefined;
+
+  const content = (
+    <>
+      <span className={`block font-mono text-[11px] ${tone}`}>{body}</span>
+      <span
+        className={`block font-mono text-[9px] uppercase tracking-[0.12em] ${
+          timing.tone === "trusted" ? "text-zinc-600" : "text-amber-300/50"
+        }`}
+      >
+        {timing.tone === "trusted" ? "Verified timing" : timing.label}
+      </span>
+    </>
+  );
 
   return (
-    <span
-      className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs ${colorClass}`}
-      title={`${asset.name} — pre-release baseline to one session after the release session`}
-    >
-      <span className="font-semibold text-zinc-200">{asset.symbol}</span>
-      <span className="font-mono font-semibold">
-        {pct > 0 ? "+" : ""}
-        {pct.toFixed(2)}%
-      </span>
+    <span className="shrink-0 text-right" title={timing.explanation}>
+      {dateTime === undefined ? (
+        content
+      ) : (
+        <time dateTime={dateTime}>{content}</time>
+      )}
     </span>
   );
 }

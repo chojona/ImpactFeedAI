@@ -133,7 +133,7 @@ Everything listed here is confirmed present in the repository.
 | Framework | Next.js 16.2.6 (App Router) |
 | UI | React 19.2, TypeScript 5 (`strict`) |
 | Styling | Tailwind CSS v4 (via `@tailwindcss/postcss`) |
-| Charts | `lightweight-charts` 5.2 |
+| Charts | Inline SVG, rendered on the server (see `src/components/reactions/`) |
 | Animation | `framer-motion` 12 |
 | Icons | `lucide-react` |
 | Database | Neon PostgreSQL |
@@ -146,10 +146,13 @@ Everything listed here is confirmed present in the repository.
 | CI | GitHub Actions (`.github/workflows/ci.yml`) |
 | Deployment target | Vercel; local project-link metadata is not committed |
 
-**Declared but currently unused:** `@anthropic-ai/sdk`. No AI calls exist in the
-codebase yet. `axios` and `recharts` were declared but imported nowhere and have
-been removed. **Not present:** Docker, Python, tRPC, component tests or
-end-to-end tests.
+**Declared but currently unused:** `@anthropic-ai/sdk` — no AI calls exist in
+the codebase yet — and `lightweight-charts`, retained for the planned intraday
+replay. The reaction visualizations are inline SVG because what the schema holds
+is three discrete observations per instrument, not a continuous series; a
+candle library is the right tool only once candle storage exists.
+`axios` and `recharts` were declared but imported nowhere and have been removed.
+**Not present:** Docker, Python, tRPC, component tests or end-to-end tests.
 
 ---
 
@@ -203,10 +206,10 @@ impactfeedai/
     │   └── api/
     │       └── events/            # GET event list (reads Postgres)
     ├── components/
-    │   ├── charts/                # ReactionPanel + lightweight-charts sparkline
-    │   ├── events/                # browser, card, release stats, filter bar, search
-    │   ├── landing/               # landing-page visuals
-    │   ├── patterns/              # pattern card
+    │   ├── events/                # header, browser, card, release values, badges
+    │   ├── landing/               # nav, hero, live preview panel, pricing, footer
+    │   ├── patterns/              # coverage table, horizon matrix, distribution
+    │   ├── reactions/             # ReactionChart, summary table, cross-asset bars
     │   └── ui/                    # small shared primitives
     ├── lib/
     │   ├── prisma.ts              # Prisma client singleton + isDatabaseConfigured()
@@ -387,6 +390,10 @@ than a wrong pixel:
 | `reactionRepair.test.ts` | deterministic cleanup scope and repair idempotence |
 | `mapEvent.test.ts` | row→UI mapping, null propagation, category mapping |
 | `patternAnalysis.test.ts` | aggregation over measured moves only, sample sizes |
+| `patternProfile.test.ts` | per-horizon profiles, distinct-event counts, distributions, timing labels |
+| `reactionChart.test.ts` | plot geometry — an unmeasured window contributes no point |
+| `reactionRanking.test.ts` | cross-asset ranking, unmeasured/zero separation, percent formatting |
+| `releaseView.test.ts` | absent consensus/prior/surprise render as absent, surprise direction |
 | `queryParams.test.ts` | `/api/events` parameter validation and clamping |
 
 Still outstanding: component tests (`@testing-library/react`) and end-to-end
@@ -423,12 +430,16 @@ feed, event-detail and pattern routes all need the application connection.
 Early development, pre-MVP.
 
 **Working today**
-- Landing page (hero, features, pricing) — static, no signup flow
+- Landing page — capability grid marks live versus planned, and both figure
+  sections read the database rather than hardcoded numbers
 - Event browser with category filter, full-text search, two sorts and infinite
   scroll — reading Postgres through `/api/events`
 - Event detail: provenance-labelled expectation vs. actual in canonical units,
-  plus a cross-asset reaction only when release timing is eligible
-- Pattern library: per-category aggregates with per-asset sample sizes
+  a reaction chart, cross-asset table and ranked comparison across 1H/1D/1W —
+  only when release timing is eligible — and the category's historical profile
+- Pattern library: library coverage by timing and consensus provenance, plus
+  per-category median/range per horizon and a dot plot of the individual
+  observations, each with its sample size
 - Ingestion pipelines for ~51 curated events and bulk FRED / BLS / FOMC
   history; untrusted timing is retained as metadata but never priced
 - A timing-gated, idempotent price backfill and a dry-run-first legacy-reaction
