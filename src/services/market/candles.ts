@@ -192,6 +192,51 @@ export async function getCandles({
   }));
 }
 
+export interface EventCandleWindow {
+  candles: Candle[];
+  /**
+   * Age of the release in days at load time. Resolved here, in the loader,
+   * because reading the clock inside a component render makes that render a
+   * non-pure function of its props — React's purity rule applies to Server
+   * Components too. The presentation layer receives a number and compares it.
+   */
+  releaseAgeDays: number;
+}
+
+/**
+ * Load the candles surrounding a release.
+ *
+ * A thin wrapper over {@link getCandles}, not a second query path: it issues
+ * exactly one database read, through the same function, and only adds the
+ * window arithmetic and the clock read that the caller would otherwise have to
+ * do during render.
+ */
+export async function loadEventCandles({
+  symbol,
+  interval,
+  releaseAt,
+  windowMs,
+}: {
+  symbol: string;
+  interval: CandleInterval;
+  releaseAt: Date;
+  windowMs: number;
+}): Promise<EventCandleWindow> {
+  const candles = await getCandles({
+    symbol,
+    interval,
+    from: new Date(releaseAt.getTime() - windowMs),
+    to: new Date(releaseAt.getTime() + windowMs),
+  });
+
+  return {
+    candles,
+    releaseAgeDays: Math.floor(
+      (Date.now() - releaseAt.getTime()) / 86_400_000,
+    ),
+  };
+}
+
 export interface CandleCoverageRow {
   symbol: string;
   interval: CandleInterval;

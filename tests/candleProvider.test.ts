@@ -18,8 +18,6 @@ import { CURRENT_CANDLE_INGESTION_VERSION } from "@/services/market/candles";
  * "the adapter returns candles that look fine and are on the wrong basis".
  */
 
-const HOUR = 3_600_000;
-
 interface Bar {
   date: Date;
   open: number | null;

@@ -6,6 +6,10 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/Header";
 import { EventHeader } from "@/components/events/EventHeader";
 import { ReleaseValueGrid } from "@/components/events/ReleaseValues";
+import {
+  EventMarketChart,
+  MarketChartSkeleton,
+} from "@/components/market/EventMarketChart";
 import { EventInHistory } from "@/components/patterns/EventInHistory";
 import { HorizonMatrix } from "@/components/patterns/HorizonMatrix";
 import { EventReactionExplorer } from "@/components/reactions/EventReactionExplorer";
@@ -112,7 +116,7 @@ export default async function EventDetailPage({ params }: PageProps) {
         <div className="mt-14 space-y-14">
           <PageSection
             title="Market reaction"
-            description="Percent change from the pre-release baseline bar. Only measured windows are plotted; the schema stores four prices per instrument, not a continuous series."
+            description="What SPY actually traded around the release, then the measured cross-asset reaction. The candles are observed hourly bars; the horizons below are four stored prices per instrument, not a continuous series."
           >
             {!event.timing.reactionEligible ? (
               <ReactionSuppressed
@@ -125,7 +129,22 @@ export default async function EventDetailPage({ params }: PageProps) {
                 }
               />
             ) : hasReaction ? (
-              <EventReactionExplorer assets={event.assets} />
+              <div className="space-y-10">
+                {/* The traded path first, then the measured horizons. Reading
+                    order matches the research order: what actually happened,
+                    then how it is summarised. The chart streams separately —
+                    it is a second query, and the reaction table is already in
+                    hand from the page's own read. */}
+                {event.timing.releaseAt !== null && (
+                  <Suspense fallback={<MarketChartSkeleton />}>
+                    <EventMarketChart
+                      releaseAt={new Date(event.timing.releaseAt)}
+                      eventLabel={event.eventType}
+                    />
+                  </Suspense>
+                )}
+                <EventReactionExplorer assets={event.assets} />
+              </div>
             ) : (
               <EmptyNote title="Reaction unavailable">
                 This release has a sourced instant, but no current-version price
