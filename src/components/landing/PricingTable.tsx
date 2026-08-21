@@ -137,21 +137,21 @@ const FEATURE_ROWS: FeatureRow[] = [
 
 const tierNameClass = (accent: TierColumn["accent"]): string =>
   accent === "primary"
-    ? "text-[#00FF94]"
+    ? "text-accent"
     : accent === "secondary"
       ? "text-[#FF6B35]"
-      : "text-zinc-300";
+      : "text-ink-2";
 
 /** Subtle vertical tint behind the Pro column for emphasis. */
 const tierCellTintClass = (accent: TierColumn["accent"]): string =>
-  accent === "primary" ? "bg-[#00FF94]/[0.025]" : "";
+  accent === "primary" ? "bg-accent/[0.025]" : "";
 
 const tierCtaClass = (accent: TierColumn["accent"]): string => {
   if (accent === "primary")
-    return "bg-[#00FF94] text-[#080C10] hover:bg-[#00FF94]/90";
+    return "bg-accent text-canvas hover:bg-accent/90";
   if (accent === "secondary")
     return "border border-[#FF6B35]/40 bg-[#FF6B35]/[0.06] text-[#FF6B35] hover:bg-[#FF6B35]/10";
-  return "border border-white/15 bg-white/[0.03] text-zinc-100 hover:border-white/25 hover:bg-white/[0.06]";
+  return "border border-white/15 bg-white/[0.03] text-ink hover:border-white/25 hover:bg-white/[0.06]";
 };
 
 function renderCell(value: CellValue) {
@@ -159,7 +159,7 @@ function renderCell(value: CellValue) {
     return (
       <span className="inline-flex items-center justify-center">
         <Check
-          className="h-4 w-4 text-[#00FF94]"
+          className="h-4 w-4 text-accent"
           strokeWidth={3}
           aria-label="Included"
         />
@@ -170,40 +170,40 @@ function renderCell(value: CellValue) {
     return (
       <span className="inline-flex items-center justify-center">
         <Minus
-          className="h-4 w-4 text-zinc-500"
+          className="h-4 w-4 text-ink0"
           strokeWidth={2.5}
           aria-label="Not included"
         />
       </span>
     );
   }
-  return <span className="font-mono text-[13px] text-zinc-200">{value}</span>;
+  return <span className="font-mono text-[13px] text-ink-2">{value}</span>;
 }
 
 export function PricingTable() {
   return (
     <section
       id="pricing"
-      className="scroll-mt-14 border-b border-white/[0.06] bg-white/[0.01]"
+      className="scroll-mt-14 border-b border-line bg-white/[0.01]"
     >
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
         <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-xl">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-3">
               Pricing · Beta rates
             </span>
-            <h2 className="mt-3 font-mono text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
+            <h2 className="mt-3 font-mono text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
               Honest pricing. Lock the beta rate before launch.
             </h2>
           </div>
-          <p className="max-w-sm font-sans text-sm text-zinc-300">
+          <p className="max-w-sm font-sans text-sm text-ink-2">
             Everything in the library is free during beta. Rows marked{" "}
-            <span className="font-mono text-zinc-400">planned</span> are not
+            <span className="font-mono text-ink-3">planned</span> are not
             built yet on any tier.
           </p>
         </div>
 
-        <div className="rounded-lg border border-zinc-800 bg-[#0A0F14]">
+        <div className="rounded-lg border border-line bg-surface-1">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-separate border-spacing-0 text-left">
               <caption className="sr-only">
@@ -220,9 +220,9 @@ export function PricingTable() {
                 <tr>
                   <th
                     scope="col"
-                    className="border-b border-zinc-800 px-5 pb-4 pt-7 align-bottom"
+                    className="border-b border-line px-5 pb-4 pt-7 align-bottom"
                   >
-                    <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-3">
                       Compare plans
                     </span>
                   </th>
@@ -230,12 +230,12 @@ export function PricingTable() {
                     <th
                       key={tier.key}
                       scope="col"
-                      className={`relative border-b border-zinc-800 px-4 pb-4 pt-7 text-center align-bottom ${tierCellTintClass(
+                      className={`relative border-b border-line px-4 pb-4 pt-7 text-center align-bottom ${tierCellTintClass(
                         tier.accent,
                       )}`}
                     >
                       {tier.badge && (
-                        <span className="absolute left-1/2 top-2 -translate-x-1/2 rounded-full border border-[#00FF94]/30 bg-[#080C10] px-2.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-[#00FF94]">
+                        <span className="absolute left-1/2 top-2 -translate-x-1/2 rounded-full border border-[#00FF94]/30 bg-canvas px-2.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-accent">
                           {tier.badge}
                         </span>
                       )}
@@ -247,10 +247,10 @@ export function PricingTable() {
                         {tier.name}
                       </div>
                       <div className="mt-2">
-                        <span className="font-mono text-xl font-semibold text-zinc-50">
+                        <span className="font-mono text-xl font-semibold text-ink">
                           {tier.price}
                         </span>
-                        <span className="ml-1 font-mono text-[11px] text-zinc-400">
+                        <span className="ml-1 font-mono text-[11px] text-ink-3">
                           {tier.cadence}
                         </span>
                       </div>
@@ -262,18 +262,18 @@ export function PricingTable() {
               <tbody>
                 {FEATURE_ROWS.map((row, index) => {
                   const stripe =
-                    index % 2 === 1 ? "bg-zinc-900/40" : "bg-transparent";
+                    index % 2 === 1 ? "bg-white/[0.02]" : "bg-transparent";
                   return (
                     <tr key={row.label}>
                       <th
                         scope="row"
-                        className={`border-b border-zinc-800/60 px-5 py-3 text-left align-middle font-normal ${stripe}`}
+                        className={`border-b border-line px-5 py-3 text-left align-middle font-normal ${stripe}`}
                       >
-                        <span className="font-mono text-[13px] text-zinc-300">
+                        <span className="font-mono text-[13px] text-ink-2">
                           {row.label}
                         </span>
                         {row.planned === true && (
-                          <span className="ml-2 rounded-full border border-white/10 bg-white/[0.02] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500">
+                          <span className="ml-2 rounded-full border border-line bg-white/[0.02] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink0">
                             planned
                           </span>
                         )}
@@ -281,7 +281,7 @@ export function PricingTable() {
                       {TIER_COLUMNS.map((tier) => (
                         <td
                           key={tier.key}
-                          className={`border-b border-zinc-800/60 px-4 py-3 text-center align-middle ${stripe} ${tierCellTintClass(
+                          className={`border-b border-line px-4 py-3 text-center align-middle ${stripe} ${tierCellTintClass(
                             tier.accent,
                           )}`}
                         >
@@ -302,7 +302,7 @@ export function PricingTable() {
                       )}`}
                     >
                       {tier.ctaHref === null ? (
-                        <span className="inline-flex h-9 w-full cursor-default items-center justify-center rounded-md border border-white/10 px-3 font-mono text-[12px] font-semibold text-zinc-500">
+                        <span className="inline-flex h-9 w-full cursor-default items-center justify-center rounded-md border border-line px-3 font-mono text-[12px] font-semibold text-ink0">
                           {tier.ctaLabel}
                         </span>
                       ) : (
@@ -323,7 +323,7 @@ export function PricingTable() {
           </div>
         </div>
 
-        <p className="mt-4 font-mono text-[11px] text-zinc-500">
+        <p className="mt-4 font-mono text-[11px] text-ink0">
           Planned rows are on the roadmap and are not available on any tier
           today. Paid tiers have no checkout yet.
         </p>

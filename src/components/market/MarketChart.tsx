@@ -13,6 +13,8 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 
+import { Badge } from "@/components/ui/Badge";
+import { MetricCell } from "@/components/ui/Metric";
 import type {
   ChartCandle,
   ChartVolumePoint,
@@ -30,7 +32,7 @@ import type {
  * fetching, knows nothing about Prisma, providers or price bases, and does not
  * transform the series beyond handing it to the library — every decision that
  * could misrepresent the data was made on the server in
- * `services/market/candleChart.ts`.
+ * `services/market/candleChart.ts` or in `EventMarketChart`.
  *
  * ### Timezone
  *
@@ -41,12 +43,31 @@ import type {
  * crosshair are formatted through `Intl.DateTimeFormat` in America/New_York,
  * which is DST-correct by construction and matches how the rest of the app
  * renders event times.
+ *
+ * ### What the redesign changed
+ *
+ * The chart used to be a bare canvas under a one-line label: the reader could
+ * see a shape but had to hover to learn a single number, and the axis type was
+ * 10px at roughly 3:1 contrast. It now carries a stat strip — charted span,
+ * observed high and low, bar count — so the frame states what is being shown
+ * before the canvas is interpreted, plus larger and higher-contrast axis type
+ * and a taller box.
+ *
+ * The strip deliberately reports **no percentage**. The page already quotes
+ * anchored 1H/1D/1W returns measured from the pre-release bar, and a
+ * "first open → last close" figure computed over an arbitrary ±24h charting
+ * window is a different measurement that would sit beside them looking like a
+ * contradiction. High, low and span are facts about the bars on screen and
+ * cannot be confused for a reaction.
  */
 
 const UP = "#00FF94";
 const DOWN = "#FF5C5C";
-const GRID = "rgba(255, 255, 255, 0.04)";
-const TEXT = "#71717A";
+const GRID = "rgba(255, 255, 255, 0.045)";
+/** Matches `--color-ink-4`; the previous #71717A sat below the contrast floor. */
+const AXIS_TEXT = "#85858F";
+const AXIS_LINE = "rgba(255,255,255,0.10)";
+const RELEASE_MARK = "#FF6B35";
 
 const easternTime = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
@@ -78,8 +99,13 @@ const easternDayKey = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-const asDate = (time: Time): Date =>
-  new Date((time as UTCTimestamp) * 1000);
+const asDate = (time: Time): Date => new Date((time as UTCTimestamp) * 1000);
+
+const price = (value: number): string =>
+  value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 interface Props {
   symbol: string;
@@ -94,6 +120,12 @@ interface Props {
   eventTimeLabel: string;
   /** Accessible description; the canvas itself is hidden from the a11y tree. */
   description: string;
+  /** Highest high across the charted bars. Resolved on the server. */
+  high: number | null;
+  /** Lowest low across the charted bars. Resolved on the server. */
+  low: number | null;
+  /** Bars whose volume the provider withheld. Rendered as a caveat, not a 0. */
+  volumeMissing: number;
 }
 
 export function MarketChart({
@@ -105,6 +137,9 @@ export function MarketChart({
   eventLabel,
   eventTimeLabel,
   description,
+  high,
+  low,
+  volumeMissing,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -120,10 +155,10 @@ export function MarketChart({
       height: container.clientHeight,
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: TEXT,
+        textColor: AXIS_TEXT,
         fontFamily:
           "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-        fontSize: 10,
+        fontSize: 11,
         attributionLogo: false,
       },
       grid: {
@@ -131,24 +166,33 @@ export function MarketChart({
         horzLines: { color: GRID },
       },
       rightPriceScale: {
-        borderColor: "rgba(255,255,255,0.08)",
-        scaleMargins: { top: 0.08, bottom: 0.3 },
+        borderColor: AXIS_LINE,
+        scaleMargins: { top: 0.08, bottom: 0.28 },
       },
       timeScale: {
-        borderColor: "rgba(255,255,255,0.08)",
+        borderColor: AXIS_LINE,
         timeVisible: true,
         secondsVisible: false,
+        // Room for an 11px label without the axis dropping every other tick.
+        minBarSpacing: 4,
         // Axis labels in US Eastern. The underlying values stay UTC.
-        tickMarkFormatter: (time: Time) => {
-          const date = asDate(time);
-          return easternTime.format(date);
-        },
+        tickMarkFormatter: (time: Time) => easternTime.format(asDate(time)),
       },
       localization: {
         // Crosshair label: include the day, since the window spans sessions.
         timeFormatter: (time: Time) => easternDayTime.format(asDate(time)),
       },
-      crosshair: { mode: CrosshairMode.Normal },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: {
+          color: "rgba(255,255,255,0.28)",
+          labelBackgroundColor: "#16202B",
+        },
+        horzLine: {
+          color: "rgba(255,255,255,0.28)",
+          labelBackgroundColor: "#16202B",
+        },
+      },
       handleScale: { axisPressedMouseMove: false },
     });
     chartRef.current = chart;
@@ -179,7 +223,7 @@ export function MarketChart({
     });
     chart
       .priceScale("volume")
-      .applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
+      .applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
     // Whitespace points (no `value`) render as gaps — a bar with unknown
     // volume draws nothing rather than a zero-height bar.
     volumeSeries.setData(
@@ -192,7 +236,7 @@ export function MarketChart({
           time: marker.anchorTime as UTCTimestamp,
           position: "aboveBar",
           shape: "arrowDown",
-          color: "#FF6B35",
+          color: RELEASE_MARK,
           // The label always quotes the true release time, even though the
           // marker is drawn on the bar containing it.
           text: `${eventLabel} ${eventTimeLabel}`,
@@ -232,44 +276,73 @@ export function MarketChart({
         })();
 
   return (
-    <figure className="w-full">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono text-sm font-semibold text-zinc-100">
-            {symbol}
-          </span>
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
-            · {intervalLabel}
-          </span>
+    <figure className="w-full overflow-hidden rounded-lg border border-line bg-surface-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="num text-sm font-semibold text-ink">{symbol}</span>
+          <Badge size="xs">{intervalLabel} bars</Badge>
+          <span className="text-[11px] text-ink-3">Observed OHLC</span>
         </div>
-        <div className="font-mono text-[10px] tabular-nums text-zinc-600">
+        <div className="num text-[11px] text-ink-4">
           {spanLabel} · times in ET
         </div>
       </div>
+
+      <dl className="grid grid-cols-3 divide-line px-4 py-3 sm:divide-x sm:px-5">
+        <MetricCell
+          label="Observed high"
+          value={high === null ? null : price(high)}
+          size="sm"
+          state="unavailable"
+          className="sm:pl-0"
+        />
+        <MetricCell
+          label="Observed low"
+          value={low === null ? null : price(low)}
+          size="sm"
+          state="unavailable"
+        />
+        <MetricCell
+          label="Bars charted"
+          value={String(candles.length)}
+          size="sm"
+          state="measured"
+          note={
+            volumeMissing > 0
+              ? `${volumeMissing} without reported volume`
+              : undefined
+          }
+          noteTone={volumeMissing > 0 ? "caution" : "muted"}
+        />
+      </dl>
 
       {/* The canvas carries no accessible information, so it is hidden and the
           summary beside it is the accessible representation. */}
       <div
         ref={containerRef}
         aria-hidden
-        className="h-[280px] w-full sm:h-[340px] lg:h-[400px]"
+        className="h-[300px] w-full sm:h-[360px] lg:h-[430px]"
       />
 
       <p className="sr-only">{description}</p>
 
-      <figcaption className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-600">
+      <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line px-4 py-2.5 text-[11px] text-ink-3 sm:px-5">
         <span className="flex items-center gap-1.5">
           <span
             aria-hidden
             className="inline-block h-0 w-0 border-x-4 border-t-[6px] border-x-transparent"
-            style={{ borderTopColor: "#FF6B35" }}
+            style={{ borderTopColor: RELEASE_MARK }}
           />
           {eventLabel} release · {eventTimeLabel}
         </span>
         {marker?.approximate === true && (
-          <span>Marker sits on the bar containing the release.</span>
+          <span className="text-ink-4">
+            Marker sits on the bar containing the release.
+          </span>
         )}
-        <span>Observed OHLC bars — not a reaction summary.</span>
+        <span className="text-ink-4">
+          Every bar is an observation — this is not a reaction summary.
+        </span>
       </figcaption>
     </figure>
   );

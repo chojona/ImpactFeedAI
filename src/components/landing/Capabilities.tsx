@@ -79,22 +79,22 @@ const CAPABILITIES: Capability[] = [
 
 export function Capabilities() {
   return (
-    <section className="border-b border-white/[0.06]">
+    <section className="border-b border-line">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
         <div className="mb-12 max-w-2xl">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-3">
             Capabilities
           </span>
-          <h2 className="mt-3 font-mono text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
+          <h2 className="mt-3 font-mono text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
             A research workflow built around catalysts, not headlines.
           </h2>
-          <p className="mt-3 font-sans text-[15px] leading-relaxed text-zinc-300">
+          <p className="mt-3 font-sans text-[15px] leading-relaxed text-ink-2">
             What is built is marked live. What is not is marked planned, with the
             reason it is not built yet.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-3">
           {CAPABILITIES.map((capability) => (
             <CapabilityCard key={capability.index} capability={capability} />
           ))}
@@ -110,30 +110,30 @@ function CapabilityCard({ capability }: { capability: Capability }) {
     <article className="flex flex-col bg-[#0A0F14] p-6 sm:p-7">
       <div className="flex items-center gap-3">
         <span
-          className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.02] ${
-            planned ? "text-zinc-500" : "text-[#00FF94]"
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-line bg-white/[0.02] ${
+            planned ? "text-ink0" : "text-accent"
           }`}
         >
           {capability.icon}
         </span>
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-ink0">
           {capability.index}
         </span>
         <span className="h-px flex-1 bg-white/[0.06]" />
         <span
           className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] ${
             planned
-              ? "border-white/10 bg-white/[0.02] text-zinc-500"
-              : "border-[#00FF94]/25 bg-[#00FF94]/[0.06] text-[#00FF94]"
+              ? "border-line bg-white/[0.02] text-ink0"
+              : "border-[#00FF94]/25 bg-accent/[0.06] text-accent"
           }`}
         >
           {planned ? "Planned" : "Live"}
         </span>
       </div>
-      <h3 className="mt-5 font-mono text-base font-semibold tracking-tight text-zinc-50">
+      <h3 className="mt-5 font-mono text-base font-semibold tracking-tight text-ink">
         {capability.title}
       </h3>
-      <p className="mt-2 font-sans text-[13px] leading-relaxed text-zinc-300">
+      <p className="mt-2 font-sans text-[13px] leading-relaxed text-ink-2">
         {capability.description}
       </p>
     </article>

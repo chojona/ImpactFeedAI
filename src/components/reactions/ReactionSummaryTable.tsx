@@ -1,3 +1,5 @@
+import { InstrumentBadge } from "@/components/ui/CategoryBadge";
+import { ScrollableTable } from "@/components/ui/ScrollableTable";
 import {
   REACTION_WINDOWS,
   WINDOW_DESCRIPTIONS,
@@ -20,6 +22,13 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
  *
  * Selecting a row is what drives the chart beside it, so the table is the
  * navigation as well as the data.
+ *
+ * Two redesign changes, both about the phone. The instrument column is
+ * `sticky left-0`, so scrolling the horizons sideways no longer scrolls the
+ * ticker out of view and leaves a grid of unlabelled percentages; and the
+ * scroll container carries an edge indicator that appears only when the table
+ * actually overflows, instead of guillotining a column mid-glyph — which is
+ * what made the mobile layout look broken rather than merely narrow.
  */
 
 interface Props {
@@ -47,135 +56,139 @@ export function ReactionSummaryTable({
   ).length;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[300px] border-collapse text-sm">
-        <caption className="sr-only">
-          {caption ??
-            `Percent change from the pre-release baseline for ${assets.length} assets at each measured window.`}
-        </caption>
-        <thead>
-          <tr className="border-b border-white/10">
-            <th
-              scope="col"
-              className="py-2 pr-3 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
-            >
-              Asset
-            </th>
-            {REACTION_WINDOWS.map((window) => (
+    <div>
+      <ScrollableTable label="Cross-asset reaction by horizon">
+        <table className="w-full min-w-[320px] border-collapse text-sm">
+          <caption className="sr-only">
+            {caption ??
+              `Percent change from the pre-release baseline for ${assets.length} assets at each measured window.`}
+          </caption>
+          <thead>
+            <tr className="border-b border-line-strong">
               <th
-                key={window}
                 scope="col"
-                aria-sort={window === sortWindow ? "descending" : "none"}
-                className="py-2 pl-3 text-right font-mono text-[10px] font-semibold uppercase tracking-[0.16em]"
+                className="sticky left-0 z-10 bg-surface-1 py-2 pr-3 text-left"
               >
-                {onSortWindowChange ? (
-                  <button
-                    type="button"
-                    onClick={() => onSortWindowChange(window)}
-                    aria-pressed={window === sortWindow}
-                    title={`Sort by the move ${WINDOW_DESCRIPTIONS[window]}`}
-                    className={`rounded px-1.5 py-0.5 transition hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]/40 ${
-                      window === sortWindow ? "text-zinc-100" : "text-zinc-500"
-                    }`}
-                  >
-                    {WINDOW_LABELS[window]}
-                  </button>
-                ) : (
-                  <span
-                    className={
-                      window === sortWindow ? "text-zinc-100" : "text-zinc-500"
-                    }
-                  >
-                    {WINDOW_LABELS[window]}
-                  </span>
-                )}
+                <span className="eyebrow">Instrument</span>
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {ordered.map((asset) => {
-            const selected = asset.symbol === selectedSymbol;
-            return (
-              <tr
-                key={asset.symbol}
-                className={`border-b border-white/[0.04] transition-colors last:border-0 ${
-                  selected ? "bg-white/[0.05]" : "hover:bg-white/[0.02]"
-                }`}
-              >
-                <th scope="row" className="py-1.5 pr-3 text-left font-normal">
-                  {onSelect ? (
+              {REACTION_WINDOWS.map((window) => (
+                <th
+                  key={window}
+                  scope="col"
+                  aria-sort={window === sortWindow ? "descending" : "none"}
+                  className="py-2 pl-3 text-right"
+                >
+                  {onSortWindowChange ? (
                     <button
                       type="button"
-                      onClick={() => onSelect(asset.symbol)}
-                      aria-pressed={selected}
-                      className="group flex w-full items-baseline gap-2 rounded px-1 py-0.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]/40"
+                      onClick={() => onSortWindowChange(window)}
+                      aria-pressed={window === sortWindow}
+                      title={`Sort by the move ${WINDOW_DESCRIPTIONS[window]}`}
+                      className={`eyebrow rounded px-1.5 py-0.5 transition-colors hover:text-ink ${
+                        window === sortWindow ? "text-ink" : ""
+                      }`}
                     >
-                      <AssetLabel asset={asset} selected={selected} />
+                      {WINDOW_LABELS[window]}
                     </button>
                   ) : (
-                    <span className="flex items-baseline gap-2 px-1">
-                      <AssetLabel asset={asset} selected={selected} />
+                    <span
+                      className={`eyebrow ${
+                        window === sortWindow ? "text-ink" : ""
+                      }`}
+                    >
+                      {WINDOW_LABELS[window]}
                     </span>
                   )}
                 </th>
-                {REACTION_WINDOWS.map((window) => {
-                  const value = pctForWindow(asset, window);
-                  const formatted = formatPercentChange(value);
-                  return (
-                    <td
-                      key={window}
-                      style={heatCellStyle(value, maxAbs)}
-                      title={
-                        formatted === null
-                          ? `${asset.symbol} ${WINDOW_LABELS[window]}: not measured`
-                          : `${asset.symbol} ${formatted} ${WINDOW_DESCRIPTIONS[window]}`
-                      }
-                      className={`py-1.5 pl-3 pr-2 text-right font-mono text-[13px] tabular-nums ${moveTextClass(
-                        value,
-                      )} ${window === sortWindow ? "font-semibold" : ""}`}
-                    >
-                      {formatted ?? <span aria-label="not measured">—</span>}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ordered.map((asset) => {
+              const selected = asset.symbol === selectedSymbol;
+              return (
+                <tr
+                  key={asset.symbol}
+                  className={`group border-b border-line transition-colors last:border-0 ${
+                    selected ? "bg-surface-2" : "hover:bg-white/[0.02]"
+                  }`}
+                >
+                  <th
+                    scope="row"
+                    className={`sticky left-0 z-10 py-1.5 pr-3 text-left font-normal ${
+                      selected
+                        ? "bg-surface-2"
+                        : "bg-surface-1 group-hover:bg-surface-2"
+                    }`}
+                  >
+                    {onSelect ? (
+                      <button
+                        type="button"
+                        onClick={() => onSelect(asset.symbol)}
+                        aria-pressed={selected}
+                        title={`Chart ${asset.symbol}`}
+                        className="flex w-full rounded px-1 py-0.5 text-left"
+                      >
+                        <InstrumentBadge
+                          symbol={asset.symbol}
+                          name={asset.name}
+                          emphasis={selected}
+                        />
+                      </button>
+                    ) : (
+                      <span className="flex px-1">
+                        <InstrumentBadge
+                          symbol={asset.symbol}
+                          name={asset.name}
+                          emphasis={selected}
+                        />
+                      </span>
+                    )}
+                  </th>
+                  {REACTION_WINDOWS.map((window) => {
+                    const value = pctForWindow(asset, window);
+                    const formatted = formatPercentChange(value);
+                    return (
+                      <td
+                        key={window}
+                        style={heatCellStyle(value, maxAbs)}
+                        title={
+                          formatted === null
+                            ? `${asset.symbol} ${WINDOW_LABELS[window]}: not measured`
+                            : `${asset.symbol} ${formatted} ${WINDOW_DESCRIPTIONS[window]}`
+                        }
+                        className={`num py-2 pl-3 pr-2 text-right text-[13px] ${moveTextClass(
+                          value,
+                        )} ${window === sortWindow ? "font-semibold" : ""}`}
+                      >
+                        {formatted ?? (
+                          <span aria-label="not measured">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </ScrollableTable>
 
-      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-600">
+      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-3">
         <span>
-          <span className="font-mono tabular-nums text-zinc-400">
+          <span className="num font-semibold text-ink">
             {measuredCount}/{assets.length}
           </span>{" "}
-          assets measured at {WINDOW_LABELS[sortWindow]}
+          measured at {WINDOW_LABELS[sortWindow]}
         </span>
-        <span>&ldquo;—&rdquo; means not measured, not zero.</span>
+        <span className="text-ink-4">
+          <span aria-hidden className="num">
+            —
+          </span>{" "}
+          means not measured, not zero
+        </span>
       </p>
     </div>
-  );
-}
-
-function AssetLabel({
-  asset,
-  selected,
-}: {
-  asset: AssetReaction;
-  selected: boolean;
-}) {
-  return (
-    <>
-      <span
-        className={`font-mono text-[13px] font-semibold ${
-          selected ? "text-[#00FF94]" : "text-zinc-200"
-        }`}
-      >
-        {asset.symbol}
-      </span>
-      <span className="truncate text-[11px] text-zinc-600">{asset.name}</span>
-    </>
   );
 }
 

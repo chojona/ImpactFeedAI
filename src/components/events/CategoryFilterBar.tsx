@@ -1,11 +1,13 @@
 "use client";
 
-import { useId } from "react";
-import { motion } from "framer-motion";
 import {
-  CATEGORY_CONFIG,
-  FILTERABLE_CATEGORIES,
-} from "@/lib/eventCategories";
+  CATEGORY_PILL_BASE,
+  ALL_PILL_COLOR,
+  categoryPillColor,
+  categoryPillCountClass,
+  categoryPillStyle,
+} from "@/components/ui/categoryPill";
+import { FILTERABLE_CATEGORIES } from "@/lib/eventCategories";
 import type { EventCategory } from "@/types/events";
 
 export type CategoryFilter = "ALL" | EventCategory;
@@ -15,12 +17,13 @@ export type CategoryFilter = "ALL" | EventCategory;
  * category (JOBS, when NFP stopped collapsing into OTHER) surfaces in the filter
  * bar without a second edit that is easy to forget.
  */
-const FILTER_ORDER: readonly CategoryFilter[] = ["ALL", ...FILTERABLE_CATEGORIES];
-
-const ALL_COLOR = "#FAFAFA";
+const FILTER_ORDER: readonly CategoryFilter[] = [
+  "ALL",
+  ...FILTERABLE_CATEGORIES,
+];
 
 const colorFor = (f: CategoryFilter): string =>
-  f === "ALL" ? ALL_COLOR : CATEGORY_CONFIG[f].color;
+  f === "ALL" ? ALL_PILL_COLOR : categoryPillColor(f);
 
 interface Props {
   active: CategoryFilter;
@@ -28,12 +31,26 @@ interface Props {
   counts: Record<CategoryFilter, number>;
 }
 
+/**
+ * Category filter for the feed.
+ *
+ * Now styled from `ui/categoryPill`, shared with the pattern library's version
+ * of the same control — see that module for why the solid-fill selected state
+ * was dropped. The Framer Motion sliding pill went with it: a `layoutId`
+ * animation existed only to move a block of saturated colour that no longer
+ * exists, and a colour transition on the border and surface reads as
+ * deliberate rather than as motion for its own sake.
+ *
+ * `aria-pressed` marks the selection, so the state is not carried by colour
+ * alone.
+ */
 export function CategoryFilterBar({ active, onChange, counts }: Props) {
-  const id = useId();
-  const layoutId = `filter-pill-${id}`;
-
   return (
-    <div className="no-scrollbar -mx-1 flex overflow-x-auto px-1">
+    <div
+      role="group"
+      aria-label="Filter by category"
+      className="no-scrollbar -mx-1 flex overflow-x-auto px-1"
+    >
       <div className="flex gap-2">
         {FILTER_ORDER.map((f) => {
           const isActive = active === f;
@@ -44,31 +61,14 @@ export function CategoryFilterBar({ active, onChange, counts }: Props) {
               key={f}
               type="button"
               onClick={() => onChange(f)}
-              className="relative flex shrink-0 items-center gap-2 rounded-full border border-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors hover:border-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+              aria-pressed={isActive}
+              style={categoryPillStyle(color, isActive)}
+              className={`${CATEGORY_PILL_BASE} ${
+                isActive ? "" : "hover:text-ink"
+              }`}
             >
-              {isActive && (
-                <motion.div
-                  layoutId={layoutId}
-                  className="absolute inset-0 rounded-full"
-                  style={{ backgroundColor: color }}
-                  transition={{ type: "spring", stiffness: 420, damping: 30 }}
-                />
-              )}
-              <span
-                className="relative z-10 transition-colors"
-                style={{ color: isActive ? "#080C10" : color }}
-              >
-                {f}
-              </span>
-              <span
-                className={`relative z-10 rounded-full px-1.5 py-0.5 font-mono text-[10px] tabular-nums transition-colors ${
-                  isActive
-                    ? "bg-black/20 text-current"
-                    : "bg-white/5 text-zinc-400"
-                }`}
-              >
-                {count}
-              </span>
+              {f}
+              <span className={categoryPillCountClass(false)}>{count}</span>
             </button>
           );
         })}

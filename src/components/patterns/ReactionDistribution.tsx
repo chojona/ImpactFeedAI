@@ -73,7 +73,10 @@ export function ReactionDistribution({
 
   if (summary === null) {
     return (
-      <p className="rounded-lg border border-dashed border-white/10 bg-white/[0.01] px-4 py-8 text-center text-sm text-zinc-500">
+      <p className="rounded-lg border border-dashed border-line bg-white/[0.01] px-4 py-8 text-center text-[13px] text-ink-3">
+        <span aria-hidden className="num mr-2 text-ink-4">
+          —
+        </span>
         No {symbol} observation at {WINDOW_LABELS[window]} in this category.
       </p>
     );
@@ -92,7 +95,7 @@ export function ReactionDistribution({
   return (
     <figure>
       <div
-        className="relative w-full rounded-lg border border-white/5 bg-white/[0.01]"
+        className="relative w-full rounded-lg border border-line bg-black/20"
         style={{ height: `${plotHeight + 26}px` }}
       >
         <div
@@ -103,13 +106,13 @@ export function ReactionDistribution({
           {/* Observed span. Drawn behind the dots and deliberately flat and
               grey: it is the range of these numbers, not a confidence band. */}
           <span
-            className="absolute inset-y-1/2 h-px bg-white/10"
+            className="absolute inset-y-1/2 h-px bg-white/15"
             style={{
               left: `${toPct(summary.min)}%`,
               width: `${toPct(summary.max) - toPct(summary.min)}%`,
             }}
           />
-          <span className="absolute inset-y-0 left-1/2 w-px bg-white/15" />
+          <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
           <span
             className="absolute inset-y-1 w-[2px] -translate-x-1/2 rounded-full opacity-70"
             style={{
@@ -131,7 +134,7 @@ export function ReactionDistribution({
 
         <div
           aria-hidden
-          className="absolute inset-x-0 bottom-0 flex justify-between px-2 font-mono text-[10px] tabular-nums text-zinc-600"
+          className="num absolute inset-x-0 bottom-0 flex justify-between px-2.5 text-[10px] text-ink-4"
         >
           <span>−{halfDomain.toFixed(2)}%</span>
           <span>0%</span>
@@ -166,22 +169,20 @@ function SelectedCallout({
   if (!selected) return null;
 
   return (
-    <p className="mt-3 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] leading-relaxed text-zinc-400">
-      <span className="font-mono font-semibold text-zinc-200">{symbol}</span>{" "}
+    <p className="mt-3 rounded-md border border-line bg-white/[0.03] px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-3">
+      <span className="num font-semibold text-ink">{symbol}</span>{" "}
       moved{" "}
       <span
-        className={`font-mono font-semibold tabular-nums ${moveTextClass(
-          selected.value,
-        )}`}
+        className={`num font-semibold ${moveTextClass(selected.value)}`}
       >
         {formatPercentChange(selected.value)}
       </span>{" "}
       after this release — the{" "}
-      <span className="font-mono tabular-nums text-zinc-200">
+      <span className="num text-ink">
         {rankPhrase(selected.rank, summary.count)}
       </span>{" "}
       of{" "}
-      <span className="font-mono tabular-nums text-zinc-200">
+      <span className="num text-ink">
         {summary.count}
       </span>{" "}
       comparable {summary.count === 1 ? "observation" : "observations"}
@@ -189,9 +190,7 @@ function SelectedCallout({
         <>
           ,{" "}
           <span
-            className={`font-mono tabular-nums ${moveTextClass(
-              selected.vsMedian,
-            )}`}
+            className={`num ${moveTextClass(selected.vsMedian)}`}
           >
             {formatPercentagePoints(selected.vsMedian)}
           </span>{" "}
@@ -199,7 +198,7 @@ function SelectedCallout({
         </>
       )}
       .{" "}
-      <span className="text-zinc-600">
+      <span className="text-ink-4">
         Ranked from most negative to most positive over the{" "}
         {WINDOW_LABELS[window]} moves shown above, this event included.
       </span>
@@ -215,17 +214,17 @@ function Caption({
   window: ReactionWindow;
 }) {
   return (
-    <figcaption className="mt-3 space-y-1.5 text-[11px] text-zinc-500">
+    <figcaption className="mt-3 space-y-1.5 text-[11px] text-ink-3">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
         <span>
-          <span className="font-mono tabular-nums text-zinc-300">
+          <span className="num text-ink-2">
             {summary.count}
           </span>{" "}
           {summary.count === 1 ? "observation" : "observations"}
         </span>
         <span>
           median{" "}
-          <span className="font-mono tabular-nums text-zinc-300">
+          <span className="num text-ink-2">
             {formatPercentChange(summary.median)}
           </span>
         </span>
@@ -235,32 +234,32 @@ function Caption({
         {summary.sufficient && (
           <span>
             mean{" "}
-            <span className="font-mono tabular-nums text-zinc-400">
+            <span className="num text-ink-3">
               {formatPercentChange(summary.mean)}
             </span>
           </span>
         )}
         <span>
           range{" "}
-          <span className="font-mono tabular-nums text-zinc-300">
+          <span className="num text-ink-2">
             {formatPercentChange(summary.min)} …{" "}
             {formatPercentChange(summary.max)}
           </span>
         </span>
         <span>
-          <span className="font-mono tabular-nums text-[#00FF94]">
+          <span className="num text-pos">
             {summary.positive}
           </span>{" "}
           up
           {" · "}
-          <span className="font-mono tabular-nums text-[#FF5C5C]">
+          <span className="num text-neg">
             {summary.negative}
           </span>{" "}
           down
           {summary.flat > 0 && (
             <>
               {" · "}
-              <span className="font-mono tabular-nums text-zinc-400">
+              <span className="num text-ink-3">
                 {summary.flat}
               </span>{" "}
               unchanged
@@ -270,12 +269,12 @@ function Caption({
       </div>
 
       {summary.sufficient ? (
-        <p className="text-zinc-600">
+        <p className="text-ink-4">
           Each dot is one event {WINDOW_DESCRIPTIONS[window]}; select one to
           open it.
         </p>
       ) : (
-        <p className="text-amber-300/70">
+        <p className="text-warn">
           Insufficient data — {summary.count}{" "}
           {summary.count === 1 ? "observation" : "observations"} is below the{" "}
           {MIN_DISTRIBUTION_SAMPLE}-observation floor for describing a
@@ -308,8 +307,8 @@ function Dot({
     <span
       className={`block rounded-full transition ${
         selected
-          ? "h-3.5 w-3.5 ring-2 ring-white/80"
-          : "h-2.5 w-2.5 opacity-80 hover:scale-150 hover:opacity-100"
+          ? "h-3.5 w-3.5 ring-2 ring-white/85"
+          : "h-2.5 w-2.5 opacity-85 hover:scale-150 hover:opacity-100"
       }`}
       style={{ backgroundColor: moveColor(point.value) }}
     />
@@ -346,7 +345,7 @@ function Dot({
       href={`/events/${point.eventId}`}
       title={title}
       aria-label={`${point.title}, ${change} at ${WINDOW_LABELS[window]}`}
-      className="absolute z-10 -translate-x-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]/50"
+      className="absolute z-10 -translate-x-1/2 rounded-full"
       style={style}
     >
       {mark}

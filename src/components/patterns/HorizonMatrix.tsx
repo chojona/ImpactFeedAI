@@ -11,6 +11,8 @@ import {
   WINDOW_LABELS,
   formatPercentChange,
 } from "@/services/events/reactionView";
+import { InstrumentBadge } from "@/components/ui/CategoryBadge";
+import { ScrollableTable } from "@/components/ui/ScrollableTable";
 import { moveColor, moveTextClass } from "@/components/reactions/reactionTone";
 import type { ReactionWindow } from "@/types/events";
 
@@ -53,36 +55,33 @@ export function HorizonMatrix({
   );
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[520px] border-collapse text-sm">
+    <ScrollableTable label="Median reaction by instrument and horizon">
+      <table className="w-full min-w-[560px] border-collapse text-sm">
         <caption className="sr-only">
           Median percent change per instrument at each horizon, with the number
           of observations behind each figure.
         </caption>
         <thead>
-          <tr className="border-b border-white/10">
+          <tr className="border-b border-line-strong">
             <th
               scope="col"
-              className="py-2 pr-3 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
+              className="eyebrow sticky left-0 z-10 bg-surface-1 py-2 pr-3 text-left"
             >
-              Asset
+              Instrument
             </th>
             {REACTION_WINDOWS.map((window) => (
               <th
                 key={window}
                 scope="col"
                 title={`Median move ${WINDOW_DESCRIPTIONS[window]}`}
-                className={`py-2 pl-3 text-right font-mono text-[10px] font-semibold uppercase tracking-[0.16em] ${
-                  window === activeWindow ? "text-zinc-100" : "text-zinc-500"
+                className={`eyebrow py-2 pl-3 text-right ${
+                  window === activeWindow ? "text-ink" : ""
                 }`}
               >
                 {WINDOW_LABELS[window]}
               </th>
             ))}
-            <th
-              scope="col"
-              className="py-2 pl-4 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
-            >
+            <th scope="col" className="eyebrow py-2 pl-4 text-left">
               Observed range · {WINDOW_LABELS[activeWindow]}
             </th>
           </tr>
@@ -93,24 +92,35 @@ export function HorizonMatrix({
             return (
               <tr
                 key={asset.symbol}
-                className={`border-b border-white/[0.04] last:border-0 ${
-                  selected ? "bg-white/[0.05]" : "hover:bg-white/[0.02]"
+                className={`group border-b border-line last:border-0 ${
+                  selected ? "bg-surface-2" : "hover:bg-white/[0.02]"
                 }`}
               >
-                <th scope="row" className="py-2 pr-3 text-left font-normal">
+                <th
+                  scope="row"
+                  className={`sticky left-0 z-10 py-2 pr-3 text-left font-normal ${
+                    selected ? "bg-surface-2" : "bg-surface-1 group-hover:bg-surface-2"
+                  }`}
+                >
                   {hrefForSymbol ? (
                     <Link
                       href={hrefForSymbol(asset.symbol)}
                       scroll={false}
                       aria-current={selected ? "true" : undefined}
-                      className="flex items-baseline gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]/40"
+                      className="flex rounded"
                     >
-                      <SymbolLabel asset={asset} selected={selected} />
+                      <InstrumentBadge
+                        symbol={asset.symbol}
+                        name={asset.name}
+                        emphasis={selected}
+                      />
                     </Link>
                   ) : (
-                    <span className="flex items-baseline gap-2">
-                      <SymbolLabel asset={asset} selected={selected} />
-                    </span>
+                    <InstrumentBadge
+                      symbol={asset.symbol}
+                      name={asset.name}
+                      emphasis={selected}
+                    />
                   )}
                 </th>
                 {REACTION_WINDOWS.map((window) => (
@@ -131,28 +141,7 @@ export function HorizonMatrix({
           })}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function SymbolLabel({
-  asset,
-  selected,
-}: {
-  asset: AssetProfile;
-  selected: boolean;
-}) {
-  return (
-    <>
-      <span
-        className={`font-mono text-[13px] font-semibold ${
-          selected ? "text-[#00FF94]" : "text-zinc-200"
-        }`}
-      >
-        {asset.symbol}
-      </span>
-      <span className="text-[11px] text-zinc-600">{asset.name}</span>
-    </>
+    </ScrollableTable>
   );
 }
 
@@ -166,10 +155,10 @@ function MedianCell({
   if (stats === null) {
     return (
       <td
-        className="py-2 pl-3 text-right font-mono text-[13px] text-zinc-700"
+        className="num py-2 pl-3 text-right text-[13px] text-ink-4"
         title="No observation at this horizon"
       >
-        —
+        <span aria-label="no observation">—</span>
       </td>
     );
   }
@@ -177,15 +166,15 @@ function MedianCell({
   const thin = stats.count < MIN_AGGREGATE_SAMPLE;
   return (
     <td
-      className={`py-2 pl-3 text-right font-mono text-[13px] tabular-nums ${
-        thin ? "text-zinc-500" : moveTextClass(stats.median)
+      className={`num py-2 pl-3 text-right text-[13px] ${
+        thin ? "text-ink-3" : moveTextClass(stats.median)
       } ${emphasised ? "font-semibold" : ""}`}
       title={`median ${formatPercentChange(stats.median)} · mean ${formatPercentChange(
         stats.mean,
       )} · ${stats.positive} up / ${stats.negative} down over ${stats.count} observations`}
     >
       {formatPercentChange(stats.median)}
-      <span className="ml-1 text-[10px] font-normal text-zinc-600">
+      <span className="ml-1 text-[10px] font-normal text-ink-4">
         n={stats.count}
       </span>
     </td>
@@ -208,7 +197,7 @@ function RangeStrip({
   scale: number;
 }) {
   if (stats === null) {
-    return <span className="text-[11px] text-zinc-700">no observations</span>;
+    return <span className="text-[11px] text-ink-4">no observations</span>;
   }
 
   const toPct = (value: number): number =>
@@ -223,11 +212,14 @@ function RangeStrip({
         stats.max,
       )} over ${stats.count} observations`}
     >
-      <span className="relative block h-4 w-full min-w-[90px] rounded-sm bg-white/[0.02]">
-        <span aria-hidden className="absolute inset-y-0 left-1/2 w-px bg-white/15" />
+      <span className="relative block h-4 w-full min-w-[90px] rounded-sm bg-white/[0.03]">
         <span
           aria-hidden
-          className="absolute inset-y-[6px] rounded-full bg-white/20"
+          className="absolute inset-y-0 left-1/2 w-px bg-line-strong"
+        />
+        <span
+          aria-hidden
+          className="absolute inset-y-[6px] rounded-full bg-white/25"
           style={{ left: `${left}%`, width: `${Math.max(right - left, 0.8)}%` }}
         />
         <span
@@ -239,7 +231,7 @@ function RangeStrip({
           }}
         />
       </span>
-      <span className="whitespace-nowrap font-mono text-[10px] tabular-nums text-zinc-600">
+      <span className="num whitespace-nowrap text-[10px] text-ink-3">
         {formatPercentChange(stats.min)} … {formatPercentChange(stats.max)}
       </span>
     </span>

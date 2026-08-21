@@ -29,10 +29,13 @@ export const moveColor = (value: number | null): string => {
 
 export const moveTextClass = (value: number | null): string => {
   const direction = directionOf(value);
-  if (direction === "UP") return "text-[#00FF94]";
-  if (direction === "DOWN") return "text-[#FF5C5C]";
-  if (direction === "FLAT") return "text-zinc-300";
-  return "text-zinc-600";
+  if (direction === "UP") return "text-pos";
+  if (direction === "DOWN") return "text-neg";
+  if (direction === "FLAT") return "text-flat";
+  // Unmeasured. `text-ink-4` clears 5:1 against the page, where the previous
+  // `text-zinc-600` sat near 2.4:1 — the state a reader most needs to notice
+  // was the hardest one on the page to read.
+  return "text-ink-4";
 };
 
 /**

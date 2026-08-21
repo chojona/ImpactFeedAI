@@ -1,47 +1,165 @@
 @import "tailwindcss";
 
+/**
+ * Design tokens.
+ *
+ * Three groups, and the separation is the point:
+ *
+ *   surface / line  — the neutral chrome. Four steps only, so "a slightly
+ *                     different grey" is a decision rather than an accident.
+ *   ink             — text. Every step is checked against `--color-canvas`; the
+ *                     old `text-zinc-600` body copy sat at ~2.4:1 and is gone.
+ *   semantic        — colour that carries meaning: direction of a move, and the
+ *                     five data states. Nothing decorative is allowed in here,
+ *                     which is what lets green reliably mean "measured, up".
+ *
+ * `--color-accent` is the brand green and is reserved for *interaction* —
+ * focus rings, primary actions. It happens to share a hex with `--color-pos`
+ * because the palette is fixed (see CLAUDE.md), but the two are separate tokens
+ * so the data meaning and the brand meaning can diverge later without a sweep.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+  --background: #080c10;
+  --foreground: #fafafa;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-ibm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-ibm-mono), ui-monospace, SFMono-Regular, monospace;
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* ── surfaces ───────────────────────────────────────────────────────── */
+  --color-canvas: #080c10;
+  --color-surface-1: #0b1015;
+  --color-surface-2: #101720;
+  --color-surface-3: #16202b;
+
+  /* ── lines ──────────────────────────────────────────────────────────── */
+  --color-line: rgba(255, 255, 255, 0.07);
+  --color-line-strong: rgba(255, 255, 255, 0.14);
+
+  /* ── ink (contrast vs #080C10 in comments) ──────────────────────────── */
+  --color-ink: #fafafa; /* 18.9:1 — titles, metric values */
+  --color-ink-2: #d4d4d8; /* 12.4:1 — body copy */
+  --color-ink-3: #a1a1aa; /*  7.2:1 — captions, metadata */
+  --color-ink-4: #85858f; /*  5.3:1 — micro labels, axis text */
+
+  /* ── semantic ───────────────────────────────────────────────────────── */
+  --color-accent: #00ff94;
+  --color-pos: #00ff94;
+  --color-neg: #ff5c5c;
+  --color-flat: #c7c7ce;
+  --color-warn: #fbbf5c;
+  --color-info: #7dd3fc;
+  --color-unmeasured: #5b5b66;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-canvas);
+  color: var(--color-ink-2);
   font-family: var(--font-sans);
 }
 
-@keyframes news-pulse {
-  0% {
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 0 0 0 rgba(0, 255, 148, 0.6);
+/**
+ * Typography and layout roles.
+ *
+ * In `@layer components` on purpose: a Tailwind utility on the same element
+ * still wins, so `class="eyebrow text-pos"` recolours rather than fights.
+ *
+ * These exist because the audit found one visual weight doing four jobs —
+ * every section title, panel title, table header and metric label was the same
+ * 10–11px uppercase mono, which is why nothing on the page looked more
+ * important than anything else.
+ */
+@layer components {
+  /* Smallest label. Table headers, metric labels, axis captions. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.625rem; /* 10px */
+    line-height: 1.2;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-ink-4);
   }
-  35% {
-    border-color: rgba(0, 255, 148, 1);
-    box-shadow: 0 0 18px 6px rgba(0, 255, 148, 0.55);
+
+  /* Page title. One per route. */
+  .title-page {
+    font-size: 1.875rem;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--color-ink);
   }
-  100% {
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 0 0 0 rgba(0, 255, 148, 0);
+
+  /* Level-1 section title. Reads as a heading, not as a label. */
+  .title-section {
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+
+  /* Level-2 panel title, inside a section. */
+  .title-panel {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--color-ink-2);
+  }
+
+  .body-copy {
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--color-ink-3);
+  }
+
+  .caption {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--color-ink-3);
+  }
+
+  /* Every number that can be compared down a column. */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
   }
 }
 
-.news-pulse {
-  animation: news-pulse 1s ease-out;
+@media (min-width: 640px) {
+  .title-page {
+    font-size: 2.25rem;
+  }
+  .title-section {
+    font-size: 1.125rem;
+  }
+}
+
+/**
+ * One focus ring for the whole application, so an interactive element cannot
+ * ship without a visible keyboard state by forgetting a utility class.
+ */
+:where(a, button, [role="button"], input, select, summary):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .no-scrollbar {
@@ -51,25 +169,48 @@ body {
   display: none;
 }
 
-@keyframes grid-drift {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 60px 60px;
-  }
-}
-
-.grid-drift {
+/**
+ * Horizontal scroll affordance for the wide research tables.
+ *
+ * A table clipped at the viewport edge reads as broken layout, so the edge
+ * needs to say "there is more this way". The first attempt used a `mask-image`
+ * fade, which was wrong in a way worth recording: a mask is unconditional, so
+ * it dimmed the last column of every table *including the ones that fit*, and
+ * the coverage table lost the right-hand digit of its Consensus column on a
+ * desktop viewport with no overflow at all.
+ *
+ * This is the `background-attachment: local` technique instead. The two cover
+ * gradients scroll with the content and therefore sit over the shadows only
+ * when the content is at that end; the two shadow gradients are fixed to the
+ * container. The net effect is an indicator that appears exactly when the table
+ * overflows and disappears when it does not — with no JavaScript and no
+ * measurement.
+ *
+ * `--scroll-bg` must match the surface the table sits on, or the cover gradient
+ * will not hide the shadow.
+ */
+.scroll-x {
+  --scroll-bg: var(--color-surface-1);
+  overflow-x: auto;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 60px 60px;
-  animation: grid-drift 30s linear infinite;
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
-  -webkit-mask-image: radial-gradient(
-    ellipse at center,
-    black 30%,
-    transparent 80%
-  );
+    linear-gradient(to right, var(--scroll-bg) 55%, transparent),
+    linear-gradient(to left, var(--scroll-bg) 55%, transparent),
+    linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.13),
+      rgba(255, 255, 255, 0)
+    ),
+    linear-gradient(to left, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0));
+  background-position:
+    0 0,
+    100% 0,
+    0 0,
+    100% 0;
+  background-repeat: no-repeat;
+  background-size:
+    28px 100%,
+    28px 100%,
+    10px 100%,
+    10px 100%;
+  background-attachment: local, local, scroll, scroll;
 }

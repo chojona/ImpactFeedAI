@@ -1,8 +1,8 @@
 import Link from "next/link";
 
+import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { MiniReactionBars } from "@/components/reactions/MiniReactionBars";
 import { ReleaseValueInline } from "@/components/events/ReleaseValues";
-import { CATEGORY_CONFIG } from "@/lib/eventCategories";
 import { isDatabaseConfigured } from "@/lib/prisma";
 import {
   getFeaturedEvent,
@@ -74,15 +74,15 @@ function PanelFrame({
   return (
     <div>
       <div className="flex items-center justify-between px-1 pb-2">
-        <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#00FF94]" />
+        <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-3">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
           {eyebrow}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink0">
           {badge}
         </span>
       </div>
-      <article className="rounded-lg border border-white/[0.08] bg-[#0B1116] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]">
+      <article className="rounded-lg border border-line bg-[#0B1116] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]">
         {children}
       </article>
     </div>
@@ -90,26 +90,16 @@ function PanelFrame({
 }
 
 function FeaturedEventPanel({ event }: { event: NewsEvent }) {
-  const color = CATEGORY_CONFIG[event.category].color;
   const released = formatNewYorkDateTime(event.timing.releaseAt);
 
   return (
     <PanelFrame eyebrow="Largest measured move" badge="Live from the library">
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
-        <span
-          className="rounded-md px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.18em]"
-          style={{
-            backgroundColor: `${color}1F`,
-            color,
-            border: `1px solid ${color}3D`,
-          }}
-        >
-          {event.category}
-        </span>
+      <div className="flex items-center justify-between border-b border-line px-5 py-3">
+        <CategoryBadge category={event.category} />
         {released !== null && event.timing.releaseAt !== null && (
           <time
             dateTime={event.timing.releaseAt}
-            className="font-mono text-[11px] text-zinc-400"
+            className="font-mono text-[11px] text-ink-3"
           >
             {released}
           </time>
@@ -117,7 +107,7 @@ function FeaturedEventPanel({ event }: { event: NewsEvent }) {
       </div>
 
       <div className="px-5 pt-4 pb-3">
-        <h2 className="font-mono text-[15px] font-semibold leading-snug text-zinc-50">
+        <h2 className="font-mono text-[15px] font-semibold leading-snug text-ink">
           {event.title}
         </h2>
         {event.release !== null && (
@@ -130,17 +120,24 @@ function FeaturedEventPanel({ event }: { event: NewsEvent }) {
         )}
       </div>
 
-      <div className="border-t border-white/[0.05] px-5 py-4">
-        <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+      <div className="border-t border-line px-5 py-4">
+        <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-ink0">
           Cross-asset reaction
         </p>
-        <MiniReactionBars assets={event.assets} window="1d" limit={4} />
+        {/* `offset={0}` because this panel has no separate headline figure of
+            its own — the leader belongs in the bars here. */}
+        <MiniReactionBars
+          assets={event.assets}
+          window="1d"
+          limit={4}
+          offset={0}
+        />
       </div>
 
-      <div className="border-t border-white/[0.06] px-5 py-3">
+      <div className="border-t border-line px-5 py-3">
         <Link
           href={`/events/${event.id}`}
-          className="inline-flex items-center gap-1 font-mono text-xs font-medium text-[#00FF94] transition hover:underline"
+          className="inline-flex items-center gap-1 font-mono text-xs font-medium text-accent transition hover:underline"
         >
           Open the full reaction ↗
         </Link>
@@ -166,11 +163,11 @@ function LibrarySnapshotPanel({ summary }: { summary: LibrarySummary }) {
         <Stat label="Event categories" value={String(summary.categories)} />
         <Stat label="Coverage span" value={span ?? "—"} />
       </dl>
-      <div className="border-t border-white/[0.06] px-5 py-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-amber-300/70">
+      <div className="border-t border-line px-5 py-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-warn">
           {summary.measuredEvents.toLocaleString()} priced
         </p>
-        <p className="mt-2 text-[13px] leading-relaxed text-zinc-400">
+        <p className="mt-2 text-[13px] leading-relaxed text-ink-3">
           A price reaction is only computed where the exact release instant is
           backed by a named source. Most of the library is bulk FRED/BLS history
           that publishes a reference period, not a release time, so those events
@@ -178,7 +175,7 @@ function LibrarySnapshotPanel({ summary }: { summary: LibrarySummary }) {
         </p>
         <Link
           href="/patterns"
-          className="mt-3 inline-flex font-mono text-xs font-medium text-[#00FF94] transition hover:underline"
+          className="mt-3 inline-flex font-mono text-xs font-medium text-accent transition hover:underline"
         >
           See the full coverage table ↗
         </Link>
@@ -190,10 +187,10 @@ function LibrarySnapshotPanel({ summary }: { summary: LibrarySummary }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0B1116] px-5 py-4">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+      <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink0">
         {label}
       </dt>
-      <dd className="mt-1 font-mono text-2xl font-semibold tabular-nums text-zinc-50">
+      <dd className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">
         {value}
       </dd>
     </div>
@@ -218,18 +215,18 @@ function FieldsPanel() {
         {RECORD_FIELDS.map((field) => (
           <li
             key={field}
-            className="flex gap-3 px-5 py-3.5 text-[13px] leading-snug text-zinc-300"
+            className="flex gap-3 px-5 py-3.5 text-[13px] leading-snug text-ink-2"
           >
             <span
               aria-hidden
-              className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-[#00FF94]"
+              className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent"
             />
             {field}
           </li>
         ))}
       </ul>
-      <p className="border-t border-white/[0.06] px-5 py-3 text-[12px] text-zinc-500">
-        Set <code className="text-zinc-300">DATABASE_URL</code> to read the live
+      <p className="border-t border-line px-5 py-3 text-[12px] text-ink0">
+        Set <code className="text-ink-2">DATABASE_URL</code> to read the live
         library.
       </p>
     </PanelFrame>

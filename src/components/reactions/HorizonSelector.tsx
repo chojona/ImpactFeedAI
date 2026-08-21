@@ -24,13 +24,20 @@ interface Props {
   className?: string;
 }
 
+/**
+ * Segmented-control styling. The selected segment gets a filled surface and
+ * full-contrast ink; the rest sit at `ink-3` and lift on hover, so the control
+ * reads as a set of choices with one taken rather than as three equal labels —
+ * the previous inactive state was `zinc-500`, which is below the contrast floor
+ * for a 12px label.
+ */
 const baseClass =
-  "rounded px-2.5 py-1 font-mono text-xs font-semibold uppercase transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00FF94]/40";
+  "min-w-[2.5rem] rounded-md px-2.5 py-1 text-center font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors";
 
 const stateClass = (active: boolean): string =>
   active
-    ? "bg-white/10 text-zinc-100"
-    : "text-zinc-500 hover:text-zinc-200";
+    ? "bg-surface-3 text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+    : "text-ink-3 hover:bg-white/[0.04] hover:text-ink";
 
 export function HorizonSelector({
   value,
@@ -43,7 +50,7 @@ export function HorizonSelector({
     <div
       role="group"
       aria-label={label}
-      className={`flex items-center gap-1 rounded-md border border-white/5 p-1 ${className}`}
+      className={`flex items-center gap-1 rounded-lg border border-line bg-black/20 p-1 ${className}`}
     >
       {REACTION_WINDOWS.map((window) => {
         const active = window === value;

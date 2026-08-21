@@ -1,8 +1,10 @@
+import { MetricCell } from "@/components/ui/Metric";
 import {
   CONSENSUS_EXPLANATIONS,
   TONE_TEXT_CLASS,
   releaseCells,
   type ReleaseCell,
+  type ReleaseCellKey,
 } from "@/services/events/releaseView";
 import {
   formatNewYorkDateTime,
@@ -10,14 +12,23 @@ import {
 } from "@/services/events/timing";
 import { ConsensusBadge } from "./StatusBadges";
 import type { DataReleaseView, EventCategory } from "@/types/events";
+import type { MetricSize, MetricTone } from "@/components/ui/Metric";
 
 /**
  * Expectation versus reality for one macro release.
  *
  * Two variants over one derivation (`services/events/releaseView.ts`) so the
  * feed and the detail page cannot disagree about what a missing consensus looks
- * like. Every absent value renders the word *Unavailable* plus the reason it is
- * absent; none of them renders a zero, a dash-only cell, or a blank.
+ * like. Every absent value renders a *word* plus the reason it is absent; none
+ * of them renders a zero, a dash-only cell, or a blank.
+ *
+ * The redesign adds hierarchy *within* the release. All four values used to be
+ * set at the same size, which gave equal billing to the printed number and to
+ * the reason a forecast is missing. Now `Actual` and `Surprise` carry the large
+ * treatment — they are the two figures the research thesis is built on — and
+ * `Consensus` and `Previous` sit a step down as the things being compared
+ * against. Absence still reads at a smaller size than a present value, so a
+ * column of "Unavailable" cannot be mistaken for a column of data.
  *
  * Most rows in the library have no consensus at all — FRED and BLS publish
  * actuals only — so "Unavailable" is the normal state here, not an error, and
@@ -28,6 +39,21 @@ interface GridProps {
   release: DataReleaseView;
   category: EventCategory;
 }
+
+/** The two figures the thesis rests on get the loud treatment. */
+const CELL_SIZE: Record<ReleaseCellKey, MetricSize> = {
+  actual: "lg",
+  consensus: "md",
+  prior: "md",
+  surprise: "lg",
+};
+
+const TONE: Record<ReleaseCell["tone"], MetricTone> = {
+  neutral: "neutral",
+  positive: "positive",
+  negative: "negative",
+  caution: "caution",
+};
 
 export function ReleaseValueGrid({ release, category }: GridProps) {
   const cells = releaseCells(release, category);
@@ -41,15 +67,13 @@ export function ReleaseValueGrid({ release, category }: GridProps) {
   return (
     <section
       aria-label={`${release.metricName} release values`}
-      className="rounded-lg border border-white/[0.07] bg-white/[0.015]"
+      className="overflow-hidden rounded-lg border border-line bg-surface-1"
     >
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-white/[0.06] px-4 py-3 sm:px-5">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-4 py-3 sm:px-5">
         <div className="min-w-0">
-          <h3 className="font-mono text-[13px] font-semibold text-zinc-100">
-            {release.metricName}
-          </h3>
+          <h3 className="title-panel truncate">{release.metricName}</h3>
           {reference !== null && (
-            <p className="mt-0.5 text-[11px] text-zinc-500">
+            <p className="mt-0.5 text-[11px] text-ink-4">
               Reference period {reference}
             </p>
           )}
@@ -60,14 +84,25 @@ export function ReleaseValueGrid({ release, category }: GridProps) {
         />
       </header>
 
-      <dl className="grid grid-cols-2 gap-px bg-white/[0.06] sm:grid-cols-4">
+      <dl className="grid grid-cols-2 divide-line sm:grid-cols-4 sm:divide-x">
         {cells.map((cell) => (
-          <ValueCell key={cell.key} cell={cell} />
+          <MetricCell
+            key={cell.key}
+            label={cell.label}
+            value={cell.value}
+            size={CELL_SIZE[cell.key]}
+            tone={TONE[cell.tone]}
+            state="unavailable"
+            absenceLabel={cell.absenceReason ?? undefined}
+            note={cell.note}
+            noteTone={cell.note !== null ? "caution" : "muted"}
+            className="border-b border-line px-4 py-4 last:border-b-0 sm:border-b-0 sm:px-5 sm:pl-5 sm:first:pl-5 [&:nth-last-child(2)]:border-b-0"
+          />
         ))}
       </dl>
 
       {hasProvenance && (
-        <footer className="flex flex-wrap gap-x-5 gap-y-1 border-t border-white/[0.06] px-4 py-2.5 text-[11px] text-zinc-500 sm:px-5">
+        <footer className="flex flex-wrap gap-x-5 gap-y-1 border-t border-line px-4 py-2.5 text-[11px] text-ink-4 sm:px-5">
           {release.actualSource !== null && (
             <SourceLine
               label="Actual"
@@ -91,37 +126,6 @@ export function ReleaseValueGrid({ release, category }: GridProps) {
   );
 }
 
-function ValueCell({ cell }: { cell: ReleaseCell }) {
-  const measured = cell.value !== null;
-  return (
-    <div className="bg-[#080C10] px-4 py-3 sm:px-5 sm:py-4">
-      <dt className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-        {cell.label}
-      </dt>
-      <dd
-        className={`mt-1.5 font-mono text-xl font-semibold tabular-nums sm:text-2xl ${
-          measured ? TONE_TEXT_CLASS[cell.tone] : "text-zinc-600"
-        }`}
-      >
-        {measured ? (
-          cell.value
-        ) : (
-          <span className="text-base font-medium sm:text-lg">Unavailable</span>
-        )}
-      </dd>
-      {(cell.absenceReason ?? cell.note) !== null && (
-        <p
-          className={`mt-1 text-[11px] leading-snug ${
-            cell.note !== null ? "text-amber-300/70" : "text-zinc-600"
-          }`}
-        >
-          {cell.note ?? cell.absenceReason}
-        </p>
-      )}
-    </div>
-  );
-}
-
 /* ──────────────────────────── compact variant ────────────────────────── */
 
 /**
@@ -132,19 +136,22 @@ function ValueCell({ cell }: { cell: ReleaseCell }) {
 export function ReleaseValueInline({ release, category }: GridProps) {
   const cells = releaseCells(release, category);
   return (
-    <dl className="grid grid-cols-4 gap-2" aria-label={`${release.metricName} values`}>
+    <dl
+      className="grid grid-cols-4 gap-x-2"
+      aria-label={`${release.metricName} values`}
+    >
       {cells.map((cell) => (
         <div key={cell.key} className="min-w-0">
-          <dt className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
-            {cell.label}
-          </dt>
+          <dt className="eyebrow truncate text-[9px]">{cell.label}</dt>
           <dd
-            className={`truncate font-mono text-[13px] font-semibold tabular-nums ${
-              cell.value === null ? "text-zinc-600" : TONE_TEXT_CLASS[cell.tone]
+            className={`num mt-1 truncate text-[13px] font-semibold ${
+              cell.value === null ? "text-ink-4" : TONE_TEXT_CLASS[cell.tone]
             }`}
             title={cell.value ?? cell.absenceReason ?? undefined}
           >
-            {cell.value ?? <span className="text-[11px] font-medium">n/a</span>}
+            {cell.value ?? (
+              <span className="text-[11px] font-medium">n/a</span>
+            )}
           </dd>
         </div>
       ))}
@@ -165,13 +172,13 @@ function SourceLine({
     <span>
       {label} source:{" "}
       {href === null ? (
-        <span className="text-zinc-400">{source}</span>
+        <span className="text-ink-3">{source}</span>
       ) : (
         <a
           href={href}
           target="_blank"
           rel="noreferrer noopener"
-          className="text-zinc-300 underline decoration-white/20 underline-offset-2 transition hover:text-zinc-100"
+          className="rounded text-ink-3 underline decoration-line-strong underline-offset-2 transition-colors hover:text-ink"
         >
           {source}
         </a>

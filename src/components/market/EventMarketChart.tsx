@@ -1,22 +1,21 @@
 import { MarketChart } from "./MarketChart";
 import { MarketChartBoundary } from "./MarketChartBoundary";
+import { DataStatePanel } from "@/components/ui/DataStatePanel";
 import {
   buildChartSeries,
   describeChart,
   formatEastern,
 } from "@/services/market/candleChart";
-import {
-  INTERVAL_CODE,
-  loadEventCandles,
-} from "@/services/market/candles";
+import { INTERVAL_CODE, loadEventCandles } from "@/services/market/candles";
 import type { CandleInterval } from "@/types/market";
 
 /**
  * The traded path around a release: real OHLC bars, on the clock.
  *
  * A Server Component. It performs the single database read, decides whether
- * there is anything to draw, and hands the client island a fully serialized
- * series. The island never queries anything — see `MarketChart`.
+ * there is anything to draw, resolves the summary figures the chart frame
+ * quotes, and hands the client island a fully serialized series. The island
+ * never queries anything — see `MarketChart`.
  *
  * This is deliberately a different artefact from `ReactionChart`, which plots
  * three measured horizons (1H / 1D / 1W) as discrete observations joined by
@@ -25,6 +24,9 @@ import type { CandleInterval } from "@/types/market";
  * real observation. The two abstractions are kept apart on purpose: overlaying
  * reaction connectors on a candlestick chart would make an interpolation look
  * like a measurement.
+ *
+ * The high and low are computed here rather than in the island so the client
+ * receives finished numbers, consistent with everything else it is given.
  *
  * Scope is intentionally narrow for the first version — one symbol, one
  * interval, no controls — but `symbol` and `interval` are props, so widening it
@@ -85,6 +87,18 @@ export async function EventMarketChart({
     eventLabel,
   });
 
+  // Extremes of the bars actually on screen. Null-safe by construction: the
+  // series is non-empty here, and `reduce` over the highs and lows never
+  // invents a value the way a default of 0 would.
+  const high = series.candles.reduce(
+    (max: number | null, c) => (max === null || c.high > max ? c.high : max),
+    null,
+  );
+  const low = series.candles.reduce(
+    (min: number | null, c) => (min === null || c.low < min ? c.low : min),
+    null,
+  );
+
   return (
     <MarketChartBoundary fallback={<MarketChartFailed symbol={symbol} />}>
       <MarketChart
@@ -96,6 +110,9 @@ export async function EventMarketChart({
         eventLabel={eventLabel}
         eventTimeLabel={formatEastern(releaseAt)}
         description={description}
+        high={high}
+        low={low}
+        volumeMissing={series.volumeMissing}
       />
     </MarketChartBoundary>
   );
@@ -104,11 +121,11 @@ export async function EventMarketChart({
 /**
  * No stored bars for this release.
  *
- * A fact about coverage, not a failure. The provider's intraday history is a
- * rolling window — hourly bars survive about 730 days — so older events in the
- * library have no candles and never will from this source. Saying that plainly
- * is more useful than an empty chart frame, and it is the same posture the
- * reaction sections take when timing cannot be defended.
+ * A fact about coverage, not a failure — and which *kind* of coverage fact is
+ * the whole message. Beyond the provider's rolling intraday window these bars
+ * can never be retrieved from this source (`unsupported`); inside it, the
+ * backfill simply has not run yet (`pending`). Those are a permanent limit and
+ * a queued task, and the previous single grey box said neither.
  */
 export function MarketChartUnavailable({
   symbol,
@@ -123,48 +140,42 @@ export function MarketChartUnavailable({
   const beyondWindow = ageDays > HOURLY_LOOKBACK_DAYS;
 
   return (
-    <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.01] px-6 py-10 text-center">
-      <h3 className="text-sm font-semibold text-zinc-300">
-        Intraday chart unavailable
-      </h3>
-      <p className="mx-auto mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-500">
-        No stored {intervalLabel} candles for{" "}
-        <span className="font-mono text-zinc-400">{symbol}</span> around this
-        release.{" "}
-        {beyondWindow ? (
-          <>
-            This release is {ageDays.toLocaleString()} days old and the current
-            data source retains hourly history for roughly{" "}
-            {HOURLY_LOOKBACK_DAYS} days, so these bars can no longer be
-            retrieved from it.
-          </>
-        ) : (
-          <>
-            The candle backfill has not covered this release yet.
-          </>
-        )}
-      </p>
-      <p className="mx-auto mt-3 max-w-lg text-[12px] leading-relaxed text-zinc-600">
-        The measured reaction below is unaffected — it is computed from stored
-        window prices, not from these bars.
-      </p>
-    </div>
+    <DataStatePanel
+      state={beyondWindow ? "unsupported" : "pending"}
+      title={
+        beyondWindow
+          ? "Intraday bars no longer retrievable"
+          : "Intraday bars not ingested yet"
+      }
+      minHeight="chart"
+      footnote="The measured reaction below is unaffected — it is computed from stored window prices, not from these bars."
+    >
+      No stored {intervalLabel} candles for{" "}
+      <span className="num text-ink-2">{symbol}</span> around this release.{" "}
+      {beyondWindow ? (
+        <>
+          This release is {ageDays.toLocaleString()} days old and the current
+          data source retains hourly history for roughly {HOURLY_LOOKBACK_DAYS}{" "}
+          days, so these bars can no longer be retrieved from it.
+        </>
+      ) : (
+        <>The candle backfill has not covered this release yet.</>
+      )}
+    </DataStatePanel>
   );
 }
 
 /** The chart threw. An application fault, deliberately worded as one. */
 function MarketChartFailed({ symbol }: { symbol: string }) {
   return (
-    <div className="rounded-lg border border-amber-300/15 bg-amber-300/[0.02] px-6 py-10 text-center">
-      <h3 className="text-sm font-semibold text-amber-200/90">
-        Chart failed to render
-      </h3>
-      <p className="mx-auto mt-2 max-w-lg text-[13px] leading-relaxed text-amber-100/60">
-        The {symbol} candles loaded, but the chart could not be drawn. This is
-        an application error rather than a gap in the data — the reaction
-        figures below are unaffected.
-      </p>
-    </div>
+    <DataStatePanel
+      state="error"
+      title="Chart failed to render"
+      minHeight="chart"
+      footnote="This is an application error rather than a gap in the data — the reaction figures below are unaffected."
+    >
+      The {symbol} candles loaded, but the chart could not be drawn.
+    </DataStatePanel>
   );
 }
 
@@ -173,7 +184,21 @@ export function MarketChartSkeleton() {
   return (
     <div
       aria-hidden
-      className="h-[340px] w-full animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.02] sm:h-[400px] lg:h-[460px]"
-    />
+      className="overflow-hidden rounded-lg border border-line bg-surface-1"
+    >
+      <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
+        <div className="h-4 w-28 animate-pulse rounded bg-white/[0.05]" />
+        <div className="h-3 w-32 animate-pulse rounded bg-white/[0.04]" />
+      </div>
+      <div className="grid grid-cols-3 gap-4 px-4 py-3 sm:px-5">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i}>
+            <div className="h-2 w-16 animate-pulse rounded bg-white/[0.04]" />
+            <div className="mt-2 h-3.5 w-20 animate-pulse rounded bg-white/[0.05]" />
+          </div>
+        ))}
+      </div>
+      <div className="h-[300px] animate-pulse bg-white/[0.02] sm:h-[360px] lg:h-[430px]" />
+    </div>
   );
 }

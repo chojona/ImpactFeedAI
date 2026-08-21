@@ -1,3 +1,4 @@
+import { MetricCell, MetricRow } from "@/components/ui/Metric";
 import { isDatabaseConfigured } from "@/lib/prisma";
 import {
   getLibrarySummary,
@@ -34,48 +35,60 @@ export async function LibraryStats() {
       ? null
       : `${summary.earliest.slice(0, 4)}–${summary.latest.slice(0, 4)}`;
 
-  const metrics: { label: string; value: string; note?: string }[] = [
-    { label: "Events ingested", value: summary.events.toLocaleString() },
+  // Labels are one word each. The previous set included "With a measured
+  // reaction", which wrapped to two lines in a four-column strip and pushed
+  // that one value a line lower than its neighbours — the numbers in a metric
+  // row have to share a baseline to be comparable at a glance.
+  const metrics: {
+    label: string;
+    value: string;
+    note?: string;
+    highlight?: boolean;
+  }[] = [
     {
-      label: "With a measured reaction",
+      label: "Events",
+      value: summary.events.toLocaleString(),
+      note: "ingested",
+    },
+    {
+      label: "Priced",
       value: summary.measuredEvents.toLocaleString(),
-      note: "requires a sourced release instant",
+      note: "reaction measured",
+      highlight: true,
     },
     {
-      label: "Instruments tracked",
+      label: "Instruments",
       value: summary.instruments.toLocaleString(),
+      note: "distinct symbols",
     },
-    ...(span === null ? [] : [{ label: "Coverage span", value: span }]),
+    ...(span === null
+      ? []
+      : [{ label: "Coverage", value: span, note: "release years" }]),
   ];
 
   return (
     <section
       aria-label="Library figures"
-      className="border-b border-white/[0.06] bg-white/[0.015]"
+      className="border-b border-line bg-white/[0.015]"
     >
-      <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <dl className="grid grid-cols-2 divide-white/[0.06] md:grid-cols-4 md:divide-x">
-          {metrics.map((metric, index) => (
-            <div
+      <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8">
+        <MetricRow
+          columns={4}
+          aria-label="Library figures"
+          className="[&>*]:md:px-8 [&>*:first-child]:md:pl-0"
+        >
+          {metrics.map((metric) => (
+            <MetricCell
               key={metric.label}
-              className={`flex flex-col gap-1 px-5 py-6 md:px-8 ${
-                index === 0 ? "md:pl-0" : ""
-              }`}
-            >
-              <dt className="font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400">
-                {metric.label}
-              </dt>
-              <dd className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-zinc-50">
-                {metric.value}
-              </dd>
-              {metric.note !== undefined && (
-                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-600">
-                  {metric.note}
-                </p>
-              )}
-            </div>
+              label={metric.label}
+              value={metric.value}
+              size="lg"
+              tone={metric.highlight === true ? "positive" : "neutral"}
+              state="measured"
+              note={metric.note}
+            />
           ))}
-        </dl>
+        </MetricRow>
       </div>
     </section>
   );

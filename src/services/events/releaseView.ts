@@ -143,8 +143,8 @@ export const releaseHasAnyValue = (release: DataReleaseView): boolean =>
   release.surprise !== null;
 
 export const TONE_TEXT_CLASS: Record<ValueTone, string> = {
-  neutral: "text-zinc-100",
-  positive: "text-[#00FF94]",
-  negative: "text-[#FF5C5C]",
-  caution: "text-amber-300",
+  neutral: "text-ink",
+  positive: "text-pos",
+  negative: "text-neg",
+  caution: "text-warn",
 };

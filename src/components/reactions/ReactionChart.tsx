@@ -21,13 +21,23 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
  * what exists is three observations and an anchor. The component renders the
  * observations as filled markers and the segments between them as *dashed*
  * connectors, because the line is an aid to reading the sequence, not a
- * measured path. An unmeasured window is drawn as an empty slot with a dimmed
+ * measured path. An unmeasured window is drawn as an empty slot with a struck
  * axis label — never as a point on the zero line.
  *
  * Geometry lives in `services/events/reactionChart.ts` and is expressed in
  * percentages, so the SVG holds only lines while every marker and label is real
  * HTML. That keeps text crisp at any width, keeps the markers circular under a
  * stretched viewBox, and means the whole chart renders on the server.
+ *
+ * ### What the redesign changed
+ *
+ * Every value is now **directly labelled** at its marker. Previously the only
+ * way to read a point was to hover it, which is unavailable on touch, invisible
+ * in a screenshot, and hostile to the actual research task of comparing three
+ * numbers. The tooltip survives for the absolute price, which is genuinely
+ * secondary. The plot is also taller, the zero line is heavier than the other
+ * gridlines, and the axis type moved off `zinc-600` — at 10px on this
+ * background it was below every contrast floor that applies.
  *
  * When intraday candles exist, they belong in a sibling component that consumes
  * a candle series; nothing here needs to change for that to happen.
@@ -83,11 +93,13 @@ export function ReactionChart({
     <figure className="w-full">
       <div className="flex items-stretch gap-2">
         {/* Y axis gutter — HTML so the labels stay crisp at every width. */}
-        <div className="relative h-44 w-14 shrink-0 sm:h-56" aria-hidden>
+        <div className="relative h-52 w-14 shrink-0 sm:h-64" aria-hidden>
           {plot.ticks.map((tick) => (
             <span
               key={tick.value}
-              className="absolute right-0 -translate-y-1/2 font-mono text-[10px] tabular-nums text-zinc-600"
+              className={`num absolute right-0 -translate-y-1/2 text-[10px] ${
+                tick.value === 0 ? "text-ink-3" : "text-ink-4"
+              }`}
               style={{ top: `${tick.yPct}%` }}
             >
               {tick.label}
@@ -96,7 +108,7 @@ export function ReactionChart({
         </div>
 
         <div
-          className="relative h-44 min-w-0 flex-1 sm:h-56"
+          className="relative h-52 min-w-0 flex-1 sm:h-64"
           role="img"
           aria-label={summary}
         >
@@ -113,7 +125,11 @@ export function ReactionChart({
                 x2="100"
                 y1={tick.yPct}
                 y2={tick.yPct}
-                stroke={tick.value === 0 ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.05)"}
+                stroke={
+                  tick.value === 0
+                    ? "rgba(255,255,255,0.28)"
+                    : "rgba(255,255,255,0.05)"
+                }
                 strokeWidth={1}
                 vectorEffect="non-scaling-stroke"
               />
@@ -126,10 +142,11 @@ export function ReactionChart({
                 x2={slot.xPct}
                 y1="0"
                 y2="100"
-                stroke="rgba(255,255,255,0.045)"
+                stroke="rgba(255,255,255,0.05)"
                 strokeWidth={1}
                 strokeDasharray={
-                  slot.window !== null && plot.missingWindows.includes(slot.window)
+                  slot.window !== null &&
+                  plot.missingWindows.includes(slot.window)
                     ? "2 4"
                     : undefined
                 }
@@ -145,7 +162,7 @@ export function ReactionChart({
               points={polylinePoints(focus.points)}
               fill="none"
               stroke={lineColor}
-              strokeWidth={2}
+              strokeWidth={2.25}
               strokeDasharray="5 4"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -165,8 +182,8 @@ export function ReactionChart({
         </div>
       </div>
 
-      {/* X axis labels — dimmed and struck for windows with no reading. */}
-      <div className="relative mt-2 ml-16 h-8">
+      {/* X axis labels — dimmed and explicitly marked for missing windows. */}
+      <div className="relative mt-2 ml-16 h-9">
         {plot.slots.map((slot) => {
           const missing =
             slot.window !== null && plot.missingWindows.includes(slot.window);
@@ -177,53 +194,69 @@ export function ReactionChart({
               style={{ left: `${slot.xPct}%` }}
             >
               <div
-                className={`font-mono text-[11px] font-semibold uppercase ${
-                  missing ? "text-zinc-700" : "text-zinc-400"
+                className={`num text-[11px] font-semibold uppercase ${
+                  missing ? "text-ink-4 line-through decoration-1" : "text-ink-2"
                 }`}
               >
                 {slot.label}
               </div>
-              {missing && (
-                <div className="font-mono text-[9px] uppercase tracking-wide text-zinc-700">
-                  n/a
-                </div>
-              )}
+              <div className="mt-0.5 text-[9px] uppercase tracking-wide text-ink-4">
+                {slot.window === null ? "release" : missing ? "no data" : null}
+              </div>
             </div>
           );
         })}
       </div>
 
-      <figcaption className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-600">
-        <LegendKey color={lineColor} />
-        <span>Slots evenly spaced — the axis is not to scale.</span>
+      <figcaption className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-ink-3">
+        <Legend color={lineColor} contextCount={plot.context.length} />
+        <span className="text-ink-4">
+          Slots evenly spaced — the axis is not to scale.
+        </span>
         {plot.missingWindows.length > 0 && (
-          <span className="text-amber-300/60">
+          <span className="text-warn">
             Not measured:{" "}
             {plot.missingWindows.map((w) => WINDOW_LABELS[w]).join(", ")}
           </span>
-        )}
-        {plot.context.length > 0 && (
-          <span>{plot.context.length} other assets shown faintly.</span>
         )}
       </figcaption>
     </figure>
   );
 }
 
-function LegendKey({ color }: { color: string }) {
+/**
+ * The legend names the one thing a reader could otherwise get wrong: the line
+ * between two markers is not data. Kept adjacent to the chart rather than in a
+ * footnote for exactly that reason.
+ */
+function Legend({
+  color,
+  contextCount,
+}: {
+  color: string;
+  contextCount: number;
+}) {
   return (
-    <span className="flex items-center gap-3">
+    <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
       <span className="flex items-center gap-1.5">
         <span
           className="h-2 w-2 rounded-full"
           style={{ backgroundColor: color }}
         />
-        measured
+        observed
       </span>
       <span className="flex items-center gap-1.5">
-        <span className="inline-block h-px w-5 border-t-2 border-dashed border-zinc-600" />
+        <span
+          aria-hidden
+          className="inline-block h-px w-5 border-t-2 border-dashed border-ink-4"
+        />
         connector, not observed
       </span>
+      {contextCount > 0 && (
+        <span className="text-ink-4">
+          {contextCount} other instruments shown faintly
+        </span>
+      )}
     </span>
   );
 }
@@ -237,7 +270,7 @@ function ContextPath({ series }: { series: PlotSeries }) {
       stroke={moveColor(last.value)}
       strokeWidth={1}
       strokeDasharray="4 4"
-      strokeOpacity={0.22}
+      strokeOpacity={0.18}
       strokeLinecap="round"
       vectorEffect="non-scaling-stroke"
     />
@@ -245,10 +278,17 @@ function ContextPath({ series }: { series: PlotSeries }) {
 }
 
 /**
- * A single observation. The tooltip is CSS-only (`group-hover`) so the chart
- * needs no client JavaScript; the same numbers are always available as text in
- * the reaction table beside it, so the tooltip is an affordance rather than the
- * sole representation.
+ * A single observation, with its value written beside it.
+ *
+ * The label sits above a positive reading and below a negative one, which keeps
+ * it away from the connector on both sides and means the label's own position
+ * reinforces the sign. The anchor carries no label — it is 0% by definition
+ * rather than by measurement, and printing "0.00%" on it would be the one
+ * fabricated number on an otherwise honest chart.
+ *
+ * The tooltip is CSS-only (`group-hover`) so the chart still needs no client
+ * JavaScript. It now carries only the absolute price and the window's long
+ * description; the percentage it used to hide is on the page unconditionally.
  */
 function Marker({
   point,
@@ -266,6 +306,7 @@ function Marker({
     point.window === null
       ? "pre-release baseline"
       : WINDOW_DESCRIPTIONS[point.window];
+  const above = point.value >= 0;
 
   return (
     <div
@@ -273,33 +314,43 @@ function Marker({
       style={{ left: `${point.xPct}%`, top: `${point.yPct}%` }}
     >
       <span
-        className={`block rounded-full ring-2 ring-[#080C10] transition-transform group-hover:scale-125 ${
-          highlighted ? "h-3 w-3" : "h-2 w-2"
+        className={`block rounded-full ring-2 ring-canvas transition-transform group-hover:scale-125 ${
+          highlighted ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
         }`}
         style={{
-          backgroundColor: point.measured ? color : "#52525B",
-          boxShadow: highlighted ? `0 0 0 3px ${color}33` : undefined,
+          backgroundColor: point.measured ? color : "var(--color-unmeasured)",
+          boxShadow: highlighted ? `0 0 0 4px ${color}2E` : undefined,
         }}
       />
-      <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-white/10 bg-[#0B1116] px-2.5 py-1.5 shadow-lg group-hover:block">
-        <div className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+
+      {point.measured && formatted !== null && (
+        <span
+          className={`num pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold ${moveTextClass(
+            point.value,
+          )} ${above ? "bottom-full mb-2" : "top-full mt-2"} ${
+            highlighted ? "" : "opacity-80"
+          }`}
+        >
+          {formatted}
+        </span>
+      )}
+
+      <div
+        className={`pointer-events-none absolute left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-line-strong bg-surface-2 px-2.5 py-1.5 shadow-lg group-hover:block ${
+          above ? "bottom-full mb-6" : "top-full mt-6"
+        }`}
+      >
+        <div className="eyebrow">
           {symbol} · {point.label}
         </div>
-        <div
-          className={`font-mono text-sm font-semibold tabular-nums ${moveTextClass(
-            point.value,
-          )}`}
-        >
-          {formatted ?? "—"}
-        </div>
         {point.price !== null && (
-          <div className="font-mono text-[10px] tabular-nums text-zinc-500">
+          <div className="num mt-1 text-[13px] font-semibold text-ink">
             {point.price.toLocaleString(undefined, {
               maximumFractionDigits: 2,
             })}
           </div>
         )}
-        <div className="max-w-44 text-[10px] leading-snug text-zinc-600">
+        <div className="mt-0.5 max-w-44 text-[10px] leading-snug text-ink-3">
           {description}
         </div>
       </div>
@@ -309,8 +360,13 @@ function Marker({
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-44 items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/[0.01] px-6 text-center text-sm text-zinc-500 sm:h-56">
-      {message}
+    <div className="flex h-52 items-center justify-center rounded-lg border border-dashed border-line bg-white/[0.01] px-6 text-center text-[13px] text-ink-3 sm:h-64">
+      <span>
+        <span aria-hidden className="num mr-2 text-ink-4">
+          —
+        </span>
+        {message}
+      </span>
     </div>
   );
 }

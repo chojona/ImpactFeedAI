@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/Badge";
 import { CONSENSUS_LABELS } from "@/services/events/releaseView";
 import type { TimingDisplay } from "@/services/events/timing";
 import type { ConsensusStatus } from "@/types/events";
@@ -6,75 +7,107 @@ import type { ConsensusStatus } from "@/types/events";
  * Provenance chips.
  *
  * These are the two facts that decide how much weight a number deserves, so
- * they are rendered as first-class UI rather than as fine print. Both use the
- * same restrained treatment: green for "this can be relied on", amber for
- * "this exists but is not verified", grey for "this does not exist".
+ * they are rendered as first-class UI rather than as fine print. Both now go
+ * through the shared `Badge` primitive: they used to carry their own padding,
+ * radius and letter-spacing, which is how the same chip ended up a different
+ * size on the feed than on a detail page.
+ *
+ * Green for "this can be relied on", amber for "this exists but is not
+ * verified", grey for "this does not exist" — and each one always ships its
+ * word, never a bare colour.
  */
-
-const CHIP =
-  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]";
-
-const TRUSTED = "border-[#00FF94]/25 bg-[#00FF94]/[0.06] text-[#00FF94]";
-const CAUTION = "border-amber-300/25 bg-amber-300/[0.05] text-amber-300";
-const MUTED = "border-white/10 bg-white/[0.02] text-zinc-500";
 
 export function TimingBadge({
   display,
   title,
+  size = "sm",
 }: {
   display: TimingDisplay;
   title?: string;
+  size?: "xs" | "sm";
 }) {
+  const trusted = display.tone === "trusted";
   return (
-    <span
-      className={`${CHIP} ${display.tone === "trusted" ? TRUSTED : CAUTION}`}
+    <Badge
+      tone={trusted ? "positive" : "caution"}
+      size={size}
+      dot
       title={title ?? display.explanation}
     >
-      <Dot trusted={display.tone === "trusted"} />
       {display.label}
-    </span>
+    </Badge>
   );
 }
 
 export function ConsensusBadge({
   status,
   title,
+  size = "sm",
 }: {
   status: ConsensusStatus;
   title?: string;
+  size?: "xs" | "sm";
 }) {
-  const className =
-    status === "VERIFIED" ? TRUSTED : status === "UNVERIFIED" ? CAUTION : MUTED;
   return (
-    <span className={`${CHIP} ${className}`} title={title}>
-      {status !== "MISSING" && <Dot trusted={status === "VERIFIED"} />}
+    <Badge
+      tone={
+        status === "VERIFIED"
+          ? "positive"
+          : status === "UNVERIFIED"
+            ? "caution"
+            : "neutral"
+      }
+      size={size}
+      dot={status !== "MISSING"}
+      title={title}
+    >
       {CONSENSUS_LABELS[status]}
-    </span>
+    </Badge>
   );
 }
 
-export function ReactionBadge({ available }: { available: boolean }) {
+/**
+ * Whether this event publishes a reaction, and if not, which kind of "not".
+ *
+ * "Withheld" and "not measured" were previously one label — "Reaction
+ * unavailable" — which conflated a deliberate refusal (the timing provenance
+ * does not clear the bar) with a queued backfill. They are the difference
+ * between a policy and a to-do, and the reader can act on only one of them.
+ */
+export function ReactionBadge({
+  available,
+  /** False when the release timing cannot anchor a measurement at all. */
+  eligible = true,
+  size = "sm",
+}: {
+  available: boolean;
+  eligible?: boolean;
+  size?: "xs" | "sm";
+}) {
+  if (available) {
+    return (
+      <Badge
+        tone="positive"
+        size={size}
+        dot
+        title="Price windows were measured against a sourced release instant."
+      >
+        Reaction measured
+      </Badge>
+    );
+  }
   return (
-    <span
-      className={`${CHIP} ${available ? TRUSTED : MUTED}`}
+    <Badge
+      tone={eligible ? "info" : "caution"}
+      size={size}
+      dot
       title={
-        available
-          ? "Price windows were measured against a sourced release instant."
-          : "No reaction is published for this event."
+        eligible
+          ? "The release instant is sourced, but no price window has been stored yet."
+          : "The release timing does not meet the provenance bar, so no reaction is published."
       }
     >
-      {available ? "Reaction measured" : "Reaction unavailable"}
-    </span>
-  );
-}
-
-function Dot({ trusted }: { trusted: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={`h-1 w-1 rounded-full ${
-        trusted ? "bg-[#00FF94]" : "bg-amber-300"
-      }`}
-    />
+      {eligible ? "Reaction not measured" : "Reaction withheld"}
+    </Badge>
   );
 }

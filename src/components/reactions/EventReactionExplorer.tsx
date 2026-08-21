@@ -5,12 +5,13 @@ import { useMemo, useState } from "react";
 import { CrossAssetReactionBars } from "./CrossAssetReactionBars";
 import { HorizonSelector } from "./HorizonSelector";
 import { ReactionChart } from "./ReactionChart";
+import { ReactionIndicator } from "./ReactionIndicator";
 import { ReactionSummaryTable } from "./ReactionSummaryTable";
-import { moveTextClass } from "./reactionTone";
+import { InstrumentBadge } from "@/components/ui/CategoryBadge";
+import { Panel, PanelHeader } from "@/components/ui/Panel";
 import {
   WINDOW_DESCRIPTIONS,
   WINDOW_LABELS,
-  formatPercentChange,
   measuredWindows,
   pctForWindow,
   strongestAtWindow,
@@ -30,6 +31,12 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
  *
  * All three panels read the same `AssetReaction[]` the server already sent with
  * the page. Switching asset or horizon issues no request.
+ *
+ * The layout changed in the redesign rather than the state. The horizon control
+ * is now a labelled toolbar rather than a floating button group, and each panel
+ * carries a real title with its own coverage count instead of an 10px uppercase
+ * label that read as a caption — so a reader can tell which panel is the
+ * detail view of one instrument and which is the comparison across all of them.
  */
 
 const DEFAULT_WINDOW: ReactionWindow = "1d";
@@ -40,8 +47,8 @@ interface Props {
 
 export function EventReactionExplorer({ assets }: Props) {
   const [horizon, setHorizon] = useState<ReactionWindow>(DEFAULT_WINDOW);
-  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(
-    () => defaultSymbol(assets),
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(() =>
+    defaultSymbol(assets),
   );
 
   const selected = useMemo(
@@ -54,39 +61,52 @@ export function EventReactionExplorer({ assets }: Props) {
   ).length;
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <HorizonSelector value={horizon} onChange={setHorizon} />
-        <p className="font-mono text-[11px] tabular-nums text-zinc-500">
-          {measuredAtHorizon}/{assets.length} measured{" "}
-          <span className="normal-case tracking-normal text-zinc-600">
-            {WINDOW_DESCRIPTIONS[horizon]}
-          </span>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-lg border border-line bg-surface-1 px-3 py-2.5">
+        <div className="flex items-center gap-3">
+          <span className="eyebrow">Horizon</span>
+          <HorizonSelector value={horizon} onChange={setHorizon} />
+        </div>
+        <p className="text-[11px] text-ink-3">
+          <span className="num font-semibold text-ink">
+            {measuredAtHorizon}/{assets.length}
+          </span>{" "}
+          instruments measured {WINDOW_DESCRIPTIONS[horizon]}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <section
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        <Panel
+          as="section"
           aria-label="Reaction path for the selected asset"
-          className="rounded-lg border border-white/5 bg-white/[0.015] p-4 sm:p-5 xl:col-span-7"
+          className="xl:col-span-7"
         >
-          {selected && <SelectedAssetHeader asset={selected} horizon={horizon} />}
-          <div className="mt-4">
+          {selected && (
+            <SelectedAssetHeader asset={selected} horizon={horizon} />
+          )}
+          <div className="mt-5">
             <ReactionChart
               asset={selected}
               context={assets}
               highlightWindow={horizon}
             />
           </div>
-        </section>
+        </Panel>
 
-        <section
+        <Panel
+          as="section"
           aria-label="Cross-asset reaction table"
-          className="rounded-lg border border-white/5 bg-white/[0.015] p-4 sm:p-5 xl:col-span-5"
+          className="xl:col-span-5"
         >
-          <h3 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-            All assets · all horizons
-          </h3>
+          <PanelHeader
+            title="Every instrument, every horizon"
+            aside={
+              <span className="text-[11px] text-ink-3">
+                Select a row to chart it
+              </span>
+            }
+            className="mb-3"
+          />
           <ReactionSummaryTable
             assets={assets}
             sortWindow={horizon}
@@ -94,32 +114,38 @@ export function EventReactionExplorer({ assets }: Props) {
             onSelect={setSelectedSymbol}
             onSortWindowChange={setHorizon}
           />
-        </section>
+        </Panel>
       </div>
 
-      <section
-        aria-label="Cross-asset reaction ranking"
-        className="rounded-lg border border-white/5 bg-white/[0.015] p-4 sm:p-5"
-      >
-        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-            Which assets reacted most · {WINDOW_LABELS[horizon]}
-          </h3>
-          <p className="text-[11px] text-zinc-600">
-            Ranked by absolute move {WINDOW_DESCRIPTIONS[horizon]}
-          </p>
-        </div>
+      <Panel as="section" aria-label="Cross-asset reaction ranking">
+        <PanelHeader
+          title={`Which instruments reacted most · ${WINDOW_LABELS[horizon]}`}
+          aside={
+            <span className="text-[11px] text-ink-3">
+              Ranked by absolute move {WINDOW_DESCRIPTIONS[horizon]}
+            </span>
+          }
+          className="mb-4"
+        />
         <CrossAssetReactionBars
           assets={assets}
           window={horizon}
           selectedSymbol={selected?.symbol ?? null}
           onSelect={setSelectedSymbol}
         />
-      </section>
+      </Panel>
     </div>
   );
 }
 
+/**
+ * The focused instrument's own headline, above its chart.
+ *
+ * The value is the loudest thing in the panel and the baseline provenance is
+ * the quietest, which is the inverse of how this block used to read: the
+ * percentage and the "baseline bar recorded at…" line were within one type step
+ * of each other, so the panel had no focal point.
+ */
 function SelectedAssetHeader({
   asset,
   horizon,
@@ -128,44 +154,41 @@ function SelectedAssetHeader({
   horizon: ReactionWindow;
 }) {
   const value = pctForWindow(asset, horizon);
-  const formatted = formatPercentChange(value);
   const anchor = formatNewYorkDateTime(asset.anchorAt);
   const windows = measuredWindows(asset);
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
       <div className="min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono text-base font-semibold text-zinc-100">
-            {asset.symbol}
-          </span>
-          <span className="truncate text-xs text-zinc-500">{asset.name}</span>
-        </div>
-        <p className="mt-1 text-[11px] text-zinc-600">
+        <InstrumentBadge symbol={asset.symbol} name={asset.name} emphasis />
+        <p className="mt-1.5 text-[11px] leading-relaxed text-ink-3">
           {anchor === null
             ? "Pre-release baseline bar not recorded"
-            : `Baseline bar ${anchor}`}
+            : `Baseline ${anchor}`}
           {windows.length > 0 && (
             <>
-              {" · measured "}
-              {windows.map((w) => WINDOW_LABELS[w]).join(", ")}
+              {" · measured at "}
+              <span className="num">
+                {windows.map((w) => WINDOW_LABELS[w]).join(", ")}
+              </span>
             </>
           )}
         </p>
       </div>
-      <div className="text-right">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-          {WINDOW_LABELS[horizon]}
+      <div className="shrink-0 text-right">
+        <div className="eyebrow">{WINDOW_LABELS[horizon]}</div>
+        <div className="mt-1">
+          <ReactionIndicator
+            value={value}
+            symbol={asset.symbol}
+            windowLabel={WINDOW_DESCRIPTIONS[horizon]}
+            size="lg"
+          />
         </div>
-        <div
-          className={`font-mono text-2xl font-semibold tabular-nums ${moveTextClass(
-            value,
-          )}`}
-        >
-          {formatted ?? "—"}
-        </div>
-        {formatted === null && (
-          <div className="text-[10px] text-amber-300/60">Not measured</div>
+        {value === null && (
+          <div className="mt-0.5 text-[10px] text-warn">
+            No {WINDOW_LABELS[horizon]} reading
+          </div>
         )}
       </div>
     </div>

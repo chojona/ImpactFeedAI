@@ -1,3 +1,4 @@
+import { DataStatePanel } from "@/components/ui/DataStatePanel";
 import type { CategoryCoverage } from "@/services/events/eventQueries";
 
 /**
@@ -9,6 +10,12 @@ import type { CategoryCoverage } from "@/services/events/eventQueries";
  * needs to know whether the events are missing, the release timing is missing,
  * or the prices are missing — three different problems with three different
  * fixes, and only one of them is about this page.
+ *
+ * The redesign routed it through the shared `DataStatePanel` so this reads in
+ * the same visual language as an unmeasured cell on an event page, and picks the
+ * state that matches the cause: nothing ingested is `pending` (a queued task),
+ * whereas timing that no source publishes is `unsupported` (a permanent limit
+ * of the upstream data). Those were previously the same grey box.
  */
 
 interface Props {
@@ -40,30 +47,37 @@ export function InsufficientData({ coverage }: Props) {
     );
   }
 
+  // "Nothing here yet" and "nothing here from this source, ever" are different
+  // claims. The first is a backlog; the second is a limit of the provider.
+  const state =
+    coverage.events === 0 || coverage.measuredEvents === 0
+      ? coverage.trustedTiming > 0
+        ? "pending"
+        : "unsupported"
+      : "unavailable";
+
   return (
-    <div className="rounded-lg border border-white/[0.07] bg-white/[0.015] px-6 py-10">
-      <h3 className="text-base font-semibold text-zinc-200">
-        Not enough verified historical observations
-      </h3>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-        A pattern needs events whose exact release instant is backed by a named
-        source. Until that exists, this category has nothing that can be
-        aggregated without inventing the missing timing.
-      </p>
+    <DataStatePanel
+      state={state}
+      title="Not enough verified observations for a pattern"
+      footnote="This is a data-provider gap, not a rendering one. Fabricating a release time would produce a chart that looks identical to a correct one."
+    >
+      A pattern needs events whose exact release instant is backed by a named
+      source. Until that exists, this category has nothing that can be
+      aggregated without inventing the missing timing.
       {reasons.length > 0 && (
-        <ul className="mt-4 max-w-2xl space-y-2 text-sm text-zinc-500">
+        <span className="mt-3 block space-y-2">
           {reasons.map((reason) => (
-            <li key={reason} className="flex gap-2.5">
-              <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-zinc-600" />
+            <span key={reason} className="flex gap-2.5 text-ink-3">
+              <span
+                aria-hidden
+                className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-ink-4"
+              />
               {reason}
-            </li>
+            </span>
           ))}
-        </ul>
+        </span>
       )}
-      <p className="mt-5 text-xs text-zinc-600">
-        This is a data-provider gap, not a rendering one. Fabricating a release
-        time would produce a chart that looks identical to a correct one.
-      </p>
-    </div>
+    </DataStatePanel>
   );
 }

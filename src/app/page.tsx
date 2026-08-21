@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#080C10] font-sans text-zinc-100 antialiased">
+    <div className="min-h-screen bg-canvas font-sans text-ink antialiased">
       <LandingNav />
       <main>
         <Hero
@@ -57,7 +57,7 @@ function PreviewSkeleton() {
   return (
     <div aria-hidden>
       <div className="h-4 w-40 animate-pulse rounded bg-white/[0.04]" />
-      <div className="mt-2 h-72 animate-pulse rounded-lg border border-white/[0.08] bg-white/[0.02]" />
+      <div className="mt-2 h-72 animate-pulse rounded-lg border border-line bg-white/[0.02]" />
     </div>
   );
 }

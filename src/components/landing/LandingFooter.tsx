@@ -8,30 +8,30 @@ export function LandingFooter() {
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Zap
-              className="h-3.5 w-3.5 text-[#00FF94]"
+              className="h-3.5 w-3.5 text-accent"
               strokeWidth={2.5}
               fill="currentColor"
             />
-            <span className="font-mono text-xs font-semibold tracking-tight text-zinc-200">
+            <span className="font-mono text-xs font-semibold tracking-tight text-ink-2">
               ImpactFeedAI
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-3">
               · Macro research
             </span>
           </div>
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs text-zinc-300">
-            <Link href="/feed" className="transition hover:text-zinc-100">
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs text-ink-2">
+            <Link href="/feed" className="transition hover:text-ink">
               Event library
             </Link>
-            <Link href="/patterns" className="transition hover:text-zinc-100">
+            <Link href="/patterns" className="transition hover:text-ink">
               Patterns
             </Link>
-            <Link href="#pricing" className="transition hover:text-zinc-100">
+            <Link href="#pricing" className="transition hover:text-ink">
               Pricing
             </Link>
           </nav>
         </div>
-        <div className="mt-8 flex flex-col items-start gap-2 border-t border-white/[0.05] pt-6 font-mono text-[11px] text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col items-start gap-2 border-t border-line pt-6 font-mono text-[11px] text-ink-3 sm:flex-row sm:items-center sm:justify-between">
           <span>© 2025 ImpactFeedAI · All rights reserved</span>
           <span className="uppercase tracking-[0.2em]">
             Research tool · Not investment advice

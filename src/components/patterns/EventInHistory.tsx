@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ReactionDistribution } from "@/components/patterns/ReactionDistribution";
+import { Panel, PanelHeader } from "@/components/ui/Panel";
 import {
   distributionFor,
   type ReactionObservation,
@@ -64,25 +65,27 @@ export function EventInHistory({
   if (points.length === 0) return null;
 
   return (
-    <section aria-labelledby="event-in-history">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3
-          id="event-in-history"
-          className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
-        >
-          This event vs. {category} history · {symbol} ·{" "}
-          {WINDOW_LABELS[WINDOW]}
-        </h3>
-        <Link
-          href={`/patterns?cat=${category}&sym=${encodeURIComponent(
-            symbol,
-          )}&h=${WINDOW}`}
-          className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:text-[#00FF94]"
-        >
-          Change instrument →
-        </Link>
-      </div>
-      <p className="mb-4 max-w-2xl text-[13px] text-zinc-500">
+    <Panel as="section" aria-labelledby="event-in-history">
+      <PanelHeader
+        id="event-in-history"
+        title={
+          <>
+            This release against {category} history · {symbol} ·{" "}
+            {WINDOW_LABELS[WINDOW]}
+          </>
+        }
+        aside={
+          <Link
+            href={`/patterns?cat=${category}&sym=${encodeURIComponent(
+              symbol,
+            )}&h=${WINDOW}`}
+            className="rounded font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3 transition-colors hover:text-accent"
+          >
+            Change instrument →
+          </Link>
+        }
+      />
+      <p className="mt-1.5 mb-4 max-w-2xl text-[11px] leading-relaxed text-ink-3">
         Every {category} event in the library with a sourced release instant and
         a measured {symbol} move {WINDOW_DESCRIPTIONS[WINDOW]}. The ringed dot is
         this release.
@@ -93,7 +96,7 @@ export function EventInHistory({
         window={WINDOW}
         selectedEventId={eventId}
       />
-    </section>
+    </Panel>
   );
 }
 
