@@ -3,6 +3,7 @@
 import {
   CATEGORY_PILL_BASE,
   ALL_PILL_COLOR,
+  CATEGORY_PILL_IDLE,
   categoryPillColor,
   categoryPillCountClass,
   categoryPillStyle,
@@ -64,7 +65,7 @@ export function CategoryFilterBar({ active, onChange, counts }: Props) {
               aria-pressed={isActive}
               style={categoryPillStyle(color, isActive)}
               className={`${CATEGORY_PILL_BASE} ${
-                isActive ? "" : "hover:text-ink"
+                isActive ? "" : CATEGORY_PILL_IDLE
               }`}
             >
               {f}

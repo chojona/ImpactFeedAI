@@ -25,19 +25,22 @@ interface Props {
 }
 
 /**
- * Segmented-control styling. The selected segment gets a filled surface and
- * full-contrast ink; the rest sit at `ink-3` and lift on hover, so the control
- * reads as a set of choices with one taken rather than as three equal labels —
- * the previous inactive state was `zinc-500`, which is below the contrast floor
- * for a 12px label.
+ * Segmented-control styling.
+ *
+ * The selected segment is brand indigo — tinted fill, indigo border, indigo
+ * text — which is the same treatment the navigation and every other selected
+ * control uses, so "this one is chosen" is one learnable signal rather than
+ * seven similar greys. The unselected segments hover into a faint brand tint,
+ * which is how the control announces that it is interactive before it is
+ * touched.
  */
 const baseClass =
-  "min-w-[2.5rem] rounded-md px-2.5 py-1 text-center font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors";
+  "min-w-[2.6rem] rounded-md border px-2.5 py-1 text-center font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors";
 
 const stateClass = (active: boolean): string =>
   active
-    ? "bg-surface-3 text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-    : "text-ink-3 hover:bg-white/[0.04] hover:text-ink";
+    ? "border-brand/45 bg-brand-tint-strong text-brand-bright"
+    : "border-transparent text-ink-3 hover:bg-brand-tint hover:text-ink";
 
 export function HorizonSelector({
   value,
@@ -50,7 +53,7 @@ export function HorizonSelector({
     <div
       role="group"
       aria-label={label}
-      className={`flex items-center gap-1 rounded-lg border border-line bg-black/20 p-1 ${className}`}
+      className={`flex items-center gap-1 rounded-lg border border-line bg-canvas/60 p-1 ${className}`}
     >
       {REACTION_WINDOWS.map((window) => {
         const active = window === value;

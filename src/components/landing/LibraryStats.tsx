@@ -69,7 +69,7 @@ export async function LibraryStats() {
   return (
     <section
       aria-label="Library figures"
-      className="border-b border-line bg-white/[0.015]"
+      className="border-b border-line bg-surface-1"
     >
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8">
         <MetricRow
@@ -83,7 +83,7 @@ export async function LibraryStats() {
               label={metric.label}
               value={metric.value}
               size="lg"
-              tone={metric.highlight === true ? "positive" : "neutral"}
+              tone={metric.highlight === true ? "brand" : "neutral"}
               state="measured"
               note={metric.note}
             />

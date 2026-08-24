@@ -2,6 +2,13 @@ import { Suspense, cache } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import {
+  ChartCandlestick,
+  FileText,
+  GitCompare,
+  Ruler,
+  ScrollText,
+} from "lucide-react";
 
 import { Header } from "@/components/Header";
 import { EventHeader } from "@/components/events/EventHeader";
@@ -20,7 +27,7 @@ import { EventReactionExplorer } from "@/components/reactions/EventReactionExplo
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { DataStatePanel } from "@/components/ui/DataStatePanel";
 import { PageSection } from "@/components/ui/PageSection";
-import { PanelHeader } from "@/components/ui/Panel";
+import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { isDatabaseConfigured } from "@/lib/prisma";
 import { profileObservations } from "@/services/analytics/patternAnalysis";
 import {
@@ -116,7 +123,7 @@ export default async function EventDetailPage({ params }: PageProps) {
   const summary = summarizeReaction(event.assets);
 
   return (
-    <div className="flex flex-1 flex-col bg-canvas text-ink-2">
+    <div className="flex flex-1 flex-col text-ink-2">
       <Header active="feed" />
       <main className="mx-auto w-full max-w-6xl px-5 pt-6 pb-24 sm:px-6 sm:pt-8">
         <Breadcrumbs
@@ -139,6 +146,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             <PageSection
               id="release"
               eyebrow="Release"
+              icon={<FileText className="h-3 w-3" strokeWidth={2.5} />}
               title="What printed"
               description="Every value in the metric's canonical unit. A surprise requires a sourced forecast, so most historical rows show none rather than a zero."
             >
@@ -160,6 +168,7 @@ export default async function EventDetailPage({ params }: PageProps) {
             <PageSection
               id="context"
               eyebrow="Context"
+              icon={<ScrollText className="h-3 w-3" strokeWidth={2.5} />}
               title="Event context"
             >
               <p className="max-w-3xl text-[15px] leading-relaxed text-ink-2">
@@ -171,6 +180,7 @@ export default async function EventDetailPage({ params }: PageProps) {
           <PageSection
             id="reaction"
             eyebrow="Evidence"
+            icon={<ChartCandlestick className="h-3 w-3" strokeWidth={2.5} />}
             title="Market reaction"
             description="The traded path first, then the stored horizons. The candles are observed hourly bars; the horizons are four prices per instrument, not a continuous series."
           >
@@ -224,12 +234,13 @@ export default async function EventDetailPage({ params }: PageProps) {
           <PageSection
             id="history"
             eyebrow="Comparison"
+            icon={<GitCompare className="h-3 w-3" strokeWidth={2.5} />}
             title={`How ${event.category} events have reacted`}
             description="Median move across every comparable event in the library whose release instant is sourced. The sample size is part of the finding."
             actions={
               <Link
                 href={`/patterns?cat=${event.category}`}
-                className="rounded font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 transition-colors hover:text-accent"
+                className="rounded font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3 transition-colors hover:text-brand-bright"
               >
                 Full pattern →
               </Link>
@@ -354,50 +365,65 @@ function MethodSection({
 }) {
   const version = event.assets[0]?.calculationVersion ?? null;
 
+  const terms: { term: string; body: React.ReactNode }[] = [
+    {
+      term: "Anchor",
+      body: "Every percentage is measured from the last bar that closed before the release instant, not from the session open.",
+    },
+    {
+      term: "Horizons",
+      body: (
+        <>
+          1H is one hour after the release instant; 1D and 1W are one session
+          and one week after the release session. They are four stored prices,
+          so the reaction chart&rsquo;s slots are evenly spaced and its axis is
+          not to scale.
+        </>
+      ),
+    },
+    {
+      term: "Absent values",
+      body: "An em dash means the window was not measured. It never means zero — a fabricated 0.00% is indistinguishable from a flat market and would poison every average taken over it.",
+    },
+    {
+      term: "Provenance",
+      body: (
+        <>
+          {event.timing.source ?? "No timing source recorded"}
+          {hasReaction && version !== null && (
+            <>
+              {" · calculation version "}
+              <span className="num">{version}</span>
+            </>
+          )}
+        </>
+      ),
+    },
+  ];
+
   return (
     <PageSection
       id="method"
       eyebrow="Method"
+      icon={<Ruler className="h-3 w-3" strokeWidth={2.5} />}
+      accent="neutral"
       title="How these figures were measured"
     >
-      <dl className="grid grid-cols-1 gap-x-10 gap-y-5 text-[13px] leading-relaxed sm:grid-cols-2">
-        <div>
-          <dt className="eyebrow">Anchor</dt>
-          <dd className="mt-1.5 text-ink-3">
-            Every percentage is measured from the last bar that closed before
-            the release instant, not from the session open.
-          </dd>
-        </div>
-        <div>
-          <dt className="eyebrow">Horizons</dt>
-          <dd className="mt-1.5 text-ink-3">
-            1H is one hour after the release instant; 1D and 1W are one session
-            and one week after the release session. They are four stored prices,
-            so the reaction chart&rsquo;s slots are evenly spaced and its axis
-            is not to scale.
-          </dd>
-        </div>
-        <div>
-          <dt className="eyebrow">Absent values</dt>
-          <dd className="mt-1.5 text-ink-3">
-            An em dash means the window was not measured. It never means zero —
-            a fabricated 0.00% is indistinguishable from a flat market and would
-            poison every average taken over it.
-          </dd>
-        </div>
-        <div>
-          <dt className="eyebrow">Provenance</dt>
-          <dd className="mt-1.5 text-ink-3">
-            {event.timing.source ?? "No timing source recorded"}
-            {hasReaction && version !== null && (
-              <>
-                {" · calculation version "}
-                <span className="num">{version}</span>
-              </>
-            )}
-          </dd>
-        </div>
-      </dl>
+      {/* The one section on the page rendered on a tinted surface. Methodology
+          is the application talking about itself rather than reporting a
+          market, so it gets the informational indigo — which also gives the
+          bottom of a long page a visible terminus rather than trailing off into
+          the page background. */}
+      <Panel tone="brand" padding="md">
+        <dl className="grid grid-cols-1 gap-x-10 gap-y-5 text-[13px] leading-relaxed sm:grid-cols-2">
+          {terms.map(({ term, body }) => (
+            <div key={term}>
+              <dt className="eyebrow text-brand-bright">{term}</dt>
+              <dd className="mt-1.5 text-ink-3">{body}</dd>
+            </div>
+          ))}
+        </dl>
+      </Panel>
     </PageSection>
   );
 }

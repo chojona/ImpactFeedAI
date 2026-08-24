@@ -7,7 +7,7 @@ import {
   formatPercentChange,
   pctForWindow,
 } from "@/services/events/reactionView";
-import { heatCellStyle, moveTextClass } from "./reactionTone";
+import { heatCellStyle, moveTextOnTintClass } from "./reactionTone";
 import type { AssetReaction, ReactionWindow } from "@/types/events";
 
 /**
@@ -157,7 +157,11 @@ export function ReactionSummaryTable({
                             ? `${asset.symbol} ${WINDOW_LABELS[window]}: not measured`
                             : `${asset.symbol} ${formatted} ${WINDOW_DESCRIPTIONS[window]}`
                         }
-                        className={`num py-2 pl-3 pr-2 text-right text-[13px] ${moveTextClass(
+                        // `moveTextOnTintClass` rather than `moveTextClass`:
+                        // these cells are drawn on their own colour, and the
+                        // base red measures under 3:1 against the strongest
+                        // tint the heatmap produces.
+                        className={`num py-2 pl-3 pr-2 text-right text-[13px] ${moveTextOnTintClass(
                           value,
                         )} ${window === sortWindow ? "font-semibold" : ""}`}
                       >

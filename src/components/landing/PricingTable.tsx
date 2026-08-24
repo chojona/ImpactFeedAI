@@ -137,21 +137,21 @@ const FEATURE_ROWS: FeatureRow[] = [
 
 const tierNameClass = (accent: TierColumn["accent"]): string =>
   accent === "primary"
-    ? "text-accent"
+    ? "text-brand-bright"
     : accent === "secondary"
       ? "text-[#FF6B35]"
       : "text-ink-2";
 
 /** Subtle vertical tint behind the Pro column for emphasis. */
 const tierCellTintClass = (accent: TierColumn["accent"]): string =>
-  accent === "primary" ? "bg-accent/[0.025]" : "";
+  accent === "primary" ? "bg-brand-tint" : "";
 
 const tierCtaClass = (accent: TierColumn["accent"]): string => {
   if (accent === "primary")
-    return "bg-accent text-canvas hover:bg-accent/90";
+    return "bg-brand text-canvas hover:bg-brand/90";
   if (accent === "secondary")
     return "border border-[#FF6B35]/40 bg-[#FF6B35]/[0.06] text-[#FF6B35] hover:bg-[#FF6B35]/10";
-  return "border border-white/15 bg-white/[0.03] text-ink hover:border-white/25 hover:bg-white/[0.06]";
+  return "border border-white/15 bg-surface-2 text-ink hover:border-white/25 hover:bg-line";
 };
 
 function renderCell(value: CellValue) {
@@ -159,7 +159,7 @@ function renderCell(value: CellValue) {
     return (
       <span className="inline-flex items-center justify-center">
         <Check
-          className="h-4 w-4 text-accent"
+          className="h-4 w-4 text-brand-bright"
           strokeWidth={3}
           aria-label="Included"
         />
@@ -170,7 +170,7 @@ function renderCell(value: CellValue) {
     return (
       <span className="inline-flex items-center justify-center">
         <Minus
-          className="h-4 w-4 text-ink0"
+          className="h-4 w-4 text-ink-3"
           strokeWidth={2.5}
           aria-label="Not included"
         />
@@ -235,7 +235,7 @@ export function PricingTable() {
                       )}`}
                     >
                       {tier.badge && (
-                        <span className="absolute left-1/2 top-2 -translate-x-1/2 rounded-full border border-[#00FF94]/30 bg-canvas px-2.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-accent">
+                        <span className="absolute left-1/2 top-2 -translate-x-1/2 rounded-full border border-[#00FF94]/30 bg-canvas px-2.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-brand-bright">
                           {tier.badge}
                         </span>
                       )}
@@ -262,7 +262,7 @@ export function PricingTable() {
               <tbody>
                 {FEATURE_ROWS.map((row, index) => {
                   const stripe =
-                    index % 2 === 1 ? "bg-white/[0.02]" : "bg-transparent";
+                    index % 2 === 1 ? "bg-surface-2" : "bg-transparent";
                   return (
                     <tr key={row.label}>
                       <th
@@ -273,7 +273,7 @@ export function PricingTable() {
                           {row.label}
                         </span>
                         {row.planned === true && (
-                          <span className="ml-2 rounded-full border border-line bg-white/[0.02] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink0">
+                          <span className="ml-2 rounded-full border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-3">
                             planned
                           </span>
                         )}
@@ -302,7 +302,7 @@ export function PricingTable() {
                       )}`}
                     >
                       {tier.ctaHref === null ? (
-                        <span className="inline-flex h-9 w-full cursor-default items-center justify-center rounded-md border border-line px-3 font-mono text-[12px] font-semibold text-ink0">
+                        <span className="inline-flex h-9 w-full cursor-default items-center justify-center rounded-md border border-line px-3 font-mono text-[12px] font-semibold text-ink-3">
                           {tier.ctaLabel}
                         </span>
                       ) : (
@@ -323,7 +323,7 @@ export function PricingTable() {
           </div>
         </div>
 
-        <p className="mt-4 font-mono text-[11px] text-ink0">
+        <p className="mt-4 font-mono text-[11px] text-ink-3">
           Planned rows are on the roadmap and are not available on any tier
           today. Paid tiers have no checkout yet.
         </p>

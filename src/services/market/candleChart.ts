@@ -84,8 +84,13 @@ export function toChartCandles(candles: readonly Candle[]): ChartCandle[] {
     }));
 }
 
-export const UP_VOLUME_COLOR = "rgba(0, 255, 148, 0.35)";
-export const DOWN_VOLUME_COLOR = "rgba(255, 92, 92, 0.35)";
+/**
+ * Volume is context, not the finding, so it is drawn at a lower alpha than the
+ * candles it sits under. At 0.35 the histogram was the loudest thing on the
+ * chart and competed with the price series for attention.
+ */
+export const UP_VOLUME_COLOR = "rgba(0, 255, 148, 0.24)";
+export const DOWN_VOLUME_COLOR = "rgba(255, 92, 92, 0.24)";
 
 /**
  * Volume series aligned one-to-one with the candles.

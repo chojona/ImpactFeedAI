@@ -39,6 +39,12 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
  * gridlines, and the axis type moved off `zinc-600` — at 10px on this
  * background it was below every contrast floor that applies.
  *
+ * The second visual pass added the plot field, a brand-coloured zero reference
+ * line and boxed legend keys. None of it touches what is drawn: the measured
+ * markers are still the only filled marks, the connectors are still dashed and
+ * still labelled "not observed", and an unmeasured window still contributes no
+ * point at all. Decoration was added strictly outside the data.
+ *
  * When intraday candles exist, they belong in a sibling component that consumes
  * a candle series; nothing here needs to change for that to happen.
  */
@@ -98,7 +104,7 @@ export function ReactionChart({
             <span
               key={tick.value}
               className={`num absolute right-0 -translate-y-1/2 text-[10px] ${
-                tick.value === 0 ? "text-ink-3" : "text-ink-4"
+                tick.value === 0 ? "text-brand-bright" : "text-ink-4"
               }`}
               style={{ top: `${tick.yPct}%` }}
             >
@@ -107,8 +113,12 @@ export function ReactionChart({
           ))}
         </div>
 
+        {/* The plot lives in its own sunken, faintly blue field, so the
+            measurement space is a distinct object from the panel around it.
+            Absolute marker positions are percentages of this box, so the border
+            does not disturb the geometry. */}
         <div
-          className="relative h-52 min-w-0 flex-1 sm:h-64"
+          className="plot-field relative h-52 min-w-0 flex-1 overflow-visible rounded-md border border-line sm:h-64"
           role="img"
           aria-label={summary}
         >
@@ -125,12 +135,15 @@ export function ReactionChart({
                 x2="100"
                 y1={tick.yPct}
                 y2={tick.yPct}
+                // The zero line is the chart's reference, so it is drawn in the
+                // brand hue at full strength while the other gridlines stay a
+                // faint blue-grey. A reader finds "no change" without counting.
                 stroke={
                   tick.value === 0
-                    ? "rgba(255,255,255,0.28)"
-                    : "rgba(255,255,255,0.05)"
+                    ? "rgba(142, 166, 255, 0.5)"
+                    : "rgba(150, 176, 255, 0.09)"
                 }
-                strokeWidth={1}
+                strokeWidth={tick.value === 0 ? 1.25 : 1}
                 vectorEffect="non-scaling-stroke"
               />
             ))}
@@ -142,7 +155,7 @@ export function ReactionChart({
                 x2={slot.xPct}
                 y1="0"
                 y2="100"
-                stroke="rgba(255,255,255,0.05)"
+                stroke="rgba(150, 176, 255, 0.09)"
                 strokeWidth={1}
                 strokeDasharray={
                   slot.window !== null &&
@@ -208,7 +221,7 @@ export function ReactionChart({
         })}
       </div>
 
-      <figcaption className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-ink-3">
+      <figcaption className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-ink-3">
         <Legend color={lineColor} contextCount={plot.context.length} />
         <span className="text-ink-4">
           Slots evenly spaced — the axis is not to scale.
@@ -237,18 +250,18 @@ function Legend({
   contextCount: number;
 }) {
   return (
-    <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
-      <span className="flex items-center gap-1.5">
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="flex items-center gap-1.5 rounded-md border border-line bg-surface-2 px-2 py-1">
         <span
           className="h-2 w-2 rounded-full"
           style={{ backgroundColor: color }}
         />
         observed
       </span>
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-1.5 rounded-md border border-line bg-surface-2 px-2 py-1">
         <span
           aria-hidden
-          className="inline-block h-px w-5 border-t-2 border-dashed border-ink-4"
+          className="inline-block h-px w-5 border-t-2 border-dashed border-ink-3"
         />
         connector, not observed
       </span>
@@ -270,7 +283,7 @@ function ContextPath({ series }: { series: PlotSeries }) {
       stroke={moveColor(last.value)}
       strokeWidth={1}
       strokeDasharray="4 4"
-      strokeOpacity={0.18}
+      strokeOpacity={0.14}
       strokeLinecap="round"
       vectorEffect="non-scaling-stroke"
     />
@@ -314,7 +327,7 @@ function Marker({
       style={{ left: `${point.xPct}%`, top: `${point.yPct}%` }}
     >
       <span
-        className={`block rounded-full ring-2 ring-canvas transition-transform group-hover:scale-125 ${
+        className={`block rounded-full ring-2 ring-surface-1 transition-transform group-hover:scale-125 ${
           highlighted ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
         }`}
         style={{
@@ -336,7 +349,7 @@ function Marker({
       )}
 
       <div
-        className={`pointer-events-none absolute left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-line-strong bg-surface-2 px-2.5 py-1.5 shadow-lg group-hover:block ${
+        className={`pointer-events-none absolute left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-line-strong bg-surface-4 px-2.5 py-1.5 shadow-xl group-hover:block ${
           above ? "bottom-full mb-6" : "top-full mt-6"
         }`}
       >
@@ -360,7 +373,7 @@ function Marker({
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-52 items-center justify-center rounded-lg border border-dashed border-line bg-white/[0.01] px-6 text-center text-[13px] text-ink-3 sm:h-64">
+    <div className="plot-field flex h-52 items-center justify-center rounded-md border border-dashed border-line px-6 text-center text-[13px] text-ink-3 sm:h-64">
       <span>
         <span aria-hidden className="num mr-2 text-ink-4">
           —

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 import { Header } from "@/components/Header";
+import { buttonClass } from "@/components/ui/Button";
 import { DataStatePanel } from "@/components/ui/DataStatePanel";
 
 /**
@@ -30,7 +31,7 @@ export function RouteError({ error, retry, title, description }: Props) {
   }, [error]);
 
   return (
-    <div className="flex flex-1 flex-col bg-canvas text-ink-2">
+    <div className="flex flex-1 flex-col text-ink-2">
       <Header />
       <main className="mx-auto w-full max-w-2xl px-5 py-24 sm:px-6">
         <DataStatePanel state="error" title={title} footnote={footnote(error)}>
@@ -39,7 +40,7 @@ export function RouteError({ error, retry, title, description }: Props) {
         <button
           type="button"
           onClick={retry}
-          className="mt-6 rounded-lg border border-line bg-white/[0.03] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-2 transition-colors hover:border-line-strong hover:bg-white/[0.06] hover:text-ink"
+          className={buttonClass("primary", "md", "mt-6")}
         >
           Try again
         </button>

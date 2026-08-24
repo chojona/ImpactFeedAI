@@ -27,7 +27,7 @@ export const metadata: Metadata = {
  */
 export default function FeedPage() {
   return (
-    <div className="flex flex-1 flex-col bg-canvas text-ink-2">
+    <div className="flex flex-1 flex-col text-ink-2">
       <Header active="feed" />
 
       <main className="mx-auto w-full max-w-7xl px-5 pt-10 pb-24 sm:px-6 sm:pt-12">
@@ -72,7 +72,7 @@ function CardLegend() {
   ];
 
   return (
-    <dl className="space-y-1.5 rounded-lg border border-line bg-surface-1 px-4 py-3">
+    <dl className="surface-lift space-y-1.5 rounded-lg border border-brand/25 bg-brand-tint px-4 py-3">
       <dt className="eyebrow mb-2">What a card can say</dt>
       {rows.map((row) => (
         <dd key={row.state} className="flex items-start gap-2.5 text-[11px]">

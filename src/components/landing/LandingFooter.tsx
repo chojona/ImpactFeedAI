@@ -8,7 +8,7 @@ export function LandingFooter() {
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Zap
-              className="h-3.5 w-3.5 text-accent"
+              className="h-3.5 w-3.5 text-brand-bright"
               strokeWidth={2.5}
               fill="currentColor"
             />

@@ -29,7 +29,7 @@ export function SearchBar({ value, onChange, resultCount }: Props) {
   // inside the focus indicator — hence `focus:outline-none` on the input itself
   // rather than a missing focus state.
   return (
-    <div className="relative flex items-center rounded-lg border border-line bg-white/[0.02] transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/20 hover:border-line-strong">
+    <div className="surface-lift relative flex items-center rounded-lg border border-line bg-surface-1 transition-colors focus-within:border-brand/60 focus-within:bg-surface-2 focus-within:ring-2 focus-within:ring-brand/25 hover:border-line-brand">
       <label htmlFor={id} className="sr-only">
         Search events by title or metric
       </label>
@@ -55,7 +55,7 @@ export function SearchBar({ value, onChange, resultCount }: Props) {
             type="button"
             onClick={() => onChange("")}
             aria-label="Clear search"
-            className="mr-2 rounded p-1 text-ink-3 transition-colors hover:bg-white/[0.06] hover:text-ink"
+            className="mr-2 rounded p-1 text-ink-3 transition-colors hover:bg-brand-tint hover:text-ink"
           >
             <X aria-hidden className="h-3.5 w-3.5" />
           </button>

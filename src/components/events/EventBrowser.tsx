@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { buttonClass } from "@/components/ui/Button";
 import { DataStatePanel } from "@/components/ui/DataStatePanel";
 import { FILTERABLE_CATEGORIES } from "@/lib/eventCategories";
 import type { NewsEvent } from "@/types/events";
@@ -240,7 +241,7 @@ export function EventBrowser() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -80, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="fixed inset-x-0 top-16 z-10 border-b border-line bg-canvas/95 backdrop-blur"
+            className="fixed inset-x-0 top-16 z-10 border-b border-line bg-canvas/92 backdrop-blur-xl"
           >
             <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-3 sm:px-6 lg:flex-row lg:items-center lg:gap-4">
               <div className="lg:w-80 lg:shrink-0">
@@ -272,7 +273,7 @@ export function EventBrowser() {
 
       <div ref={stickyAnchorRef} className="h-px" />
 
-      <div className="mt-6 mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-line pb-3">
+      <div className="mt-6 mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-line pb-3.5">
         <p className="text-[13px] text-ink-3" aria-live="polite">
           <span className="num font-semibold text-ink">
             {counterDisplay.visible}
@@ -289,7 +290,7 @@ export function EventBrowser() {
           <div
             role="group"
             aria-label="Sort order"
-            className="flex items-center gap-1 rounded-lg border border-line bg-black/20 p-1"
+            className="flex items-center gap-1 rounded-lg border border-line bg-canvas/60 p-1"
           >
             <SortButton
               active={sortMode === "newest"}
@@ -350,7 +351,7 @@ export function EventBrowser() {
           <button
             type="button"
             onClick={() => void loadMore()}
-            className="rounded-lg border border-line bg-white/[0.03] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-2 transition-colors hover:border-line-strong hover:bg-white/[0.06] hover:text-ink"
+            className={buttonClass("secondary", "md")}
           >
             Load more events
           </button>
@@ -375,7 +376,7 @@ function SkeletonGrid() {
       {Array.from({ length: 6 }, (_, i) => (
         <div
           key={i}
-          className="flex flex-col gap-3 rounded-lg border border-line bg-surface-1 p-4 sm:p-[18px]"
+          className="surface-lift flex flex-col gap-3 rounded-lg border border-line bg-surface-1 p-4 sm:p-[18px]"
         >
           {/* Shaped like the real card rather than a plain block, so the
               layout does not reflow when the rows arrive. */}
@@ -390,10 +391,10 @@ function SkeletonGrid() {
             <div className="h-3.5 w-full animate-pulse rounded bg-white/[0.05]" />
             <div className="h-3.5 w-3/5 animate-pulse rounded bg-white/[0.05]" />
           </div>
-          <div className="space-y-2 border-t border-line pt-3">
-            <div className="h-3 w-2/5 animate-pulse rounded bg-white/[0.04]" />
-            <div className="h-1.5 w-full animate-pulse rounded-full bg-white/[0.03]" />
-            <div className="h-1.5 w-full animate-pulse rounded-full bg-white/[0.03]" />
+          <div className="space-y-2 rounded-md border border-line bg-surface-2 px-3 py-2.5">
+            <div className="h-3 w-2/5 animate-pulse rounded bg-white/[0.06]" />
+            <div className="h-1.5 w-full animate-pulse rounded-full bg-white/[0.04]" />
+            <div className="h-1.5 w-full animate-pulse rounded-full bg-white/[0.04]" />
           </div>
         </div>
       ))}
@@ -450,7 +451,7 @@ function Spinner() {
     <span role="status" className="flex items-center gap-2.5">
       <span
         aria-hidden
-        className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent/25 border-t-accent"
+        className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand/25 border-t-brand-bright"
       />
       <span className="eyebrow">Loading more events</span>
     </span>
@@ -471,10 +472,10 @@ function SortButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+      className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
         active
-          ? "bg-surface-3 text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-          : "text-ink-3 hover:bg-white/[0.04] hover:text-ink"
+          ? "border-brand/45 bg-brand-tint-strong text-brand-bright"
+          : "border-transparent text-ink-3 hover:bg-brand-tint hover:text-ink"
       }`}
     >
       {children}

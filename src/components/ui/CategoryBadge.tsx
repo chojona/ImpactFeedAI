@@ -64,7 +64,7 @@ export function InstrumentBadge({
     <span className={`flex min-w-0 items-baseline gap-2 ${className}`}>
       <span
         className={`num shrink-0 text-[13px] font-semibold ${
-          emphasis ? "text-accent" : "text-ink"
+          emphasis ? "text-brand-bright" : "text-ink"
         }`}
       >
         {symbol}

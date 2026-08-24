@@ -8,6 +8,22 @@ import type { EventCategory, EventTypeName } from "@/types/events";
  * this flag rather than comparing `actualValue > expectedValue` directly —
  * a hot CPI print is a *negative* surprise even though the number is higher.
  *
+ * ### Category colour
+ *
+ * Taxonomic only — a category colour never means anything about a market. That
+ * constraint is what sets the palette: every hue here is kept clear of the two
+ * colours a reader is allowed to interpret as a fact (`--color-pos` #00FF94 at
+ * 155° and `--color-neg` #FF5C5C at 0°) and of the brand indigo at 231°, which
+ * carries interaction.
+ *
+ * The previous set violated that twice over. INFLATION was #EF4444 — a red
+ * within a few degrees of the negative-move red, so an INFLATION chip beside a
+ * −1.58% reading was two reds meaning two unrelated things. GEOPOLITICAL was
+ * #F59E0B, effectively the warning amber. EARNINGS was #3B82F6, which is now
+ * the brand's lane. The hues below spread across 23°, 72°, 175°, 213°, 258°,
+ * 310° and 340°, so no two categories collide and none of them borrows a
+ * meaning it does not have.
+ *
  * Known limitation: the flag is per *category*, so it cannot distinguish
  * payrolls (more jobs is good) from the unemployment rate (higher is bad) —
  * both are `EventType.NFP` → `JOBS`. This is currently harmless because only
@@ -21,13 +37,13 @@ export const CATEGORY_CONFIG: Record<
   EventCategory,
   { higherIsBetter: boolean; color: string }
 > = {
-  TARIFF: { higherIsBetter: false, color: "#FF6B35" },
+  TARIFF: { higherIsBetter: false, color: "#F2789E" },
   FED: { higherIsBetter: false, color: "#A78BFA" },
-  INFLATION: { higherIsBetter: false, color: "#EF4444" },
-  JOBS: { higherIsBetter: true, color: "#22D3EE" },
-  GEOPOLITICAL: { higherIsBetter: false, color: "#F59E0B" },
-  EARNINGS: { higherIsBetter: true, color: "#3B82F6" },
-  OTHER: { higherIsBetter: true, color: "#6B7280" },
+  INFLATION: { higherIsBetter: false, color: "#F98C4A" },
+  JOBS: { higherIsBetter: true, color: "#48C2B4" },
+  GEOPOLITICAL: { higherIsBetter: false, color: "#E36FD4" },
+  EARNINGS: { higherIsBetter: true, color: "#B7CC5C" },
+  OTHER: { higherIsBetter: true, color: "#94A3B8" },
 };
 
 /**

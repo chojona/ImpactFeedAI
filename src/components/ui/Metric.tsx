@@ -21,7 +21,13 @@ import { DATA_STATE, type DataState } from "./dataState";
  */
 
 export type MetricSize = "xl" | "lg" | "md" | "sm";
-export type MetricTone = "neutral" | "positive" | "negative" | "caution";
+export type MetricTone =
+  | "neutral"
+  | "positive"
+  | "negative"
+  | "caution"
+  /** Coverage and dataset figures. Informational, not a market direction. */
+  | "brand";
 
 const VALUE_SIZE: Record<MetricSize, string> = {
   xl: "text-[26px] leading-none sm:text-[34px]",
@@ -43,6 +49,7 @@ const TONE: Record<MetricTone, string> = {
   positive: "text-pos",
   negative: "text-neg",
   caution: "text-warn",
+  brand: "text-brand-bright",
 };
 
 interface Props {

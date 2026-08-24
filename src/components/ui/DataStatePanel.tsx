@@ -18,6 +18,12 @@ import { DATA_STATE, type DataState } from "./dataState";
  * absence, a heading that states it, a sentence that gives the cause, and an
  * optional line naming the fix.
  *
+ * The second visual pass gave it a tinted surface, a semantic border, an icon
+ * container and a status label beside the heading. It is the same information
+ * with four more ways in: a reader now identifies the *kind* of absence from the
+ * chip colour before reading a word, and the label spells it out for anyone who
+ * cannot.
+ *
  * The states are deliberately not interchangeable. `suppressed` means the
  * application is refusing to publish a number it could compute — the timing
  * provenance does not clear the bar — and is toned as a decision. `unsupported`
@@ -62,21 +68,29 @@ export function DataStatePanel({
 
   return (
     <div
-      className={`flex flex-col justify-center rounded-lg border px-5 py-8 sm:px-6 ${
+      className={`surface-lift flex flex-col justify-center rounded-lg border px-5 py-7 sm:px-6 ${
         dashed ? "border-dashed" : ""
       } ${style.border} ${style.surface} ${
         minHeight === "chart" ? "min-h-[240px]" : ""
       } ${className}`}
     >
-      <div className="flex items-start gap-3">
-        <Icon
+      <div className="flex items-start gap-3.5">
+        {/* The icon lives in a bordered, tinted container rather than floating
+            beside the text. It gives the panel one fixed focal point, which is
+            what makes a state read as a status rather than as a paragraph that
+            happens to sit in a coloured box. */}
+        <span
           aria-hidden
-          className={`mt-0.5 h-4 w-4 shrink-0 ${style.text}`}
-          strokeWidth={2}
-        />
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${style.iconChip}`}
+        >
+          <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+        </span>
         <div className="min-w-0">
-          <h3 className={`text-sm font-semibold ${style.text}`}>{title}</h3>
-          <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-ink-3">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <h3 className={`text-sm font-semibold ${style.text}`}>{title}</h3>
+            <span className="eyebrow">{style.label}</span>
+          </div>
+          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-3">
             {children}
           </p>
           {footnote !== undefined && (

@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 /** Streamed while the coverage aggregates and category observations are read. */
 export default function Loading() {
   return (
-    <div className="flex flex-1 flex-col bg-canvas">
+    <div className="flex flex-1 flex-col">
       <Header active="patterns" />
       <div
         className="mx-auto w-full max-w-6xl px-5 pt-12 pb-24 sm:px-6"

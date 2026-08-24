@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import {
   CATEGORY_PILL_BASE,
+  CATEGORY_PILL_IDLE,
   categoryPillColor,
   categoryPillCountClass,
   categoryPillStyle,
@@ -46,7 +47,7 @@ export function CategoryLinks({ coverage, active }: Props) {
                 aria-current={isActive ? "page" : undefined}
                 style={categoryPillStyle(color, isActive)}
                 className={`${CATEGORY_PILL_BASE} ${
-                  isActive ? "" : "hover:text-ink"
+                  isActive ? "" : CATEGORY_PILL_IDLE
                 }`}
               >
                 {row.category}

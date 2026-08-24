@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ChartNoAxesColumn, Database } from "lucide-react";
 
 import { Header } from "@/components/Header";
 import { CategoryLinks } from "@/components/patterns/CategoryLinks";
@@ -90,7 +91,11 @@ export default async function PatternsPage({ searchParams }: PageProps) {
   if (!isDatabaseConfigured()) {
     return (
       <PatternsShell>
-        <PageSection eyebrow="01 · Coverage" title="Library coverage">
+        <PageSection
+          eyebrow="Coverage"
+          icon={<Database className="h-3 w-3" strokeWidth={2.5} />}
+          title="Library coverage"
+        >
           <DataStatePanel
             state="error"
             title="No database configured"
@@ -163,7 +168,8 @@ export default async function PatternsPage({ searchParams }: PageProps) {
   return (
     <PatternsShell aside={<LibraryTotals coverage={coverage} />}>
       <PageSection
-        eyebrow="01 · Coverage"
+        eyebrow="Coverage"
+        icon={<Database className="h-3 w-3" strokeWidth={2.5} />}
         title="What the library can answer"
         description="Only the verified or officially scheduled slice can produce a price reaction, so this table is also the map of what can be researched today."
       >
@@ -173,7 +179,8 @@ export default async function PatternsPage({ searchParams }: PageProps) {
       </PageSection>
 
       <PageSection
-        eyebrow="02 · Aggregate"
+        eyebrow="Aggregate"
+        icon={<ChartNoAxesColumn className="h-3 w-3" strokeWidth={2.5} />}
         title="Historical reaction by category"
         description="Medians are taken only over events with a sourced release instant and a current-version price calculation. Every figure carries its own sample size."
       >
@@ -254,7 +261,9 @@ export default async function PatternsPage({ searchParams }: PageProps) {
 function LibraryTotals({ coverage }: { coverage: LibraryCoverage }) {
   const { totals } = coverage;
   return (
-    <Panel padding="md" className="w-full lg:w-auto">
+    // Brand-tinted: this strip is the page's identity, and the four numbers on
+    // it describe the dataset rather than any single market.
+    <Panel tone="brand" padding="md" className="w-full lg:w-auto">
       <MetricRow columns={4} aria-label="Library totals">
         <MetricCell
           label="Events"
@@ -274,7 +283,7 @@ function LibraryTotals({ coverage }: { coverage: LibraryCoverage }) {
           label="Priced"
           value={totals.measuredEvents.toLocaleString()}
           size="md"
-          tone={totals.measuredEvents > 0 ? "positive" : "neutral"}
+          tone={totals.measuredEvents > 0 ? "brand" : "neutral"}
           state="measured"
           note="reaction measured"
         />
@@ -304,7 +313,7 @@ function PatternsShell({
   aside?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col bg-canvas text-ink-2">
+    <div className="flex flex-1 flex-col text-ink-2">
       <Header active="patterns" />
       <main className="mx-auto w-full max-w-6xl px-5 pt-10 pb-24 sm:px-6 sm:pt-12">
         <PageHeader

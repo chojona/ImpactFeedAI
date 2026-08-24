@@ -3,25 +3,39 @@
 /**
  * Design tokens.
  *
- * Three groups, and the separation is the point:
+ * ## What this pass changed, and why
  *
- *   surface / line  — the neutral chrome. Four steps only, so "a slightly
- *                     different grey" is a decision rather than an accident.
- *   ink             — text. Every step is checked against `--color-canvas`; the
- *                     old `text-zinc-600` body copy sat at ~2.4:1 and is gone.
- *   semantic        — colour that carries meaning: direction of a move, and the
- *                     five data states. Nothing decorative is allowed in here,
- *                     which is what lets green reliably mean "measured, up".
+ * The previous system was correct and unreadable as an identity. Its surfaces
+ * ran #080C10 → #0B1015 → #101720: the first two steps differ by 1.2 points of
+ * lightness, which is below the threshold at which a viewer perceives an edge
+ * at all. So a panel on the page and the page itself were the same object, and
+ * "hierarchy" existed only in the markup. Its ink ramp was pure neutral zinc,
+ * its hairlines were white at 7% alpha, and `--color-accent` was an alias of
+ * `--color-pos` — meaning the product had no brand colour, only a market
+ * direction that also happened to draw the links.
  *
- * `--color-accent` is the brand green and is reserved for *interaction* —
- * focus rings, primary actions. It happens to share a hex with `--color-pos`
- * because the palette is fixed (see CLAUDE.md), but the two are separate tokens
- * so the data meaning and the brand meaning can diverge later without a sweep.
+ * Four groups now:
+ *
+ *   brand      — identity and interaction. Indigo. Navigation, controls, links,
+ *                focus, selected states, informational surfaces. Never a market
+ *                direction.
+ *   surface    — five perceptibly separated steps, each carrying a blue cast so
+ *                the neutrals read as navy rather than as charcoal.
+ *   ink        — text, cooled slightly toward blue. Every step still checked
+ *                against `--color-canvas`; the ratios are in the comments.
+ *   semantic   — colour that carries meaning: direction of a move, and the data
+ *                states. Green and red remain reserved for market direction.
+ *
+ * The tint tokens (`*-tint`) are the second half of the idea. They are the same
+ * hues at 11–24% alpha, meant to be laid *over* a surface so a region can say
+ * "this is informational" or "this move was negative" without becoming a block
+ * of colour. Anything louder stops being a tint and starts competing with the
+ * numbers it is supposed to frame.
  */
 :root {
   color-scheme: dark;
-  --background: #080c10;
-  --foreground: #fafafa;
+  --background: #0a0e16;
+  --foreground: #f2f5ff;
 }
 
 @theme inline {
@@ -31,49 +45,116 @@
   --font-sans: var(--font-ibm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-ibm-mono), ui-monospace, SFMono-Regular, monospace;
 
-  /* ── surfaces ───────────────────────────────────────────────────────── */
-  --color-canvas: #080c10;
-  --color-surface-1: #0b1015;
-  --color-surface-2: #101720;
-  --color-surface-3: #16202b;
+  /* ── brand ──────────────────────────────────────────────────────────────
+     Indigo, deliberately a long way from both #00FF94 and #FF5C5C on the hue
+     wheel so a blue element can never be mistaken for a market reading.
+     `brand` is the fill, `brand-bright` the text-on-dark step (6.9:1), and
+     `brand-deep` the border/edge step.                                      */
+  --color-brand: #5b7cfa;
+  --color-brand-bright: #8ea6ff;
+  --color-brand-deep: #2b3a7d;
+  --color-brand-tint: rgba(91, 124, 250, 0.13);
+  --color-brand-tint-strong: rgba(91, 124, 250, 0.24);
 
-  /* ── lines ──────────────────────────────────────────────────────────── */
-  --color-line: rgba(255, 255, 255, 0.07);
-  --color-line-strong: rgba(255, 255, 255, 0.14);
+  /* ── surfaces ───────────────────────────────────────────────────────────
+     Five steps, each ~4-5 points of lightness apart, which is enough to read as
+     an edge without a border doing all the work.
 
-  /* ── ink (contrast vs #080C10 in comments) ──────────────────────────── */
-  --color-ink: #fafafa; /* 18.9:1 — titles, metric values */
-  --color-ink-2: #d4d4d8; /* 12.4:1 — body copy */
-  --color-ink-3: #a1a1aa; /*  7.2:1 — captions, metadata */
-  --color-ink-4: #85858f; /*  5.3:1 — micro labels, axis text */
+     `surface-1` sits deliberately *above* the brightest point of the page's own
+     ambient glow. The first attempt at that glow was brighter than the panels
+     sitting on it, which inverted the whole hierarchy — a lit page background
+     is only safe while every panel is still lighter than the light behind it. */
+  --color-canvas: #0a0e16; /* L  6% — the page, unlit */
+  --color-surface-1: #1a2338; /* L 16% — panels */
+  --color-surface-2: #212c44; /* L 20% — nested / hovered */
+  --color-surface-3: #2a3854; /* L 25% — selected, segmented controls */
+  --color-surface-4: #354669; /* L 31% — elevated, popovers */
 
-  /* ── semantic ───────────────────────────────────────────────────────── */
-  --color-accent: #00ff94;
+  /* ── lines ──────────────────────────────────────────────────────────────
+     Blue-tinted rather than plain white alpha: a neutral hairline over a navy
+     surface reads grey and flattens the whole panel.                        */
+  --color-line: rgba(150, 176, 255, 0.13);
+  --color-line-strong: rgba(150, 176, 255, 0.24);
+  --color-line-brand: rgba(91, 124, 250, 0.38);
+
+  /* ── ink (contrast vs --color-canvas) ─────────────────────────────────── */
+  --color-ink: #f2f5ff; /* 17.7:1 — titles, metric values */
+  --color-ink-2: #c9d2e8; /* 12.8:1 — body copy */
+  --color-ink-3: #97a3be; /*  7.7:1 — captions, metadata */
+  /* Raised from #737F99 in the same pass that lifted the surfaces. Reserved for
+     genuinely secondary text — chart axis ticks, captions — since on the
+     lightest nested surface it lands near the small-text floor. */
+  --color-ink-4: #8792ad; /*  6.3:1 vs canvas — axis text, captions */
+
+  /* ── semantic ───────────────────────────────────────────────────────────
+     Green and red are the two colours in this file that a reader is allowed to
+     interpret as a fact about a market. Nothing decorative may use them.     */
   --color-pos: #00ff94;
+  --color-pos-tint: rgba(0, 255, 148, 0.11);
   --color-neg: #ff5c5c;
-  --color-flat: #c7c7ce;
-  --color-warn: #fbbf5c;
-  --color-info: #7dd3fc;
-  --color-unmeasured: #5b5b66;
+  --color-neg-tint: rgba(255, 92, 92, 0.12);
+  /* Text steps for use *on* a saturated heat tint. #FF5C5C on a 29%-alpha red
+     cell measures ~2.9:1, which fails; these lighter steps clear 5:1 on the
+     strongest cell the heatmap can produce. Only the reaction table needs them —
+     on an untinted surface the base colours are already above 5.9:1. */
+  --color-pos-on-tint: #6bffc0;
+  --color-neg-on-tint: #ff9c9c;
+  --color-flat: #b8c2d9;
+  --color-warn: #ffc258;
+  --color-warn-tint: rgba(255, 194, 88, 0.11);
+  /* Informational states share the brand hue on purpose: "this is a note from
+     the application" and "this is interactive" are the same voice. */
+  --color-info: #8ea6ff;
+  --color-info-tint: rgba(91, 124, 250, 0.11);
+  --color-unmeasured: #55607a;
+
+  /* Kept for the focus ring and for anything still asking for "the accent".
+     Now the brand indigo rather than an alias of the positive green. */
+  --color-accent: #5b7cfa;
 }
 
+/**
+ * Ambient page illumination.
+ *
+ * Two very wide, very faint radials at the top of the document plus a vertical
+ * wash. This is what stops every route from reading as one flat black canvas:
+ * the top of a page is lit, the bottom settles into deep navy, and no element
+ * had to be recoloured to get it. `background-repeat: no-repeat` keeps the
+ * gradients from tiling down a long feed.
+ *
+ * The peak sits at roughly rgb(26 35 61) in the upper-left corner and is gone by
+ * ~820px — just under `--color-surface-1`, so a panel is still the lighter
+ * object wherever it lands. If the glow is ever visible as a *shape* rather than
+ * as light, it is too strong.
+ *
+ * Note that no route wrapper may paint an opaque background over this. An
+ * earlier revision had `bg-canvas` on every page's root div, which covered the
+ * gradient completely — the ambient light was in the stylesheet and never
+ * reached the screen.
+ */
 body {
-  background: var(--color-canvas);
+  background-color: var(--color-canvas);
+  background-image:
+    radial-gradient(
+      ellipse 1250px 520px at 18% -80px,
+      rgba(91, 124, 250, 0.07),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 1000px 460px at 90% 10px,
+      rgba(126, 96, 232, 0.05),
+      transparent 64%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(46, 62, 104, 0.3) 0%,
+      rgba(10, 14, 22, 0) 820px
+    );
+  background-repeat: no-repeat;
   color: var(--color-ink-2);
   font-family: var(--font-sans);
 }
 
-/**
- * Typography and layout roles.
- *
- * In `@layer components` on purpose: a Tailwind utility on the same element
- * still wins, so `class="eyebrow text-pos"` recolours rather than fights.
- *
- * These exist because the audit found one visual weight doing four jobs —
- * every section title, panel title, table header and metric label was the same
- * 10–11px uppercase mono, which is why nothing on the page looked more
- * important than anything else.
- */
 @layer components {
   /* Smallest label. Table headers, metric labels, axis captions. */
   .eyebrow {
@@ -83,7 +164,10 @@ body {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.16em;
-    color: var(--color-ink-4);
+    /* `ink-3`, not `ink-4`: these labels sit on nested surfaces as often as on
+       the page, and at 10px the darker step fell under 4.5:1 against
+       `surface-2`. */
+    color: var(--color-ink-3);
   }
 
   /* Page title. One per route. */
@@ -143,11 +227,73 @@ body {
 }
 
 /**
+ * Elevation, as a top-light gradient rather than a shadow.
+ *
+ * On a dark interface a drop shadow is nearly invisible and a big one looks
+ * like a smudge, so depth comes from the surface catching light along its top
+ * edge instead. The inset hairline is what actually sells it — a 1px lighter
+ * line at the top of a panel is read as a bevel.
+ */
+.surface-lift {
+  background-image: linear-gradient(
+    180deg,
+    rgba(150, 176, 255, 0.055) 0%,
+    rgba(150, 176, 255, 0) 42%
+  );
+  box-shadow: inset 0 1px 0 0 rgba(190, 208, 255, 0.06);
+}
+
+/**
+ * Ambient illumination behind one component.
+ *
+ * `--ambient` is the colour, set by the caller — brand indigo for an
+ * informational panel, `--color-pos` / `--color-neg` for a reaction hero. The
+ * glow is a pseudo-element so it cannot affect layout, and it is clipped by the
+ * host's own `overflow-hidden`, so it lights the panel rather than the page.
+ */
+.ambient {
+  position: relative;
+  isolation: isolate;
+}
+
+.ambient::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -60% -20% auto -20%;
+  height: 220%;
+  background: radial-gradient(
+    ellipse at 18% 28%,
+    var(--ambient, rgba(91, 124, 250, 0.16)),
+    transparent 62%
+  );
+  pointer-events: none;
+}
+
+/**
+ * The plot area of a chart.
+ *
+ * Charts used to sit directly on the panel surface, which made the frame and
+ * the data the same object. A slightly sunken, faintly blue plot field reads as
+ * "this rectangle is a measurement space" — and it raises the contrast of every
+ * gridline and marker drawn on top of it without touching their colours.
+ */
+.plot-field {
+  background-image: linear-gradient(
+    180deg,
+    rgba(91, 124, 250, 0.05) 0%,
+    rgba(10, 14, 22, 0.32) 100%
+  );
+}
+
+/**
  * One focus ring for the whole application, so an interactive element cannot
- * ship without a visible keyboard state by forgetting a utility class.
+ * ship without a visible keyboard state by forgetting a utility class. Now on
+ * the brand indigo, which is also what every selected state uses — focus and
+ * selection speak the same colour.
  */
 :where(a, button, [role="button"], input, select, summary):focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+  outline: 2px solid var(--color-brand-bright);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -197,10 +343,10 @@ body {
     linear-gradient(to left, var(--scroll-bg) 55%, transparent),
     linear-gradient(
       to right,
-      rgba(255, 255, 255, 0.13),
-      rgba(255, 255, 255, 0)
+      rgba(150, 176, 255, 0.22),
+      rgba(150, 176, 255, 0)
     ),
-    linear-gradient(to left, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0));
+    linear-gradient(to left, rgba(150, 176, 255, 0.22), rgba(150, 176, 255, 0));
   background-position:
     0 0,
     100% 0,

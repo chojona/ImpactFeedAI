@@ -21,16 +21,21 @@ import type {
  */
 
 const SEGMENTS = [
+  // Brand indigo rather than the positive green it used to be. This bar reports
+  // how much of the library is *measurable*, which is a fact about coverage and
+  // not about a market — and reserving green for direction is the rule the
+  // whole palette is built on.
   {
     key: "trustedTiming",
     label: "Verified or scheduled",
-    color: "#00FF94",
-    description: "Exact instant with named provenance — reactions can be measured.",
+    color: "#5B7CFA",
+    description:
+      "Exact instant with named provenance — reactions can be measured.",
   },
   {
     key: "dateOnly",
     label: "Date only",
-    color: "#F59E0B",
+    color: "#FFC258",
     description: "Publication date known, no defensible release time.",
   },
   {
@@ -42,7 +47,7 @@ const SEGMENTS = [
   {
     key: "untrustedTiming",
     label: "Inferred or unverified",
-    color: "#3F3F46",
+    color: "#3D4762",
     description: "Timing exists but is not backed by a release record.",
   },
 ] as const satisfies readonly {
@@ -153,7 +158,7 @@ function CoverageRow({ row }: { row: CategoryCoverage }) {
       </td>
       <td
         className={`num px-3 py-2.5 text-right text-[13px] ${
-          row.measuredEvents > 0 ? "text-pos" : "text-ink-4"
+          row.measuredEvents > 0 ? "text-brand-bright" : "text-ink-4"
         }`}
         title="Events with at least one current-version measured one-session move"
       >
@@ -161,7 +166,7 @@ function CoverageRow({ row }: { row: CategoryCoverage }) {
       </td>
       <td
         className={`num py-2.5 pl-3 text-right text-[13px] ${
-          row.consensusVerified > 0 ? "text-pos" : "text-ink-4"
+          row.consensusVerified > 0 ? "text-brand-bright" : "text-ink-4"
         }`}
         title={`${row.consensusVerified} verified · ${row.consensusUnverified} unverified · ${row.consensusMissing} missing`}
       >
@@ -200,7 +205,7 @@ function TimingBar({ row }: { row: CategoryCoverage }) {
               // "none of this is measurable" — the opposite conclusion.
               backgroundImage: anchorable
                 ? undefined
-                : "repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 5px)",
+                : "repeating-linear-gradient(135deg, rgba(200,215,255,0.11) 0 1px, transparent 1px 6px)",
             }}
           />
         );

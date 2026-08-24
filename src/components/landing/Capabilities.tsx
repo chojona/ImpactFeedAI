@@ -94,7 +94,7 @@ export function Capabilities() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
           {CAPABILITIES.map((capability) => (
             <CapabilityCard key={capability.index} capability={capability} />
           ))}
@@ -107,24 +107,28 @@ export function Capabilities() {
 function CapabilityCard({ capability }: { capability: Capability }) {
   const planned = capability.status === "planned";
   return (
-    <article className="flex flex-col bg-[#0A0F14] p-6 sm:p-7">
+    <article className="surface-lift flex flex-col bg-surface-1 p-6 transition-colors hover:bg-surface-2 sm:p-7">
       <div className="flex items-center gap-3">
         <span
-          className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-line bg-white/[0.02] ${
-            planned ? "text-ink0" : "text-accent"
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${
+            planned
+              ? "border-line bg-surface-2"
+              : "border-brand/30 bg-brand-tint-strong"
+          } ${
+            planned ? "text-ink-3" : "text-brand-bright"
           }`}
         >
           {capability.icon}
         </span>
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-ink0">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-3">
           {capability.index}
         </span>
-        <span className="h-px flex-1 bg-white/[0.06]" />
+        <span className="h-px flex-1 bg-line" />
         <span
           className={`rounded-full border px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] ${
             planned
-              ? "border-line bg-white/[0.02] text-ink0"
-              : "border-[#00FF94]/25 bg-accent/[0.06] text-accent"
+              ? "border-line bg-surface-2 text-ink-3"
+              : "border-brand/30 bg-brand-tint-strong text-brand-bright"
           }`}
         >
           {planned ? "Planned" : "Live"}

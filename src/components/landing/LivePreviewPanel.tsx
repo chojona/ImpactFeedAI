@@ -75,14 +75,14 @@ function PanelFrame({
     <div>
       <div className="flex items-center justify-between px-1 pb-2">
         <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-3">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          <span className="h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_8px_1px_rgba(91,124,250,0.55)]" />
           {eyebrow}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink0">
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-3">
           {badge}
         </span>
       </div>
-      <article className="rounded-lg border border-line bg-[#0B1116] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]">
+      <article className="surface-lift overflow-hidden rounded-xl border border-line-strong bg-surface-1 shadow-[0_34px_90px_-48px_rgba(0,0,0,0.85)]">
         {children}
       </article>
     </div>
@@ -121,7 +121,7 @@ function FeaturedEventPanel({ event }: { event: NewsEvent }) {
       </div>
 
       <div className="border-t border-line px-5 py-4">
-        <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-ink0">
+        <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-3">
           Cross-asset reaction
         </p>
         {/* `offset={0}` because this panel has no separate headline figure of
@@ -137,7 +137,7 @@ function FeaturedEventPanel({ event }: { event: NewsEvent }) {
       <div className="border-t border-line px-5 py-3">
         <Link
           href={`/events/${event.id}`}
-          className="inline-flex items-center gap-1 font-mono text-xs font-medium text-accent transition hover:underline"
+          className="inline-flex items-center gap-1 font-mono text-xs font-medium text-brand-bright transition-colors hover:text-ink"
         >
           Open the full reaction ↗
         </Link>
@@ -154,7 +154,7 @@ function LibrarySnapshotPanel({ summary }: { summary: LibrarySummary }) {
 
   return (
     <PanelFrame eyebrow="Library snapshot" badge="Live counts">
-      <dl className="grid grid-cols-2 gap-px bg-white/[0.06]">
+      <dl className="grid grid-cols-2 gap-px bg-line">
         <Stat label="Events ingested" value={summary.events.toLocaleString()} />
         <Stat
           label="Instruments tracked"
@@ -175,7 +175,7 @@ function LibrarySnapshotPanel({ summary }: { summary: LibrarySummary }) {
         </p>
         <Link
           href="/patterns"
-          className="mt-3 inline-flex font-mono text-xs font-medium text-accent transition hover:underline"
+          className="mt-3 inline-flex font-mono text-xs font-medium text-brand-bright transition-colors hover:text-ink"
         >
           See the full coverage table ↗
         </Link>
@@ -187,7 +187,7 @@ function LibrarySnapshotPanel({ summary }: { summary: LibrarySummary }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[#0B1116] px-5 py-4">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink0">
+      <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-3">
         {label}
       </dt>
       <dd className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">
@@ -219,13 +219,13 @@ function FieldsPanel() {
           >
             <span
               aria-hidden
-              className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent"
+              className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-brand-bright"
             />
             {field}
           </li>
         ))}
       </ul>
-      <p className="border-t border-line px-5 py-3 text-[12px] text-ink0">
+      <p className="border-t border-line px-5 py-3 text-[12px] text-ink-3">
         Set <code className="text-ink-2">DATABASE_URL</code> to read the live
         library.
       </p>

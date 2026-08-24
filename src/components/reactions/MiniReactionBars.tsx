@@ -59,7 +59,7 @@ export function MiniReactionBars({
             <span className="num text-[11px] font-semibold text-ink-2">
               {asset.symbol}
             </span>
-            <span className="relative block h-1.5 rounded-full bg-white/[0.05]">
+            <span className="relative block h-1.5 rounded-full bg-canvas/70">
               <span
                 aria-hidden
                 className="absolute inset-y-0 left-1/2 w-px bg-line-strong"
@@ -69,7 +69,7 @@ export function MiniReactionBars({
                 className="absolute inset-y-0 rounded-full"
                 style={{
                   backgroundColor: moveColor(value),
-                  opacity: 0.8,
+                  opacity: 0.92,
                   ...(value >= 0
                     ? {
                         left: "50%",

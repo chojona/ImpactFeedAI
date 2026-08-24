@@ -1,7 +1,9 @@
+import { CATEGORY_CONFIG } from "@/lib/eventCategories";
 import { CategoryBadge, InstrumentBadge } from "@/components/ui/CategoryBadge";
 import { DataStateNote } from "@/components/ui/DataStatePanel";
 import { MiniReactionBars } from "@/components/reactions/MiniReactionBars";
 import { ReactionIndicator } from "@/components/reactions/ReactionIndicator";
+import { directionOf } from "@/components/reactions/reactionTone";
 import { ReleaseValueInline } from "./ReleaseValues";
 import {
   formatNewYorkDate,
@@ -40,6 +42,21 @@ import type { NewsEvent } from "@/types/events";
  * failure the brief calls out. Cards now size to their content, and absence is
  * one explicit line rather than a hole.
  *
+ * ### Colour, added in the second visual pass
+ *
+ * Three additions, each solving a specific scanning problem the grey version
+ * had:
+ *
+ *   - a **category spine** down the left edge, so twelve cards are sortable by
+ *     eye into six categories before a word is read;
+ *   - a **directionally tinted reaction block**, which turns the feed from a
+ *     wall of grey rectangles with coloured digits into a wall of green and red
+ *     *regions*;
+ *   - a **brand hover border**, so the card announces it is a link.
+ *
+ * The tint is never the only signal: the sign, the arrow glyph and the
+ * accessible name all still come from `ReactionIndicator`.
+ *
  * Not a client component: the hover treatment is CSS, which removes per-card
  * JavaScript from a list that grows without bound as the reader scrolls.
  */
@@ -56,15 +73,27 @@ export function EventCard({ event }: Props) {
   const measuredCount = event.assets.filter(
     (asset) => pctForWindow(asset, FEED_WINDOW) !== null,
   ).length;
+  const direction = directionOf(headline?.value ?? null);
+  const categoryColor = CATEGORY_CONFIG[event.category].color;
 
   return (
     <article
-      className={`flex flex-col gap-3 rounded-lg border p-4 transition-colors duration-150 sm:p-[18px] ${
+      className={`surface-lift relative flex flex-col gap-3 overflow-hidden rounded-lg border p-4 pl-5 transition-colors duration-150 sm:p-[18px] sm:pl-[22px] ${
         headline === null
-          ? "border-line bg-white/[0.008] group-hover:border-line-strong group-hover:bg-white/[0.025]"
-          : "border-line bg-surface-1 group-hover:border-line-strong group-hover:bg-surface-2"
+          ? "border-line bg-surface-1/60 group-hover:border-line-brand group-hover:bg-surface-2"
+          : "border-line bg-surface-1 group-hover:border-line-brand group-hover:bg-surface-2"
       }`}
     >
+      {/* Category spine. Three pixels of the category's own colour down the
+          left edge of every card — the cheapest possible way to make a wall of
+          twelve cards scannable by category before any text is read, and it
+          costs no vertical space. */}
+      <span
+        aria-hidden
+        className="absolute inset-y-3 left-0 w-[3px] rounded-full opacity-80"
+        style={{ backgroundColor: categoryColor }}
+      />
+
       <div className="flex items-start justify-between gap-3">
         <CategoryBadge category={event.category} size="xs" />
         <WhenLine event={event} />
@@ -88,7 +117,18 @@ export function EventCard({ event }: Props) {
             : "Reaction withheld"}
         </DataStateNote>
       ) : (
-        <div className="border-t border-line pt-3">
+        // The reaction block is tinted in the direction of the move. Across a
+        // grid of cards this is the single strongest scanning aid in the feed:
+        // green and red *regions*, not just green and red digits.
+        <div
+          className={`rounded-md border px-3 py-2.5 ${
+            direction === "UP"
+              ? "border-pos/20 bg-pos-tint"
+              : direction === "DOWN"
+                ? "border-neg/20 bg-neg-tint"
+                : "border-line bg-surface-2"
+          }`}
+        >
           <div className="flex items-baseline justify-between gap-3">
             <InstrumentBadge
               symbol={headline.asset.symbol}
@@ -116,7 +156,7 @@ export function EventCard({ event }: Props) {
       )}
 
       {event.release !== null && (
-        <div className="rounded-md border border-line bg-black/25 px-3 py-2.5">
+        <div className="rounded-md border border-line bg-canvas/55 px-3 py-2.5">
           <p className="eyebrow mb-2 truncate text-[9px]">
             {event.release.metricName}
           </p>

@@ -79,7 +79,7 @@ export function EventInHistory({
             href={`/patterns?cat=${category}&sym=${encodeURIComponent(
               symbol,
             )}&h=${WINDOW}`}
-            className="rounded font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3 transition-colors hover:text-accent"
+            className="rounded font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3 transition-colors hover:text-brand-bright"
           >
             Change instrument →
           </Link>

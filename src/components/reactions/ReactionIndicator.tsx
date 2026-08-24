@@ -20,7 +20,7 @@ interface Props {
   symbol?: string;
   /** Window the move was measured over. Only used in the accessible name. */
   windowLabel?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "hero";
   className?: string;
 }
 
@@ -29,6 +29,9 @@ const SIZE = {
   md: "text-[15px]",
   lg: "text-xl sm:text-2xl",
   xl: "text-[28px] leading-none sm:text-[36px]",
+  // The reaction hero. Deliberately far larger than anything else on the page:
+  // this is the one number the whole event exists to report.
+  hero: "text-[44px] leading-[0.95] tracking-tight sm:text-[60px]",
 } as const;
 
 const ARROW_SIZE = {
@@ -36,6 +39,7 @@ const ARROW_SIZE = {
   md: "text-[10px]",
   lg: "text-[12px]",
   xl: "text-[15px]",
+  hero: "text-[22px] sm:text-[28px]",
 } as const;
 
 export function ReactionIndicator({

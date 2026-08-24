@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Header } from "@/components/Header";
+import { buttonClass } from "@/components/ui/Button";
 
 /**
  * Reached both when the id does not exist and when `DATABASE_URL` is unset —
@@ -9,7 +10,7 @@ import { Header } from "@/components/Header";
  */
 export default function EventNotFound() {
   return (
-    <div className="flex flex-1 flex-col bg-canvas text-ink-2">
+    <div className="flex flex-1 flex-col text-ink-2">
       <Header active="feed" />
       <main className="mx-auto w-full max-w-2xl px-5 py-24 sm:px-6">
         <p className="eyebrow">404</p>
@@ -24,7 +25,7 @@ export default function EventNotFound() {
         </p>
         <Link
           href="/feed"
-          className="mt-8 inline-flex rounded-lg border border-line bg-white/[0.03] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-2 transition-colors hover:border-line-strong hover:bg-white/[0.06] hover:text-ink"
+          className={buttonClass("primary", "md", "mt-8")}
         >
           Back to the event library
         </Link>

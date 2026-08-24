@@ -23,7 +23,7 @@ const TONE: Record<BadgeTone, string> = {
   caution: "border-warn/25 bg-warn/[0.07] text-warn",
   negative: "border-neg/25 bg-neg/[0.07] text-neg",
   info: "border-info/25 bg-info/[0.06] text-info",
-  accent: "border-accent/30 bg-accent/[0.08] text-accent",
+  accent: "border-brand/35 bg-brand-tint-strong text-brand-bright",
 };
 
 const SIZE = {

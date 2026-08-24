@@ -44,7 +44,7 @@ export function CrossAssetReactionBars({
 
   if (measured.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-line bg-white/[0.01] px-4 py-8 text-center">
+      <div className="rounded-lg border border-dashed border-line bg-surface-1 px-4 py-8 text-center">
         <p className="text-[13px] text-ink-3">
           No instrument has a measured move at {WINDOW_LABELS[window]} for this
           event.
@@ -66,12 +66,12 @@ export function CrossAssetReactionBars({
             <div className="grid w-full grid-cols-[64px_1fr_66px] items-center gap-2 sm:grid-cols-[86px_1fr_74px] sm:gap-3">
               <span
                 className={`num truncate text-left text-[12px] font-semibold ${
-                  selected ? "text-accent" : "text-ink-2"
+                  selected ? "text-brand-bright" : "text-ink-2"
                 }`}
               >
                 {asset.symbol}
               </span>
-              <span className="relative block h-5 rounded-[3px] bg-white/[0.025]">
+              <span className="relative block h-5 rounded-[3px] bg-canvas/60">
                 <span
                   aria-hidden
                   className="absolute inset-y-0 left-1/2 w-px bg-line-strong"
@@ -81,7 +81,7 @@ export function CrossAssetReactionBars({
                   className="absolute inset-y-[3px] rounded-[3px]"
                   style={{
                     backgroundColor: moveColor(value),
-                    opacity: selected ? 0.95 : 0.66,
+                    opacity: selected ? 1 : 0.72,
                     ...(value >= 0
                       ? { left: "50%", width: `${widthPct}%` }
                       : { right: "50%", width: `${widthPct}%` }),
@@ -106,8 +106,8 @@ export function CrossAssetReactionBars({
                   onClick={() => onSelect(asset.symbol)}
                   aria-pressed={selected}
                   title={`${asset.name} — ${formatted} ${WINDOW_DESCRIPTIONS[window]}`}
-                  className={`w-full rounded px-1 py-1 transition-colors ${
-                    selected ? "bg-white/[0.045]" : "hover:bg-white/[0.03]"
+                  className={`w-full rounded-md px-1 py-1 transition-colors ${
+                    selected ? "bg-brand-tint" : "hover:bg-brand-tint"
                   }`}
                 >
                   {row}

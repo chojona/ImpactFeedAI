@@ -1,6 +1,9 @@
-import { InstrumentBadge } from "@/components/ui/CategoryBadge";
+import { Activity } from "lucide-react";
+
+import { Badge } from "@/components/ui/Badge";
 import { MetricCell, MetricRow } from "@/components/ui/Metric";
 import { ReactionIndicator } from "@/components/reactions/ReactionIndicator";
+import { directionOf } from "@/components/reactions/reactionTone";
 import {
   REACTION_WINDOWS,
   WINDOW_DESCRIPTIONS,
@@ -14,12 +17,33 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
 /**
  * The five-second answer to "what did the market do".
  *
- * This is the component the audit was missing. Before it, the first measured
- * percentage on an event page sat roughly 900px below the fold, under a
- * candlestick chart — so the page opened with provenance metadata and the
- * reader had to scroll past a chart, find the horizon selector, and read a
- * table before learning whether anything moved. Meanwhile the *headline*
- * position was occupied by a paragraph explaining the timing source.
+ * This is the component the first audit was missing. Before it, the first
+ * measured percentage on an event page sat roughly 900px below the fold, under a
+ * candlestick chart — so the page opened with provenance metadata and the reader
+ * had to scroll past a chart, find the horizon selector, and read a table before
+ * learning whether anything moved.
+ *
+ * ### The hero treatment
+ *
+ * The second pass made it the visual centre of the product rather than one more
+ * bordered rectangle. Three devices, in order of how much work they do:
+ *
+ *   1. **Directional tint and ring.** The whole block is faintly washed in the
+ *      colour of the move and ringed in the same hue at low alpha. A reader
+ *      knows the sign of the reaction from across the room, before reading a
+ *      glyph or a digit.
+ *   2. **Ambient illumination.** A single very faint radial in the same colour,
+ *      set through `--ambient` on the `.ambient` class. It is what makes the
+ *      panel look lit rather than filled, and it is the reason the tint can stay
+ *      as low as 9–10% and still register.
+ *   3. **Scale.** The percentage is set at 44/60px against 10px labels. Nothing
+ *      else in the application is allowed near that size.
+ *
+ * The colour is *never* the only cue — the sign, the ▲/▼ glyph and the
+ * spelled-out accessible name all still come from `ReactionIndicator`, so the
+ * block survives greyscale and a screen reader. The `Activity` icon identifies
+ * the block as "market reaction" and is deliberately not directional, so there
+ * is exactly one arrow in the composition.
  *
  * Everything here is derived from the `AssetReaction[]` the page already holds,
  * so it costs no query and no client JavaScript. Nothing is interpolated: the
@@ -95,6 +119,32 @@ export function summarizeReaction(
   };
 }
 
+/**
+ * Per-direction chrome. Kept as one table so the tint, the ring, the ambient
+ * glow and the icon container can never drift out of agreement about which way
+ * the market went — three of them are decorative and one of them is the fact.
+ */
+const DIRECTION_CHROME = {
+  UP: {
+    ring: "border-pos/30",
+    wash: "bg-pos-tint",
+    ambient: "rgba(0, 255, 148, 0.11)",
+    iconTint: "border-pos/25 bg-pos/10 text-pos",
+  },
+  DOWN: {
+    ring: "border-neg/30",
+    wash: "bg-neg-tint",
+    ambient: "rgba(255, 92, 92, 0.12)",
+    iconTint: "border-neg/25 bg-neg/10 text-neg",
+  },
+  FLAT: {
+    ring: "border-line-strong",
+    wash: "bg-surface-1",
+    ambient: "rgba(91, 124, 250, 0.13)",
+    iconTint: "border-line-strong bg-surface-3 text-flat",
+  },
+} as const;
+
 export function EventReactionSummary({
   summary,
 }: {
@@ -102,45 +152,62 @@ export function EventReactionSummary({
 }) {
   const { window, strongest, benchmark } = summary;
   const partial = summary.measured < summary.total;
+  const chrome = DIRECTION_CHROME[directionOf(strongest.value) ?? "FLAT"];
 
   return (
     <section
       aria-label="Market reaction summary"
-      className="rounded-lg border border-line bg-surface-1"
+      style={{ "--ambient": chrome.ambient } as React.CSSProperties}
+      className={`ambient surface-lift overflow-hidden rounded-xl border ${chrome.ring} ${chrome.wash}`}
     >
       <div className="grid grid-cols-1 divide-y divide-line lg:grid-cols-12 lg:divide-x lg:divide-y-0">
-        {/* Level 1. The single loudest thing on the page. */}
-        <div className="px-5 py-5 sm:px-6 lg:col-span-5">
-          <p className="eyebrow">
-            Largest measured move · {WINDOW_LABELS[window]}
-          </p>
-          <div className="mt-3 flex flex-wrap items-end gap-x-4 gap-y-1">
+        {/* Level 1. The single loudest thing in the application. */}
+        <div className="px-5 py-6 sm:px-7 lg:col-span-5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span
+              aria-hidden
+              className={`flex h-6 w-6 items-center justify-center rounded-md border ${chrome.iconTint}`}
+            >
+              <Activity className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </span>
+            <span className="eyebrow">Largest measured move</span>
+            <Badge size="xs">{WINDOW_LABELS[window]}</Badge>
+          </div>
+
+          <div className="mt-4">
             <ReactionIndicator
               value={strongest.value}
               symbol={strongest.asset.symbol}
               windowLabel={WINDOW_DESCRIPTIONS[window]}
-              size="xl"
-            />
-            <InstrumentBadge
-              symbol={strongest.asset.symbol}
-              name={strongest.asset.name}
-              className="pb-1"
+              size="hero"
             />
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-ink-3">
+
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <span className="num text-[15px] font-semibold text-ink">
+              {strongest.asset.symbol}
+            </span>
+            <span className="text-xs text-ink-3">{strongest.asset.name}</span>
+          </div>
+
+          <p className="mt-3 max-w-sm text-xs leading-relaxed text-ink-3">
             From the pre-release baseline bar, {WINDOW_DESCRIPTIONS[window]}.
           </p>
         </div>
 
-        {/* Level 2. Supporting context for the headline. */}
-        <div className="flex items-center px-5 py-5 sm:px-6 lg:col-span-7">
-          <MetricRow columns={3} aria-label="Reaction context" className="w-full">
+        {/* Level 2. Supporting context, on a neutral surface so the directional
+            tint stays attached to the figure it describes rather than washing
+            the whole component. */}
+        <div className="flex items-center bg-canvas/55 px-5 py-6 sm:px-7 lg:col-span-7">
+          <MetricRow
+            columns={3}
+            aria-label="Reaction context"
+            className="w-full"
+          >
             <MetricCell
               label={`${BENCHMARK_SYMBOL} benchmark`}
               value={
-                benchmark === null
-                  ? null
-                  : formatPercentChange(benchmark.value)
+                benchmark === null ? null : formatPercentChange(benchmark.value)
               }
               size="md"
               tone={

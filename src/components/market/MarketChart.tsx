@@ -63,11 +63,17 @@ import type {
 
 const UP = "#00FF94";
 const DOWN = "#FF5C5C";
-const GRID = "rgba(255, 255, 255, 0.045)";
-/** Matches `--color-ink-4`; the previous #71717A sat below the contrast floor. */
-const AXIS_TEXT = "#85858F";
-const AXIS_LINE = "rgba(255,255,255,0.10)";
-const RELEASE_MARK = "#FF6B35";
+/** Blue-tinted so the grid belongs to the navy plot field rather than to a
+    neutral grey chart pasted onto it. */
+const GRID = "rgba(150, 176, 255, 0.07)";
+/** Matches `--color-ink-4`. */
+const AXIS_TEXT = "#737F99";
+const AXIS_LINE = "rgba(150, 176, 255, 0.18)";
+/** `--color-surface-4`, so the crosshair label matches an elevated surface. */
+const CROSSHAIR_LABEL = "#2C3A52";
+/** The release marker keeps the product's orange: it is the one annotation on
+    the chart that is neither a price nor a direction, so it gets its own hue. */
+const RELEASE_MARK = "#FF8A4C";
 
 const easternTime = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
@@ -185,12 +191,12 @@ export function MarketChart({
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: {
-          color: "rgba(255,255,255,0.28)",
-          labelBackgroundColor: "#16202B",
+          color: "rgba(150, 176, 255, 0.45)",
+          labelBackgroundColor: CROSSHAIR_LABEL,
         },
         horzLine: {
-          color: "rgba(255,255,255,0.28)",
-          labelBackgroundColor: "#16202B",
+          color: "rgba(150, 176, 255, 0.45)",
+          labelBackgroundColor: CROSSHAIR_LABEL,
         },
       },
       handleScale: { axisPressedMouseMove: false },
@@ -276,7 +282,7 @@ export function MarketChart({
         })();
 
   return (
-    <figure className="w-full overflow-hidden rounded-lg border border-line bg-surface-1">
+    <figure className="surface-lift w-full overflow-hidden rounded-lg border border-line bg-surface-1">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="num text-sm font-semibold text-ink">{symbol}</span>
@@ -318,11 +324,16 @@ export function MarketChart({
 
       {/* The canvas carries no accessible information, so it is hidden and the
           summary beside it is the accessible representation. */}
-      <div
-        ref={containerRef}
-        aria-hidden
-        className="h-[300px] w-full sm:h-[360px] lg:h-[430px]"
-      />
+      {/* The plot sits in its own sunken, faintly blue field. It separates the
+          measurement space from the frame around it and raises the perceived
+          contrast of every gridline and candle without altering a colour. */}
+      <div className="plot-field border-y border-line">
+        <div
+          ref={containerRef}
+          aria-hidden
+          className="h-[300px] w-full sm:h-[360px] lg:h-[430px]"
+        />
+      </div>
 
       <p className="sr-only">{description}</p>
 
