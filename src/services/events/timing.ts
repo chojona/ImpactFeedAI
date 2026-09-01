@@ -151,6 +151,161 @@ export function timingDisplay(timing: {
   };
 }
 
+/**
+ * How precisely the record can place the event in time, most precise first.
+ *
+ * These are four different claims, not four renderings of one claim, and the
+ * feed used to collapse the middle two into "No release date" — which told a
+ * reader that nothing was known about *when* an event happened even when the
+ * occurrence date was recorded. Naming the levels is what keeps a fallback from
+ * quietly borrowing the precision of the level above it.
+ *
+ *   - `release_instant`      — a sourced publication instant
+ *   - `release_date`         — the publication day, with no defensible time
+ *   - `event_date`           — the recorded occurrence day; the release timing
+ *                              is NOT verified, and is not claimed to be
+ *   - `reference_period`     — only the period the statistic measures
+ *   - `unknown`              — nothing placeable in time at all
+ */
+export type EventWhenPrecision =
+  | "release_instant"
+  | "release_date"
+  | "event_date"
+  | "reference_period"
+  | "unknown";
+
+export interface EventWhenDisplay {
+  precision: EventWhenPrecision;
+  /**
+   * Compact rendering of the date, for the feed card. Never carries a component
+   * the source does not support. A surface with more room — the event header —
+   * may re-render `timing.releaseAt` at full instant precision itself, but only
+   * for `release_instant`; every lower level has no time to render.
+   */
+  text: string;
+  /**
+   * `<time datetime>` value at exactly the precision claimed — an instant for a
+   * sourced release, a calendar day for everything else. Null when there is no
+   * date to machine-read. An occurrence day is never emitted as an instant:
+   * that is the one place a fallback could silently re-acquire the precision it
+   * just admitted it does not have.
+   */
+  dateTime: string | null;
+  /** True when a calendar date is known, whatever its provenance. */
+  dateKnown: boolean;
+  /** Caption naming which of the levels above is being shown. */
+  label: string;
+  explanation: string;
+  tone: "trusted" | "caution";
+}
+
+const EVENT_DATE_LABEL = "Event date · time unverified";
+
+const EVENT_DATE_EXPLANATION =
+  "The date this event is recorded as occurring is known, but no release time has been verified against a named source. The day shown is the stored occurrence date in US Eastern time, not a sourced release timestamp.";
+
+const NO_DATE_EXPLANATION =
+  "No release instant, publication date or occurrence date is recorded for this event.";
+
+/** The narrow shape `NewsEvent` already satisfies structurally. */
+export interface EventWhenInput {
+  timing: {
+    status: EventTimingStatus;
+    releaseAt: string | null;
+    releaseDate: string | null;
+    reactionEligible: boolean;
+    ineligibilityReason: ReactionTimingIneligibility | null;
+  };
+  /** The event's own occurrence instant, as mapped. */
+  occurredAt: string;
+  releases: readonly { referencePeriodStart: string | null }[];
+}
+
+/**
+ * The most precise "when" a record supports, and no more.
+ *
+ * One derivation, shared by the feed card and the event header, because the two
+ * surfaces answering "when did this happen" differently is exactly the drift
+ * this module exists to prevent. `occurredAt` sits below both release fields
+ * and above the reference period: it is a real date the row already carries, so
+ * withholding it says less than the database knows — but it is reduced to a day
+ * and labelled as an occurrence, because presenting it at instant precision
+ * would launder unverified timing into a sourced release timestamp.
+ */
+export function eventWhenDisplay(event: EventWhenInput): EventWhenDisplay {
+  const timing = timingDisplay(event.timing);
+
+  const exact = formatNewYorkDate(event.timing.releaseAt);
+  if (exact !== null) {
+    return {
+      precision: "release_instant",
+      text: exact,
+      dateTime: event.timing.releaseAt,
+      dateKnown: true,
+      label: timing.tone === "trusted" ? "Verified timing" : timing.label,
+      explanation: timing.explanation,
+      tone: timing.tone,
+    };
+  }
+
+  const releaseDate = formatPlainDate(event.timing.releaseDate);
+  if (releaseDate !== null) {
+    return {
+      precision: "release_date",
+      text: releaseDate,
+      dateTime: event.timing.releaseDate,
+      dateKnown: true,
+      label: timing.label,
+      explanation: timing.explanation,
+      tone: timing.tone,
+    };
+  }
+
+  const occurredDay = formatNewYorkDate(event.occurredAt);
+  if (occurredDay !== null) {
+    return {
+      precision: "event_date",
+      text: occurredDay,
+      // A day, not the stored instant. The instant is unverified; publishing it
+      // in a machine-readable attribute would assert a precision the label in
+      // the same breath denies.
+      dateTime: newYorkIsoDay(event.occurredAt),
+      dateKnown: true,
+      label: EVENT_DATE_LABEL,
+      explanation: EVENT_DATE_EXPLANATION,
+      tone: "caution",
+    };
+  }
+
+  // Below here the row carries no date at all. `occurredAt` is non-null in the
+  // schema, so these two levels are reachable only from a malformed instant —
+  // they are kept because "no date" must still render as a stated absence.
+  const reference = event.releases
+    .map((release) => formatReferencePeriod(release.referencePeriodStart))
+    .find((value): value is string => value !== null);
+  if (reference !== undefined) {
+    return {
+      precision: "reference_period",
+      text: `Ref ${reference}`,
+      dateTime: null,
+      dateKnown: false,
+      label: timing.label,
+      explanation: timing.explanation,
+      tone: "caution",
+    };
+  }
+
+  return {
+    precision: "unknown",
+    text: "No date recorded",
+    dateTime: null,
+    dateKnown: false,
+    label: timing.label,
+    explanation: NO_DATE_EXPLANATION,
+    tone: "caution",
+  };
+}
+
 const newYorkDateTime = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
   month: "long",
@@ -205,6 +360,25 @@ function dateFromIsoDay(value: string | null): Date | null {
     return null;
   }
   return date;
+}
+
+/**
+ * The calendar day an instant falls on in US Eastern time, as YYYY-MM-DD.
+ *
+ * `en-CA` is used purely because its short date format *is* ISO order; the
+ * output is a date, never an instant, which is the point at the one call site
+ * that needs it.
+ */
+const newYorkIsoDayFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function newYorkIsoDay(value: string | null): string | null {
+  const instant = instantFromIso(value);
+  return instant === null ? null : newYorkIsoDayFormat.format(instant);
 }
 
 export function formatNewYorkDateTime(value: string | null): string | null {

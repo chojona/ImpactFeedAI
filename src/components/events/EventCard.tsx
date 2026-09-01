@@ -5,12 +5,7 @@ import { MiniReactionBars } from "@/components/reactions/MiniReactionBars";
 import { ReactionIndicator } from "@/components/reactions/ReactionIndicator";
 import { directionOf } from "@/components/reactions/reactionTone";
 import { ReleaseValueInline } from "./ReleaseValues";
-import {
-  formatNewYorkDate,
-  formatPlainDate,
-  formatReferencePeriod,
-  timingDisplay,
-} from "@/services/events/timing";
+import { eventWhenDisplay } from "@/services/events/timing";
 import {
   WINDOW_LABELS,
   pctForWindow,
@@ -171,61 +166,51 @@ export function EventCard({ event }: Props) {
 }
 
 /**
- * The most precise "when" the record supports, and no more. An exact instant
- * where one is sourced; otherwise the publication date, the reference period,
- * or nothing — each labelled with the timing status so the drop in precision is
- * visible rather than silent.
+ * The most precise "when" the record supports, and no more.
+ *
+ * The selection lives in `services/events/timing.ts` so the card and the event
+ * header cannot disagree about which level a row qualifies for. This renders
+ * two lines: the date itself, and a caption naming the level it came from, so a
+ * drop in precision is visible rather than silent.
+ *
+ * A known date is set in the normal ink even when its release timing is
+ * unverified. Amber is reserved for the caption — the part that is actually
+ * qualified — because thirty of fifty cards carry an occurrence date with no
+ * sourced release time, and colouring the date itself as a warning states that
+ * the *date* is doubtful when it is the *timing* that is.
  */
 function WhenLine({ event }: { event: NewsEvent }) {
-  const timing = timingDisplay(event.timing);
-  const exact = formatNewYorkDate(event.timing.releaseAt);
-  const date = formatPlainDate(event.timing.releaseDate);
-  const reference = event.releases
-    .map((release) => formatReferencePeriod(release.referencePeriodStart))
-    .find((value): value is string => value !== null);
-
-  const trusted = timing.tone === "trusted";
-
-  const body =
-    exact !== null
-      ? exact
-      : date !== null
-        ? date
-        : reference !== undefined
-          ? `Ref ${reference}`
-          : "No release date";
-
-  const dateTime =
-    exact !== null
-      ? (event.timing.releaseAt ?? undefined)
-      : date !== null
-        ? (event.timing.releaseDate ?? undefined)
-        : undefined;
+  const when = eventWhenDisplay(event);
+  const trusted = when.tone === "trusted";
 
   const content = (
     <>
+      <span
+        className={`num block text-[11px] ${
+          when.dateKnown ? "text-ink-2" : "text-warn/85"
+        }`}
+      >
+        {when.text}
+      </span>
       {/* Deliberately one notch quieter than the state line below the title.
           Two amber items per card, saying the same thing twice, made the
           majority of the feed read as a wall of warnings. */}
       <span
-        className={`num block text-[11px] ${
-          trusted ? "text-ink-2" : "text-warn/85"
+        className={`block font-mono text-[9px] uppercase tracking-[0.12em] ${
+          trusted ? "text-ink-4" : "text-warn/70"
         }`}
       >
-        {body}
-      </span>
-      <span className="block font-mono text-[9px] uppercase tracking-[0.12em] text-ink-4">
-        {trusted ? "Verified timing" : timing.label}
+        {when.label}
       </span>
     </>
   );
 
   return (
-    <span className="shrink-0 text-right" title={timing.explanation}>
-      {dateTime === undefined ? (
+    <span className="shrink-0 text-right" title={when.explanation}>
+      {when.dateTime === null ? (
         content
       ) : (
-        <time dateTime={dateTime}>{content}</time>
+        <time dateTime={when.dateTime}>{content}</time>
       )}
     </span>
   );

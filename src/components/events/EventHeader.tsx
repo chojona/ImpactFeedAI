@@ -3,10 +3,10 @@ import { CalendarClock, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import {
+  eventWhenDisplay,
   formatNewYorkDateTime,
-  formatPlainDate,
-  formatReferencePeriod,
   timingDisplay,
+  type EventWhenDisplay,
 } from "@/services/events/timing";
 import { ReactionBadge, TimingBadge } from "./StatusBadges";
 import type { NewsEvent } from "@/types/events";
@@ -29,7 +29,8 @@ import type { NewsEvent } from "@/types/events";
  *
  * Timing still renders at the most precise level the record supports, and says
  * so at each step down: an exact instant, else a publication date with the time
- * explicitly called unavailable, else the reference period the statistic
+ * explicitly called unavailable, else the recorded occurrence date labelled as
+ * an occurrence rather than a release, else the reference period the statistic
  * measures, else nothing at all. It never fabricates a clock time.
  */
 
@@ -39,11 +40,7 @@ interface Props {
 
 export function EventHeader({ event }: Props) {
   const timing = timingDisplay(event.timing);
-  const exact = formatNewYorkDateTime(event.timing.releaseAt);
-  const date = formatPlainDate(event.timing.releaseDate);
-  const reference = event.releases
-    .map((release) => formatReferencePeriod(release.referencePeriodStart))
-    .find((value): value is string => value !== null);
+  const when = eventWhenDisplay(event);
 
   // `eventType` is often the same word as `category` (GEOPOLITICAL, TARIFF), and
   // printing both produced a visible "GEOPOLITICAL GEOPOLITICAL" stutter beside
@@ -65,11 +62,8 @@ export function EventHeader({ event }: Props) {
 
       <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2.5">
         <ReleaseInstant
-          exact={exact}
-          releaseAtIso={event.timing.releaseAt}
-          date={date}
-          releaseDateIso={event.timing.releaseDate}
-          reference={reference}
+          when={when}
+          exact={formatNewYorkDateTime(event.timing.releaseAt)}
           trusted={event.timing.reactionEligible}
         />
         <span aria-hidden className="h-4 w-px bg-line-strong" />
@@ -125,20 +119,20 @@ export function EventHeader({ event }: Props) {
  * did this print" is one of the six questions the page has to answer above the
  * fold. A degraded precision level keeps its amber tone and states what is
  * missing in words — the drop is visible rather than silent.
+ *
+ * Which level a row qualifies for is decided by `eventWhenDisplay`, shared with
+ * the feed card. Only `release_instant` re-renders the value here, at full
+ * instant precision; every lower level has no time to render, so the header
+ * shows the same date the card does with a badge naming what is missing.
  */
 function ReleaseInstant({
+  when,
   exact,
-  releaseAtIso,
-  date,
-  releaseDateIso,
-  reference,
   trusted,
 }: {
+  when: EventWhenDisplay;
+  /** Full instant text, used only when the record supports one. */
   exact: string | null;
-  releaseAtIso: string | null;
-  date: string | null;
-  releaseDateIso: string | null;
-  reference: string | undefined;
   trusted: boolean;
 }) {
   const icon = (
@@ -149,12 +143,12 @@ function ReleaseInstant({
     />
   );
 
-  if (exact !== null && releaseAtIso !== null) {
+  if (when.precision === "release_instant" && exact !== null) {
     return (
       <span className="flex items-center gap-2">
         {icon}
         <time
-          dateTime={releaseAtIso}
+          dateTime={when.dateTime ?? undefined}
           className={`num text-[13px] font-medium ${
             trusted ? "text-ink-2" : "text-warn"
           }`}
@@ -164,38 +158,38 @@ function ReleaseInstant({
       </span>
     );
   }
-  if (date !== null && releaseDateIso !== null) {
+
+  if (when.dateKnown) {
     return (
       <span className="flex flex-wrap items-center gap-2">
         {icon}
-        <time dateTime={releaseDateIso} className="num text-[13px] font-medium text-warn">
-          {date}
+        <time
+          dateTime={when.dateTime ?? undefined}
+          className="num text-[13px] font-medium text-ink-2"
+        >
+          {when.text}
         </time>
-        <Badge tone="caution" size="xs">
-          Time unavailable
+        <Badge tone="caution" size="xs" title={when.explanation}>
+          {/* An occurrence date is not a release date, and saying only "time
+              unavailable" over one would imply the day itself came from a
+              release record. */}
+          {when.precision === "event_date"
+            ? "Event date · release timing unverified"
+            : "Time unavailable"}
         </Badge>
       </span>
     );
   }
-  if (reference !== undefined) {
-    return (
-      <span className="flex flex-wrap items-center gap-2">
-        {icon}
-        <span className="num text-[13px] font-medium text-warn">
-          Reference period {reference}
-        </span>
-        <Badge tone="caution" size="xs">
-          Release timing unavailable
-        </Badge>
-      </span>
-    );
-  }
+
+  // No date at any level: the text is already a stated absence, and the badge
+  // names the consequence rather than repeating it.
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex flex-wrap items-center gap-2">
       {icon}
-      <span className="num text-[13px] font-medium text-warn">
+      <span className="num text-[13px] font-medium text-warn">{when.text}</span>
+      <Badge tone="caution" size="xs" title={when.explanation}>
         Release timing unavailable
-      </span>
+      </Badge>
     </span>
   );
 }

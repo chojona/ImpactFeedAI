@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CURRENT_REACTION_CALCULATION_VERSION,
+  eventWhenDisplay,
   formatNewYorkDate,
   formatNewYorkDateTime,
   formatPlainDate,
@@ -13,7 +14,11 @@ import {
   timingStatusExplanation,
   timingStatusLabel,
 } from "@/services/events/timing";
-import type { EventTimingStatus } from "@/types/events";
+import type {
+  EventTimingStatus,
+  EventTimingView,
+  ReactionTimingIneligibility,
+} from "@/types/events";
 
 const exactTiming = {
   releaseAt: new Date("2025-05-13T12:30:00Z"),
@@ -174,5 +179,159 @@ describe("timing presentation", () => {
         }),
       ).toBe(false);
     }
+  });
+});
+
+/**
+ * Every level of the "when" ladder, because the feed used to have only four of
+ * them and collapsed the missing one — a known occurrence date — into "No
+ * release date". Thirty of the fifty events in the library sit on exactly that
+ * level, so the gap was the majority state, not an edge case.
+ */
+describe("eventWhenDisplay", () => {
+  const timing = (over: Partial<EventTimingView> = {}): EventTimingView => ({
+    status: "UNVERIFIED",
+    releaseAt: null,
+    releaseDate: null,
+    source: null,
+    reactionEligible: false,
+    ineligibilityReason: "untrusted_status" as ReactionTimingIneligibility,
+    ...over,
+  });
+
+  const event = (
+    overTiming: Partial<EventTimingView> = {},
+    occurredAt = "2024-10-29T20:00:00.000Z",
+    referencePeriodStart: string | null = null,
+  ) => ({
+    timing: timing(overTiming),
+    occurredAt,
+    releases: [{ referencePeriodStart }],
+  });
+
+  it("uses a sourced release instant, and says the timing is verified", () => {
+    const when = eventWhenDisplay(
+      event({
+        status: "SCHEDULED",
+        releaseAt: "2025-05-13T12:30:00.000Z",
+        releaseDate: "2025-05-13",
+        source: "BLS release schedule",
+        reactionEligible: true,
+        ineligibilityReason: null,
+      }),
+    );
+    expect(when.precision).toBe("release_instant");
+    expect(when.text).toBe("May 13, 2025");
+    expect(when.dateTime).toBe("2025-05-13T12:30:00.000Z");
+    expect(when.dateKnown).toBe(true);
+    expect(when.label).toBe("Verified timing");
+    expect(when.tone).toBe("trusted");
+  });
+
+  it("falls back to a publication date and does not claim a time", () => {
+    const when = eventWhenDisplay(
+      event({
+        status: "DATE_ONLY",
+        releaseDate: "2025-05-13",
+        ineligibilityReason: "untrusted_status",
+      }),
+    );
+    expect(when.precision).toBe("release_date");
+    expect(when.text).toBe("May 13, 2025");
+    // A day, not an instant: no clock time is asserted anywhere.
+    expect(when.dateTime).toBe("2025-05-13");
+    expect(when.dateKnown).toBe(true);
+    expect(when.label).toBe("Release date only");
+    expect(when.tone).toBe("caution");
+  });
+
+  it("falls back to the occurrence date instead of claiming no date exists", () => {
+    const when = eventWhenDisplay(event());
+    expect(when.precision).toBe("event_date");
+    expect(when.text).toBe("Oct 29, 2024");
+    expect(when.dateKnown).toBe(true);
+    expect(when.tone).toBe("caution");
+  });
+
+  it("labels the occurrence date as an event date with unverified timing", () => {
+    const when = eventWhenDisplay(event());
+    expect(when.label).toBe("Event date · time unverified");
+    expect(when.explanation).toContain("no release time has been verified");
+    expect(when.explanation).not.toContain("verified release");
+  });
+
+  /**
+   * The whole risk of this fallback in one assertion. `occurredAt` is stored as
+   * an instant whose time is not verified against anything; emitting it as a
+   * machine-readable instant would hand a consumer the precision the label in
+   * the same breath denies.
+   */
+  it("never re-publishes an unverified occurrence instant at instant precision", () => {
+    const when = eventWhenDisplay(event());
+    expect(when.dateTime).toBe("2024-10-29");
+    expect(when.dateTime).not.toContain("T");
+    expect(when.text).not.toMatch(/\d:\d\d/);
+  });
+
+  it("reduces the occurrence instant to its US Eastern day", () => {
+    // 02:00Z on Jun 11 is 22:00 ET on Jun 10 — the market day the rest of the
+    // app formats in, and the same day `formatNewYorkDate` already reports.
+    const when = eventWhenDisplay(event({}, "2025-06-11T02:00:00.000Z"));
+    expect(when.text).toBe("Jun 10, 2025");
+    expect(when.dateTime).toBe("2025-06-10");
+  });
+
+  it("prefers a known event date over the statistic's reference period", () => {
+    const when = eventWhenDisplay(event({}, "2024-10-29T20:00:00.000Z", "2024-09-01"));
+    expect(when.precision).toBe("event_date");
+  });
+
+  it("falls back to a reference period when no date is recoverable", () => {
+    const when = eventWhenDisplay(event({}, "not-an-instant", "2025-04-01"));
+    expect(when.precision).toBe("reference_period");
+    expect(when.text).toBe("Ref Apr 2025");
+    expect(when.dateTime).toBeNull();
+    expect(when.dateKnown).toBe(false);
+  });
+
+  it("states a genuinely unknown date as an absence, not as a date", () => {
+    const when = eventWhenDisplay(event({}, "not-an-instant", null));
+    expect(when.precision).toBe("unknown");
+    expect(when.text).toBe("No date recorded");
+    expect(when.dateTime).toBeNull();
+    expect(when.dateKnown).toBe(false);
+    expect(when.tone).toBe("caution");
+  });
+
+  it("keeps an instant with incomplete provenance out of the verified voice", () => {
+    const when = eventWhenDisplay(
+      event({
+        status: "VERIFIED",
+        releaseAt: "2025-05-13T12:30:00.000Z",
+        source: null,
+        ineligibilityReason: "missing_timing_source",
+      }),
+    );
+    expect(when.precision).toBe("release_instant");
+    expect(when.label).toBe("Timing provenance incomplete");
+    expect(when.tone).toBe("caution");
+  });
+
+  it("gives each precision level a distinct label", () => {
+    const labels = [
+      eventWhenDisplay(
+        event({
+          status: "SCHEDULED",
+          releaseAt: "2025-05-13T12:30:00.000Z",
+          source: "BLS release schedule",
+          reactionEligible: true,
+          ineligibilityReason: null,
+        }),
+      ).label,
+      eventWhenDisplay(event({ status: "DATE_ONLY", releaseDate: "2025-05-13" }))
+        .label,
+      eventWhenDisplay(event()).label,
+    ];
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });
