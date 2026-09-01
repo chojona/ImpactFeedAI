@@ -4,6 +4,15 @@
  * Kept separate from `eventQueries.ts` so validation has no dependency on the
  * Prisma client: importing the client to check that `limit=abc` is invalid would
  * mean instantiating a database connection to answer a question about a string.
+ *
+ * Two vocabularies, one validator. The HTTP API names the category `type`; the
+ * browser URL on `/feed` names it `cat`, and that spelling is in shared links
+ * and bookmarks, so neither can be renamed to match the other. `parseFeedQuery`
+ * and `parseEventListQuery` therefore differ only in which key they read the
+ * category from — everything else, including the clamping rules, is one
+ * definition. The feed page and `EventBrowser` now both parse the *same* URL
+ * through the same function, which is what lets the server render page one and
+ * the client agree on what it rendered.
  */
 import { FILTERABLE_CATEGORIES } from "@/lib/eventCategories";
 import type { EventCategory } from "@/types/events";
@@ -45,21 +54,56 @@ const parseNonNegativeInt = (
 };
 
 /**
- * Parse the query string into a validated query. Unrecognised values fall back
- * to their defaults rather than erroring — a bookmarked URL naming a category
- * that no longer exists should still return the unfiltered feed.
+ * An all-zero count for every filter pill.
+ *
+ * Shared so the server's error paths, the client's reset path and the filter
+ * bar cannot disagree about the shape of the record — a missing key renders as
+ * an empty pill rather than a zero.
  */
-export function parseEventListQuery(params: URLSearchParams): EventListQuery {
-  const typeRaw = params.get("type");
-  const sortRaw = params.get("sort");
+export const ZERO_CATEGORY_COUNTS: Readonly<Record<CategoryParam, number>> = {
+  ALL: 0,
+  ...(Object.fromEntries(
+    FILTERABLE_CATEGORIES.map((category) => [category, 0]),
+  ) as Record<EventCategory, number>),
+};
+
+export const parseCategory = (raw: string | null): CategoryParam =>
+  raw !== null && VALID_CATEGORIES.has(raw) ? (raw as CategoryParam) : "ALL";
+
+export const parseSort = (raw: string | null): SortMode =>
+  raw === "biggest" ? "biggest" : "newest";
+
+/**
+ * Parse a query string into a validated query, given the key the category is
+ * spelled with. Unrecognised values fall back to their defaults rather than
+ * erroring — a bookmarked URL naming a category that no longer exists should
+ * still return the unfiltered feed.
+ */
+function parse(params: URLSearchParams, categoryKey: string): EventListQuery {
   return {
-    category:
-      typeRaw !== null && VALID_CATEGORIES.has(typeRaw)
-        ? (typeRaw as CategoryParam)
-        : "ALL",
-    sort: sortRaw === "biggest" ? "biggest" : "newest",
+    category: parseCategory(params.get(categoryKey)),
+    sort: parseSort(params.get("sort")),
     search: (params.get("q") ?? "").trim(),
     offset: parseNonNegativeInt(params.get("offset"), 0),
     limit: parseNonNegativeInt(params.get("limit"), DEFAULT_LIMIT, MAX_LIMIT),
   };
 }
+
+/** The `/api/events` contract, where the category is `type`. */
+export const parseEventListQuery = (params: URLSearchParams): EventListQuery =>
+  parse(params, "type");
+
+/** The `/feed` browser URL, where the category is `cat`. */
+export const parseFeedQuery = (params: URLSearchParams): EventListQuery =>
+  parse(params, "cat");
+
+/**
+ * Identity of a result *set*, ignoring how far into it the reader has paged.
+ *
+ * The server renders page one for one of these; the client refetches when the
+ * reader changes to a different one. Comparing the strings is what keeps
+ * hydration from re-requesting the page the server already sent.
+ */
+export const feedQueryKey = (
+  query: Pick<EventListQuery, "category" | "sort" | "search">,
+): string => `${query.category}|${query.sort}|${query.search}`;

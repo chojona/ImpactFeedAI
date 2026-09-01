@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CURRENT_REACTION_CALCULATION_VERSION,
+  eventDateGroup,
   eventWhenDisplay,
   formatNewYorkDate,
   formatNewYorkDateTime,
@@ -223,6 +224,8 @@ describe("eventWhenDisplay", () => {
     expect(when.precision).toBe("release_instant");
     expect(when.text).toBe("May 13, 2025");
     expect(when.dateTime).toBe("2025-05-13T12:30:00.000Z");
+    // The instant is the machine value; the day is the bucket it groups into.
+    expect(when.day).toBe("2025-05-13");
     expect(when.dateKnown).toBe(true);
     expect(when.label).toBe("Verified timing");
     expect(when.tone).toBe("trusted");
@@ -240,6 +243,7 @@ describe("eventWhenDisplay", () => {
     expect(when.text).toBe("May 13, 2025");
     // A day, not an instant: no clock time is asserted anywhere.
     expect(when.dateTime).toBe("2025-05-13");
+    expect(when.day).toBe("2025-05-13");
     expect(when.dateKnown).toBe(true);
     expect(when.label).toBe("Release date only");
     expect(when.tone).toBe("caution");
@@ -249,6 +253,7 @@ describe("eventWhenDisplay", () => {
     const when = eventWhenDisplay(event());
     expect(when.precision).toBe("event_date");
     expect(when.text).toBe("Oct 29, 2024");
+    expect(when.day).toBe("2024-10-29");
     expect(when.dateKnown).toBe(true);
     expect(when.tone).toBe("caution");
   });
@@ -291,6 +296,7 @@ describe("eventWhenDisplay", () => {
     expect(when.precision).toBe("reference_period");
     expect(when.text).toBe("Ref Apr 2025");
     expect(when.dateTime).toBeNull();
+    expect(when.day).toBeNull();
     expect(when.dateKnown).toBe(false);
   });
 
@@ -299,6 +305,7 @@ describe("eventWhenDisplay", () => {
     expect(when.precision).toBe("unknown");
     expect(when.text).toBe("No date recorded");
     expect(when.dateTime).toBeNull();
+    expect(when.day).toBeNull();
     expect(when.dateKnown).toBe(false);
     expect(when.tone).toBe("caution");
   });
@@ -333,5 +340,73 @@ describe("eventWhenDisplay", () => {
       eventWhenDisplay(event()).label,
     ];
     expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+/**
+ * Calendar sections for the chronological feed. The input is always the `day`
+ * off the ladder above, never a raw column, so a heading cannot claim a date
+ * the card itself does not show.
+ */
+describe("eventDateGroup", () => {
+  // Noon ET on Sep 1 2026.
+  const now = new Date("2026-09-01T16:00:00.000Z");
+
+  it("names the current and previous US-Eastern day", () => {
+    expect(eventDateGroup("2026-09-01", now).label).toBe("Today");
+    expect(eventDateGroup("2026-08-31", now).label).toBe("Yesterday");
+  });
+
+  it("collapses everything older into its month", () => {
+    expect(eventDateGroup("2026-08-30", now)).toEqual({
+      key: "2026-08",
+      label: "Aug 2026",
+    });
+    expect(eventDateGroup("2024-10-29", now)).toEqual({
+      key: "2024-10",
+      label: "Oct 2024",
+    });
+  });
+
+  it("groups a future-dated row by month rather than calling it today", () => {
+    expect(eventDateGroup("2026-09-30", now).label).toBe("Sep 2026");
+  });
+
+  it("gives an undated row a section of its own", () => {
+    expect(eventDateGroup(null, now)).toEqual({
+      key: "no-date",
+      label: "Date not recorded",
+    });
+  });
+
+  it("reads the current day in US-Eastern, not UTC", () => {
+    // 01:00Z on Sep 2 is still 21:00 ET on Sep 1.
+    const lateUtc = new Date("2026-09-02T01:00:00.000Z");
+    expect(eventDateGroup("2026-09-01", lateUtc).label).toBe("Today");
+    expect(eventDateGroup("2026-08-31", lateUtc).label).toBe("Yesterday");
+  });
+
+  /**
+   * "Yesterday" is one calendar day back, not 24 hours back. On the 25-hour
+   * November day the two disagree, and subtracting a fixed interval would file
+   * the previous day's events under "Today".
+   */
+  it("steps back one calendar day across a DST boundary", () => {
+    // Nov 3 2024 23:30 ET, the day the clocks went back.
+    const afterFallBack = new Date("2024-11-04T04:30:00.000Z");
+    expect(eventDateGroup("2024-11-03", afterFallBack).label).toBe("Today");
+    expect(eventDateGroup("2024-11-02", afterFallBack).label).toBe("Yesterday");
+  });
+
+  it("steps back across a month and a year boundary", () => {
+    const firstOfMonth = new Date("2026-03-01T17:00:00.000Z");
+    expect(eventDateGroup("2026-02-28", firstOfMonth).label).toBe("Yesterday");
+    const newYear = new Date("2026-01-01T17:00:00.000Z");
+    expect(eventDateGroup("2025-12-31", newYear).label).toBe("Yesterday");
+  });
+
+  it("keys recent days by day and older rows by month, so nothing merges", () => {
+    expect(eventDateGroup("2026-09-01", now).key).toBe("2026-09-01");
+    expect(eventDateGroup("2026-07-04", now).key).toBe("2026-07");
   });
 });

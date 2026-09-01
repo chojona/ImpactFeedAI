@@ -1,39 +1,71 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { buttonClass } from "@/components/ui/Button";
 import { DataStatePanel } from "@/components/ui/DataStatePanel";
-import { FILTERABLE_CATEGORIES } from "@/lib/eventCategories";
+import { feedRows, rankedSummary } from "@/services/events/feedSections";
+import {
+  DEFAULT_LIMIT,
+  ZERO_CATEGORY_COUNTS,
+  feedQueryKey,
+  type CategoryParam,
+  type SortMode,
+} from "@/services/events/queryParams";
+import type { FeedSection } from "@/services/events/feedSections";
 import type { NewsEvent } from "@/types/events";
 import { CategoryFilterBar, type CategoryFilter } from "./CategoryFilterBar";
 import { EventCard } from "./EventCard";
 import { SearchBar } from "./SearchBar";
 
-type SortMode = "newest" | "biggest";
+/**
+ * The event library browser.
+ *
+ * ### Where its first page comes from
+ *
+ * `initial` — queried on the server by `app/feed/page.tsx` from the same URL
+ * this component then keeps in sync. The component used to mount empty and
+ * fetch page one itself, which cost a round trip after hydration and showed a
+ * second skeleton under the page's own. It now starts with rows and only calls
+ * `/api/events` for what the server did not send: later pages, and result sets
+ * the reader asks for by changing a filter.
+ *
+ * ### Why filter state is state, not `useSearchParams`
+ *
+ * The URL is a *mirror* of the component's state rather than its source. Going
+ * through the Next router for every keystroke would re-run the page's server
+ * component — a second database query for a result set the client is already
+ * fetching — so the URL is updated with `history.replaceState`, which Next
+ * integrates with the router but which does not trigger a server navigation.
+ * The server still owns the *initial* state: it parses the URL, renders page
+ * one from it, and passes both down. A real navigation (a link to `/feed` with
+ * different parameters) produces a new `initial.key`, and the page remounts
+ * this component on that key so nothing stale survives.
+ */
 
-const VALID_CATEGORIES: ReadonlySet<string> = new Set<string>([
-  "ALL",
-  ...FILTERABLE_CATEGORIES,
-]);
-
-const isValidCategory = (v: string | null): v is CategoryFilter =>
-  v !== null && VALID_CATEGORIES.has(v);
-
-const isValidSort = (v: string | null): v is SortMode =>
-  v === "newest" || v === "biggest";
-
-const PAGE_SIZE = 12;
-
-interface EventsApiResponse {
+interface FeedResultState {
   events: NewsEvent[];
   total: number;
+  rankedCount: number;
+  counts: Record<CategoryParam, number>;
+}
+
+export interface FeedInitialData extends FeedResultState {
+  /** Identity of the result set the server rendered. Also the remount key. */
+  key: string;
+  category: CategoryParam;
+  sort: SortMode;
+  search: string;
+  /** Non-null when the server could not read the library at all. */
+  error: string | null;
+}
+
+interface EventsApiResponse extends FeedResultState {
   offset: number;
   limit: number;
-  counts: Record<CategoryFilter, number>;
 }
 
 interface ApiErrorBody {
@@ -41,85 +73,71 @@ interface ApiErrorBody {
   message?: string;
 }
 
-const ZERO_COUNTS: Record<CategoryFilter, number> = {
-  ALL: 0,
-  TARIFF: 0,
-  INFLATION: 0,
-  FED: 0,
-  JOBS: 0,
-  GEOPOLITICAL: 0,
-  EARNINGS: 0,
-  OTHER: 0,
+const setOrDelete = (
+  params: URLSearchParams,
+  key: string,
+  value: string | null,
+) => {
+  if (value === null || value === "") params.delete(key);
+  else params.set(key, value);
 };
 
-export function EventBrowser() {
-  const router = useRouter();
+export function EventBrowser({ initial }: { initial: FeedInitialData }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
-  const urlCat = searchParams.get("cat");
-  const urlSort = searchParams.get("sort");
-  const urlQuery = searchParams.get("q") ?? "";
+  const [category, setCategory] = useState<CategoryFilter>(initial.category);
+  const [sortMode, setSortMode] = useState<SortMode>(initial.sort);
+  const [searchInput, setSearchInput] = useState(initial.search);
+  const [search, setSearch] = useState(initial.search);
 
-  const category: CategoryFilter = isValidCategory(urlCat) ? urlCat : "ALL";
-  const sortMode: SortMode = isValidSort(urlSort) ? urlSort : "newest";
-
-  const [searchInput, setSearchInput] = useState(urlQuery);
-
-  // Re-sync the input when the URL changes from outside this component (back /
-  // forward navigation, or a link with ?q=). Adjusting state during render is
-  // React's sanctioned pattern for "derive from a prop that changed"; doing it
-  // in an effect costs an extra commit and trips react-hooks/set-state-in-effect.
-  const [syncedQuery, setSyncedQuery] = useState(urlQuery);
-  if (urlQuery !== syncedQuery) {
-    setSyncedQuery(urlQuery);
-    setSearchInput(urlQuery);
-  }
-
-  const updateParam = useCallback(
-    (key: string, value: string | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value === null || value === "") params.delete(key);
-      else params.set(key, value);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [router, pathname, searchParams],
-  );
-
-  useEffect(() => {
-    if (searchInput === urlQuery) return;
-    const t = setTimeout(() => updateParam("q", searchInput), 200);
-    return () => clearTimeout(t);
-  }, [searchInput, urlQuery, updateParam]);
-
-  const handleCategoryChange = useCallback(
-    (cat: CategoryFilter) => updateParam("cat", cat === "ALL" ? null : cat),
-    [updateParam],
-  );
-
-  const handleSortChange = useCallback(
-    (sort: SortMode) => updateParam("sort", sort === "newest" ? null : sort),
-    [updateParam],
-  );
-
-  const [events, setEvents] = useState<NewsEvent[]>([]);
-  const [total, setTotal] = useState(0);
-  const [counts, setCounts] =
-    useState<Record<CategoryFilter, number>>(ZERO_COUNTS);
+  const [result, setResult] = useState<FeedResultState>({
+    events: initial.events,
+    total: initial.total,
+    rankedCount: initial.rankedCount,
+    counts: initial.counts,
+  });
   const [loading, setLoading] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [initialLoad, setInitialLoad] = useState(false);
+  const [error, setError] = useState<string | null>(initial.error);
+
+  const { events, total, rankedCount, counts } = result;
+  const queryKey = feedQueryKey({ category, sort: sortMode, search });
+
+  // Debounce the box, not the URL: `search` is what both the request and the
+  // address bar follow, so neither can run a query the other has not seen.
+  useEffect(() => {
+    if (searchInput.trim() === search) return;
+    const t = setTimeout(() => setSearch(searchInput.trim()), 200);
+    return () => clearTimeout(t);
+  }, [searchInput, search]);
+
+  // Mirror the state into the address bar so the view stays shareable.
+  // `replaceState` rather than `router.replace`: this is the same document
+  // showing a different slice of one dataset, and a server navigation per
+  // keystroke would re-query Postgres for rows the fetch below is already
+  // asking for. Unrelated parameters are preserved. On mount this is a no-op —
+  // the state came from these very values.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setOrDelete(params, "cat", category === "ALL" ? null : category);
+    setOrDelete(params, "sort", sortMode === "newest" ? null : sortMode);
+    setOrDelete(params, "q", search);
+    const qs = params.toString();
+    const next = qs ? `${pathname}?${qs}` : pathname;
+    if (next !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(null, "", next);
+    }
+  }, [category, sortMode, search, pathname]);
 
   const fetchEvents = useCallback(
     async (offset: number, signal: AbortSignal): Promise<EventsApiResponse> => {
       const params = new URLSearchParams({
         offset: String(offset),
-        limit: String(PAGE_SIZE),
+        limit: String(DEFAULT_LIMIT),
         type: category,
         sort: sortMode,
       });
-      if (urlQuery.trim().length > 0) params.set("q", urlQuery.trim());
+      if (search.length > 0) params.set("q", search);
 
       const res = await fetch(`/api/events?${params.toString()}`, { signal });
       if (!res.ok) {
@@ -130,27 +148,40 @@ export function EventBrowser() {
       }
       return (await res.json()) as EventsApiResponse;
     },
-    [category, sortMode, urlQuery],
+    [category, sortMode, search],
   );
 
-  // Reset + fetch first page whenever filter/sort/q changes.
+  // Refetch page one when the reader asks for a *different* result set — and
+  // only then. The ref holds what has already been loaded, starting with what
+  // the server sent, which is what keeps hydration from re-requesting it.
+  const loadedKeyRef = useRef(initial.key);
+
   useEffect(() => {
+    if (queryKey === loadedKeyRef.current) return;
+    loadedKeyRef.current = queryKey;
+
     const ac = new AbortController();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setInitialLoad(true);
     setError(null);
 
     fetchEvents(0, ac.signal)
       .then((data) => {
-        setEvents(data.events);
-        setTotal(data.total);
-        setCounts({ ...ZERO_COUNTS, ...data.counts });
+        setResult({
+          events: data.events,
+          total: data.total,
+          rankedCount: data.rankedCount,
+          counts: { ...ZERO_CATEGORY_COUNTS, ...data.counts },
+        });
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        setEvents([]);
-        setTotal(0);
+        setResult({
+          events: [],
+          total: 0,
+          rankedCount: 0,
+          counts: { ...ZERO_CATEGORY_COUNTS },
+        });
         setError(err instanceof Error ? err.message : "Failed to load events");
       })
       .finally(() => {
@@ -159,7 +190,7 @@ export function EventBrowser() {
       });
 
     return () => ac.abort();
-  }, [fetchEvents]);
+  }, [queryKey, fetchEvents]);
 
   const loadMore = useCallback(async () => {
     if (loading) return;
@@ -168,12 +199,16 @@ export function EventBrowser() {
     setLoading(true);
     try {
       const data = await fetchEvents(events.length, ac.signal);
-      setEvents((prev) => {
-        const seen = new Set(prev.map((e) => e.id));
+      setResult((prev) => {
+        const seen = new Set(prev.events.map((e) => e.id));
         const next = data.events.filter((e) => !seen.has(e.id));
-        return [...prev, ...next];
+        return {
+          events: [...prev.events, ...next],
+          total: data.total,
+          rankedCount: data.rankedCount,
+          counts: prev.counts,
+        };
       });
-      setTotal(data.total);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Failed to load events");
@@ -219,15 +254,15 @@ export function EventBrowser() {
     return () => observer.disconnect();
   }, [hasMore, loadMore]);
 
-  const counterDisplay = useMemo(
-    () => ({ visible: events.length, total }),
-    [events.length, total],
-  );
+  // Headings are derived from the whole loaded list rather than per page, so a
+  // month that straddles a page boundary keeps one heading.
+  const rows = feedRows(events, { sort: sortMode, rankedCount, total });
+  const ranked = sortMode === "biggest" ? rankedSummary(rankedCount, total) : null;
 
   const filterBar = (
     <CategoryFilterBar
       active={category}
-      onChange={handleCategoryChange}
+      onChange={setCategory}
       counts={counts}
     />
   );
@@ -274,17 +309,20 @@ export function EventBrowser() {
       <div ref={stickyAnchorRef} className="h-px" />
 
       <div className="mt-6 mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-line pb-3.5">
-        <p className="text-[13px] text-ink-3" aria-live="polite">
-          <span className="num font-semibold text-ink">
-            {counterDisplay.visible}
-          </span>
-          <span className="text-ink-4"> of </span>
-          <span className="num text-ink-2">{counterDisplay.total}</span>
-          <span className="text-ink-4">
-            {" "}
-            {counterDisplay.total === 1 ? "event" : "events"}
-          </span>
-        </p>
+        <div className="min-w-0" aria-live="polite">
+          <p className="text-[13px] text-ink-3">
+            <span className="num font-semibold text-ink">{events.length}</span>
+            <span className="text-ink-4"> of </span>
+            <span className="num text-ink-2">{total}</span>
+            <span className="text-ink-4"> {total === 1 ? "event" : "events"}</span>
+          </p>
+          {/* Under "Biggest move" the total is not the size of the ranking.
+              Saying so here is the difference between "the 40th biggest move"
+              and "the 20th event we could not rank at all". */}
+          {ranked !== null && (
+            <p className="mt-0.5 text-[11px] text-ink-4">{ranked}</p>
+          )}
+        </div>
         <div className="flex items-center gap-2.5">
           <span className="eyebrow">Sort</span>
           <div
@@ -294,13 +332,13 @@ export function EventBrowser() {
           >
             <SortButton
               active={sortMode === "newest"}
-              onClick={() => handleSortChange("newest")}
+              onClick={() => setSortMode("newest")}
             >
               Newest
             </SortButton>
             <SortButton
               active={sortMode === "biggest"}
-              onClick={() => handleSortChange("biggest")}
+              onClick={() => setSortMode("biggest")}
             >
               Biggest move
             </SortButton>
@@ -328,14 +366,16 @@ export function EventBrowser() {
         // them to a shared row height is what produced the large blank areas
         // inside cards for the majority of events that carry no reaction.
         <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {events.map((event) => (
-            <Link
-              key={event.id}
-              href={`/events/${event.id}`}
-              className="group block rounded-lg"
-            >
-              <EventCard event={event} />
-            </Link>
+          {rows.map(({ event, section }) => (
+            <Fragment key={event.id}>
+              {section !== null && <SectionHeading section={section} />}
+              <Link
+                href={`/events/${event.id}`}
+                className="group block rounded-lg"
+              >
+                <EventCard event={event} />
+              </Link>
+            </Fragment>
           ))}
         </div>
       )}
@@ -364,8 +404,44 @@ export function EventBrowser() {
 }
 
 /**
- * Shown only on the first load of a filter. Matching the card grid's shape
- * keeps the layout from jumping when the real rows arrive.
+ * A full-width break in the card grid.
+ *
+ * One row, a label and a rule — enough to make the boundary unmissable while
+ * scrolling, small enough that it never competes with the cards it separates.
+ * The unranked marker takes the amber of the rest of the product's coverage
+ * vocabulary and a dashed rule, because it is the same statement those states
+ * make: this is where the measured data stops.
+ */
+function SectionHeading({ section }: { section: FeedSection }) {
+  const unranked = section.kind === "unranked";
+  return (
+    <div className="col-span-full flex items-center gap-3 pt-4 first:pt-0">
+      <span
+        className={`shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] ${
+          unranked ? "text-warn/85" : "text-ink-3"
+        }`}
+      >
+        {section.label}
+      </span>
+      <span
+        aria-hidden
+        className={`h-0 min-w-4 flex-1 border-t ${
+          unranked ? "border-dashed border-warn/25" : "border-line"
+        }`}
+      />
+      {section.detail !== null && (
+        <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-4">
+          {section.detail}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Shown only when the reader changes filter, sort or search. The first page
+ * arrives from the server already rendered, so this is no longer what a visitor
+ * meets on arrival.
  */
 function SkeletonGrid() {
   return (

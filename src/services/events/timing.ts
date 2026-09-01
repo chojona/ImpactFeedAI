@@ -191,6 +191,18 @@ export interface EventWhenDisplay {
    * just admitted it does not have.
    */
   dateTime: string | null;
+  /**
+   * The calendar day the rendered text falls on, `YYYY-MM-DD`, or null when no
+   * date is known. Identical to `dateTime` at every level except
+   * `release_instant`, where it is that instant's US-Eastern day.
+   *
+   * Separate from `dateTime` because the two answer different questions:
+   * `dateTime` is the machine-readable value at exactly the precision claimed,
+   * while `day` is the bucket the event belongs to when the feed groups by
+   * date. Deriving the bucket here rather than in the component is what stops
+   * the grouping from inventing a day for a row that has none.
+   */
+  day: string | null;
   /** True when a calendar date is known, whatever its provenance. */
   dateKnown: boolean;
   /** Caption naming which of the levels above is being shown. */
@@ -241,6 +253,7 @@ export function eventWhenDisplay(event: EventWhenInput): EventWhenDisplay {
       precision: "release_instant",
       text: exact,
       dateTime: event.timing.releaseAt,
+      day: newYorkIsoDay(event.timing.releaseAt),
       dateKnown: true,
       label: timing.tone === "trusted" ? "Verified timing" : timing.label,
       explanation: timing.explanation,
@@ -254,6 +267,7 @@ export function eventWhenDisplay(event: EventWhenInput): EventWhenDisplay {
       precision: "release_date",
       text: releaseDate,
       dateTime: event.timing.releaseDate,
+      day: event.timing.releaseDate,
       dateKnown: true,
       label: timing.label,
       explanation: timing.explanation,
@@ -270,6 +284,7 @@ export function eventWhenDisplay(event: EventWhenInput): EventWhenDisplay {
       // in a machine-readable attribute would assert a precision the label in
       // the same breath denies.
       dateTime: newYorkIsoDay(event.occurredAt),
+      day: newYorkIsoDay(event.occurredAt),
       dateKnown: true,
       label: EVENT_DATE_LABEL,
       explanation: EVENT_DATE_EXPLANATION,
@@ -288,6 +303,7 @@ export function eventWhenDisplay(event: EventWhenInput): EventWhenDisplay {
       precision: "reference_period",
       text: `Ref ${reference}`,
       dateTime: null,
+      day: null,
       dateKnown: false,
       label: timing.label,
       explanation: timing.explanation,
@@ -299,10 +315,64 @@ export function eventWhenDisplay(event: EventWhenInput): EventWhenDisplay {
     precision: "unknown",
     text: "No date recorded",
     dateTime: null,
+    day: null,
     dateKnown: false,
     label: timing.label,
     explanation: NO_DATE_EXPLANATION,
     tone: "caution",
+  };
+}
+
+/** One calendar section of the feed when it is ordered by date. */
+export interface EventDateGroup {
+  /** Stable identity: a day for Today/Yesterday, otherwise `YYYY-MM`. */
+  key: string;
+  label: string;
+}
+
+const NO_DATE_GROUP: EventDateGroup = {
+  key: "no-date",
+  label: "Date not recorded",
+};
+
+const pad2 = (n: number): string => String(n).padStart(2, "0");
+
+/** The US-Eastern calendar day before `day` (`YYYY-MM-DD`). */
+function previousDay(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  // Noon UTC, so the arithmetic cannot be moved across a boundary by a DST
+  // shift. Subtracting 24h from an instant would be wrong on the 25-hour day in
+  // November, where 24 hours earlier is still the same calendar date.
+  const prev = new Date(Date.UTC(year, month - 1, date - 1, 12));
+  return `${prev.getUTCFullYear()}-${pad2(prev.getUTCMonth() + 1)}-${pad2(prev.getUTCDate())}`;
+}
+
+/**
+ * Which calendar section an event belongs to, from the day the feed is already
+ * displaying for it.
+ *
+ * Takes the `day` off `eventWhenDisplay` rather than any raw column, so a card
+ * can never appear under a heading its own date line contradicts, and a row
+ * with no defensible date is grouped as having none instead of being filed
+ * under whichever month a fallback happened to produce.
+ *
+ * Recent days are named and everything older collapses to its month: "three
+ * days ago" is a distinction a reader can make from the dates themselves, while
+ * "which month am I in" is the one that is genuinely hard to hold while
+ * scrolling.
+ */
+export function eventDateGroup(
+  day: string | null,
+  now: Date = new Date(),
+): EventDateGroup {
+  if (day === null) return NO_DATE_GROUP;
+  const today = newYorkIsoDayFormat.format(now);
+  if (day === today) return { key: day, label: "Today" };
+  if (day === previousDay(today)) return { key: day, label: "Yesterday" };
+  const month = day.slice(0, 7);
+  return {
+    key: month,
+    label: formatReferencePeriod(`${month}-01`) ?? month,
   };
 }
 

@@ -3,8 +3,8 @@
  *
  * This is the layer that replaced `src/lib/mock-data/`. The query-parameter
  * contract (`type`, `q`, `sort`, `offset`, `limit`) and the response envelope
- * (`{ events, total, offset, limit, counts }`) are unchanged, so `EventBrowser`
- * did not have to move with it.
+ * (`{ events, total, rankedCount, offset, limit, counts }`) is additive, so
+ * `EventBrowser` did not have to move with it.
  *
  * Two sorts, deliberately implemented differently:
  *
@@ -19,6 +19,12 @@
  * Both sorts tie-break on `id` so pagination is stable: without it, two events
  * sharing a timestamp can swap places between page requests and an event is
  * either shown twice or skipped.
+ *
+ * `biggest` returns two runs, not one ordering: the events that have a measured
+ * one-session move, ranked; then the ones that do not, which no ranking can
+ * order and which fall out in date order behind them. `rankedCount` reports
+ * where the first run ends so the reader is not told that fifty results are
+ * ranked when twenty are.
  */
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -43,6 +49,18 @@ import type { EventCategory, EventTypeName, NewsEvent } from "@/types/events";
 export interface EventListResult {
   events: NewsEvent[];
   total: number;
+  /**
+   * How many of `total` can actually be ranked by move — that is, how many
+   * carry a measured one-session reaction.
+   *
+   * Reported by the query layer rather than counted client-side, because the
+   * client only ever holds the pages it has loaded: from twelve rows it cannot
+   * tell whether the ranking ends at row twenty or row two hundred. Under
+   * `sort=biggest` the first `rankedCount` results are the ranked ones and
+   * everything after them is unranked, so this number is also where the
+   * boundary falls.
+   */
+  rankedCount: number;
   offset: number;
   limit: number;
   counts: Record<CategoryParam, number>;
@@ -109,6 +127,29 @@ async function categoryCounts(
 }
 
 /**
+ * The one definition of "this event has a move worth ranking by".
+ *
+ * A `Prisma.Sql` fragment rather than a copied string so the ranking and the
+ * count of ranked rows cannot disagree — the whole point of `rankedCount` is
+ * that it marks the exact index where the ranking stops, and it can only do
+ * that if it is computed from the identical predicate. It refers to the aliases
+ * `e` (events) and `ar` (asset_reactions), so every query embedding it must use
+ * those names.
+ *
+ * The clauses mirror `reactionTimingEligibility` plus the calculation-version
+ * gate: a plausible number attached to unsourced timing is exactly the thing
+ * this product refuses to rank.
+ */
+const MEASURABLE_1D_REACTION = Prisma.sql`
+  ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+  AND ar.pct_change_1d IS NOT NULL
+  AND ABS(ar.pct_change_1d) < 'Infinity'::double precision
+  AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
+  AND e.release_at IS NOT NULL
+  AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
+`;
+
+/**
  * Ids for one page ordered by largest absolute measured move.
  *
  * Rankings use one fixed financial horizon: the measured one-session move.
@@ -127,27 +168,17 @@ async function categoryCounts(
  * stays well inside what Postgres handles comfortably.
  */
 async function idsByBiggestMove(
-  where: Prisma.EventWhereInput,
+  ids: string[],
   offset: number,
   limit: number,
 ): Promise<string[]> {
-  const matching = await prisma.event.findMany({
-    where,
-    select: { id: true },
-  });
-  if (matching.length === 0) return [];
-  const ids = matching.map((e) => e.id);
-
+  if (ids.length === 0) return [];
   const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
     SELECT e.id
     FROM events e
     LEFT JOIN asset_reactions ar
       ON ar.event_id = e.id
-      AND ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
-      AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
-      AND e.release_at IS NOT NULL
-      AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
-      AND ABS(ar.pct_change_1d) < 'Infinity'::double precision
+      AND ${MEASURABLE_1D_REACTION}
     WHERE e.id IN (${Prisma.join(ids)})
     GROUP BY e.id, e.occurred_at
     ORDER BY
@@ -157,6 +188,33 @@ async function idsByBiggestMove(
     LIMIT ${limit} OFFSET ${offset}
   `);
   return rows.map((r) => r.id);
+}
+
+/**
+ * How many of the matching events have a move to be ranked by.
+ *
+ * Same predicate object as the ranking join, not a second spelling of it. The
+ * number's only job is to say where the ranked run ends, so a count that admits
+ * one row the ranking rejects would put the boundary marker in the wrong place
+ * and quietly relabel a ranked event as unranked.
+ *
+ * It costs one aggregate over the already-computed id list. That list is fetched
+ * for every sort, including `newest`, which is a real (small) cost: the
+ * alternative is expressing the eligibility rule a second time in Prisma's
+ * filter language, where `NULLIF(BTRIM(timing_source), '')` has no equivalent
+ * and the two definitions would drift apart silently.
+ */
+async function countRankable(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const rows = await prisma.$queryRaw<{ n: number }[]>(Prisma.sql`
+    SELECT COUNT(DISTINCT e.id)::int AS n
+    FROM events e
+    JOIN asset_reactions ar
+      ON ar.event_id = e.id
+      AND ${MEASURABLE_1D_REACTION}
+    WHERE e.id IN (${Prisma.join(ids)})
+  `);
+  return rows[0]?.n ?? 0;
 }
 
 /* ────────────────────────────── public API ───────────────────────────── */
@@ -169,12 +227,17 @@ export async function listEvents(
     ...searchFilter(query.search),
   };
 
-  const counts = await categoryCounts(query.search);
+  const [counts, matching] = await Promise.all([
+    categoryCounts(query.search),
+    prisma.event.findMany({ where, select: { id: true } }),
+  ]);
   const total = counts[query.category] ?? 0;
+  const matchingIds = matching.map((e) => e.id);
+  const rankedCount = await countRankable(matchingIds);
 
   let events: NewsEvent[];
   if (query.sort === "biggest") {
-    const ids = await idsByBiggestMove(where, query.offset, query.limit);
+    const ids = await idsByBiggestMove(matchingIds, query.offset, query.limit);
     const rows = await prisma.event.findMany({
       where: { id: { in: ids } },
       include: EVENT_INCLUDE,
@@ -199,6 +262,7 @@ export async function listEvents(
   return {
     events,
     total,
+    rankedCount,
     offset: query.offset,
     limit: query.limit,
     counts,
