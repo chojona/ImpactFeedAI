@@ -29,6 +29,10 @@ import {
 } from "@/services/events/reactionMeasures";
 import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
 import {
+  INTRADAY_ENDPOINT_SLIP_MS,
+  INTRADAY_ENDPOINT_TARGET_MS,
+} from "@/services/events/reactionMeasurement";
+import {
   economicCloseInstant,
   type SessionBasis,
 } from "@/services/market/sessionBasis";
@@ -69,7 +73,11 @@ export type InvariantViolation =
   | "anchor_session_not_adjacent"
   | "endpoint_session_offset_mismatch"
   | "anchor_close_not_pre_release"
-  | "intraday_anchor_not_pre_release";
+  | "intraday_anchor_not_pre_release"
+  | "anchor_bar_not_before_endpoint"
+  | "anchor_session_after_release"
+  | "endpoint_session_before_release"
+  | "intraday_endpoint_outside_window";
 
 const PCT_TOLERANCE = 1e-6;
 
@@ -120,6 +128,31 @@ export function checkInvariants(
     violations.push("anchor_kind_family_mismatch");
   }
 
+  // Universal (§6.1), applied to BOTH families. Weaker than the
+  // family-specific checks below — it is a bar-ordering and session-ordering
+  // floor, not a substitute for `anchor_close_not_pre_release` (session) or
+  // `intraday_anchor_not_pre_release` (intraday). For INTRADAY_60M all three
+  // session-day fields are set to the release session, so these hold
+  // trivially there; for the session family they are independent of, and
+  // weaker than, the adjacency/offset checks below.
+  if (row.anchorBarAt.getTime() >= row.endpointBarAt.getTime()) {
+    violations.push("anchor_bar_not_before_endpoint");
+  }
+  if (
+    anchorIdx !== undefined &&
+    releaseIdx !== undefined &&
+    anchorIdx > releaseIdx
+  ) {
+    violations.push("anchor_session_after_release");
+  }
+  if (
+    endpointIdx !== undefined &&
+    releaseIdx !== undefined &&
+    endpointIdx < releaseIdx
+  ) {
+    violations.push("endpoint_session_before_release");
+  }
+
   // ── family-branched (§6.2) ───────────────────────────────────────────
   if (family === "SESSION") {
     if (
@@ -160,6 +193,15 @@ export function checkInvariants(
     // session family's bar stamps are not, per the module doc comment).
     if (row.anchorBarAt.getTime() >= ctx.releaseAt.getTime()) {
       violations.push("intraday_anchor_not_pre_release");
+    }
+
+    // §6.2's table also documents the endpoint window bound, matching the
+    // engine's own target/slip constants. Previously only reported as a
+    // distribution statistic — never enforced as a violation.
+    const target = ctx.releaseAt.getTime() + INTRADAY_ENDPOINT_TARGET_MS;
+    const endpointMs = row.endpointBarAt.getTime();
+    if (endpointMs < target || endpointMs - target > INTRADAY_ENDPOINT_SLIP_MS) {
+      violations.push("intraday_endpoint_outside_window");
     }
   }
 

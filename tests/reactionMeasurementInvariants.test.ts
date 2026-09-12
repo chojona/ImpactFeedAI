@@ -225,3 +225,150 @@ describe("economic-close invariant (the Stage-2 BTC defect)", () => {
     expect(checkInvariants(intradayRow, ctx)).toEqual([]);
   });
 });
+
+describe("universal ordering invariants (spec §6.1)", () => {
+  // These are UNIVERSAL — applied to both families — and distinct from the
+  // family-specific checks above. They do not replace `anchor_close_not_pre_release`
+  // (session) or `intraday_anchor_not_pre_release` (intraday); they add a
+  // weaker, always-applicable bar-ordering and session-ordering floor that
+  // spec §6.1 requires the verifier to enforce for every row.
+
+  it("rejects a row whose anchor bar is not strictly before its endpoint bar", () => {
+    expect(
+      checkInvariants(
+        { ...sessionRow, anchorBarAt: new Date("2025-07-03T13:30:00Z"), endpointBarAt: new Date("2025-07-03T13:30:00Z") },
+        ctx,
+      ),
+    ).toContain("anchor_bar_not_before_endpoint");
+
+    expect(
+      checkInvariants(
+        { ...sessionRow, anchorBarAt: new Date("2025-07-04T13:30:00Z"), endpointBarAt: new Date("2025-07-03T13:30:00Z") },
+        ctx,
+      ),
+    ).toContain("anchor_bar_not_before_endpoint");
+  });
+
+  it("rejects an anchor session day after the release session day", () => {
+    expect(
+      checkInvariants(
+        { ...sessionRow, anchorSessionDay: "2025-07-07", releaseSessionDay: "2025-07-03" },
+        { ...ctx, sessionDays: ["2025-07-01", "2025-07-02", "2025-07-03", "2025-07-07"] },
+      ),
+    ).toContain("anchor_session_after_release");
+  });
+
+  it("rejects an endpoint session day before the release session day", () => {
+    expect(
+      checkInvariants(
+        { ...sessionRow, endpointSessionDay: "2025-07-01", releaseSessionDay: "2025-07-03" },
+        ctx,
+      ),
+    ).toContain("endpoint_session_before_release");
+  });
+
+  it("accepts a valid intraday measurement under the universal checks", () => {
+    const intradayRow = {
+      ...sessionRow,
+      measure: "INTRADAY_60M" as const,
+      anchorKind: "PRE_RELEASE_INTRADAY_BAR" as const,
+      anchorBarAt: new Date("2025-07-03T17:30:00Z"),
+      anchorSessionDay: "2025-07-03",
+      endpointSessionDay: "2025-07-03",
+      endpointBarAt: new Date("2025-07-03T19:00:00Z"),
+      releaseSessionDay: "2025-07-03",
+      priceBasis: "AS_TRADED" as const,
+    };
+    const violations = checkInvariants(intradayRow, ctx);
+    expect(violations).not.toContain("anchor_bar_not_before_endpoint");
+    expect(violations).not.toContain("anchor_session_after_release");
+    expect(violations).not.toContain("endpoint_session_before_release");
+    expect(violations).toEqual([]);
+  });
+
+  it("accepts a valid equity session measurement under the universal checks", () => {
+    const violations = checkInvariants(sessionRow, ctx);
+    expect(violations).not.toContain("anchor_bar_not_before_endpoint");
+    expect(violations).not.toContain("anchor_session_after_release");
+    expect(violations).not.toContain("endpoint_session_before_release");
+    expect(violations).toEqual([]);
+  });
+
+  it("accepts a valid futures session measurement under the universal checks", () => {
+    const futuresRow = { ...sessionRow, sessionBasis: "EXTENDED_FUTURES" as const };
+    const violations = checkInvariants(futuresRow, ctx);
+    expect(violations).not.toContain("anchor_bar_not_before_endpoint");
+    expect(violations).not.toContain("anchor_session_after_release");
+    expect(violations).not.toContain("endpoint_session_before_release");
+    expect(violations).toEqual([]);
+  });
+
+  it("accepts a valid continuous 24/7 session measurement under the universal checks", () => {
+    // UTC-day bar: anchor stamped 2025-07-02T00:00Z, economic close realised
+    // 2025-07-03T00:00Z — strictly before the 2025-07-03T18:00Z release.
+    const continuousRow = {
+      ...sessionRow,
+      sessionBasis: "CONTINUOUS_24_7" as const,
+      anchorBarAt: new Date("2025-07-02T00:00:00Z"),
+      endpointBarAt: new Date("2025-07-03T00:00:00Z"),
+    };
+    const violations = checkInvariants(continuousRow, ctx);
+    expect(violations).not.toContain("anchor_bar_not_before_endpoint");
+    expect(violations).not.toContain("anchor_session_after_release");
+    expect(violations).not.toContain("endpoint_session_before_release");
+    expect(violations).toEqual([]);
+  });
+});
+
+describe("intraday endpoint window (spec §6.2 table, previously unimplemented)", () => {
+  // §6.2's table documents releaseAt + 60min <= endpointBarAt <= releaseAt +
+  // 60min + slip as an INTRADAY_60M invariant, but checkInvariants never
+  // enforced it — only reported it as a distribution statistic. Found during
+  // the final spec-vs-code comparison after closing the universal-ordering
+  // gap; same class of defect, closed the same way.
+  const intradayRow = {
+    measure: "INTRADAY_60M" as const,
+    anchorKind: "PRE_RELEASE_INTRADAY_BAR" as const,
+    anchorPrice: 100,
+    anchorBarAt: new Date("2025-07-03T17:30:00Z"),
+    anchorSessionDay: "2025-07-03",
+    endpointPrice: 102,
+    endpointSessionDay: "2025-07-03",
+    releaseSessionDay: "2025-07-03",
+    pctChange: 2,
+    priceBasis: "AS_TRADED" as const,
+    sessionBasis: "US_EQUITY_RTH" as const,
+  };
+  const releaseAt = new Date("2025-07-03T18:00:00Z");
+  const intradayCtx = { releaseAt, sessionDays: ["2025-07-03"], isEarlyClose: () => false };
+
+  it("accepts an endpoint exactly at the 60-minute target", () => {
+    expect(
+      checkInvariants({ ...intradayRow, endpointBarAt: new Date("2025-07-03T19:00:00Z") }, intradayCtx),
+    ).not.toContain("intraday_endpoint_outside_window");
+  });
+
+  it("accepts an endpoint within the slip window", () => {
+    // +90 min, matching the real elapsed-minute distribution observed in v3.
+    expect(
+      checkInvariants({ ...intradayRow, endpointBarAt: new Date("2025-07-03T19:30:00Z") }, intradayCtx),
+    ).not.toContain("intraday_endpoint_outside_window");
+  });
+
+  it("rejects an endpoint before the 60-minute target", () => {
+    expect(
+      checkInvariants({ ...intradayRow, endpointBarAt: new Date("2025-07-03T18:30:00Z") }, intradayCtx),
+    ).toContain("intraday_endpoint_outside_window");
+  });
+
+  it("rejects an endpoint beyond the slip window", () => {
+    // Target is 19:00Z, slip is 2h, so the outer bound is 21:00Z.
+    expect(
+      checkInvariants({ ...intradayRow, endpointBarAt: new Date("2025-07-03T21:30:00Z") }, intradayCtx),
+    ).toContain("intraday_endpoint_outside_window");
+  });
+
+  it("does not apply the intraday endpoint window to the session family", () => {
+    expect(checkInvariants(sessionRow, ctx)).not.toContain("intraday_endpoint_outside_window");
+  });
+});
