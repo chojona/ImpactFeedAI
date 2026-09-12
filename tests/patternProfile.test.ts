@@ -7,7 +7,7 @@ import {
   type ReactionObservation,
 } from "@/services/analytics/patternAnalysis";
 import { timingDisplay } from "@/services/events/timing";
-import type { EventCategory, ReactionWindow } from "@/types/events";
+import type { EventCategory, ReactionMeasure } from "@/types/events";
 
 /**
  * The pattern aggregates are the most quotable numbers the product produces, so
@@ -19,7 +19,7 @@ import type { EventCategory, ReactionWindow } from "@/types/events";
 const observation = (
   eventId: string,
   symbol: string,
-  values: Partial<Record<ReactionWindow, number>>,
+  values: Partial<Record<ReactionMeasure, number>>,
   category: EventCategory = "INFLATION",
 ): ReactionObservation => ({
   eventId,
@@ -27,11 +27,8 @@ const observation = (
   at: "2025-05-13T12:30:00.000Z",
   category,
   symbol,
-  values: {
-    "1h": values["1h"] ?? null,
-    "1d": values["1d"] ?? null,
-    "1w": values["1w"] ?? null,
-  },
+  sessionBasis: "US_EQUITY_RTH",
+  values,
 });
 
 describe("median", () => {
@@ -52,28 +49,28 @@ describe("profileObservations", () => {
     // two different financial questions in the same statistic.
     const profile = profileObservations(
       [
-        observation("a", "SPY", { "1d": -1, "1w": 10 }),
-        observation("b", "SPY", { "1d": -3 }),
+        observation("a", "SPY", { "RELEASE_SESSION": -1, "SESSION_PLUS_5": 10 }),
+        observation("b", "SPY", { "RELEASE_SESSION": -3 }),
       ],
       "INFLATION",
     );
     const spy = profile.assets.find((a) => a.symbol === "SPY")!;
-    expect(spy.horizons["1d"]?.count).toBe(2);
-    expect(spy.horizons["1d"]?.median).toBe(-2);
-    expect(spy.horizons["1w"]?.count).toBe(1);
-    expect(spy.horizons["1h"]).toBeNull();
+    expect(spy.horizons["RELEASE_SESSION"]?.count).toBe(2);
+    expect(spy.horizons["RELEASE_SESSION"]?.median).toBe(-2);
+    expect(spy.horizons["SESSION_PLUS_5"]?.count).toBe(1);
+    expect(spy.horizons["INTRADAY_60M"]).toBeNull();
   });
 
   it("never counts an unmeasured window as zero", () => {
     const profile = profileObservations(
       [
-        observation("a", "SPY", { "1d": -2 }),
+        observation("a", "SPY", { "RELEASE_SESSION": -2 }),
         observation("b", "SPY", {}),
-        observation("c", "SPY", { "1d": -4 }),
+        observation("c", "SPY", { "RELEASE_SESSION": -4 }),
       ],
       "INFLATION",
     );
-    const stats = profile.assets[0].horizons["1d"]!;
+    const stats = profile.assets[0].horizons["RELEASE_SESSION"]!;
     expect(stats.count).toBe(2);
     expect(stats.mean).toBe(-3);
   });
@@ -81,20 +78,20 @@ describe("profileObservations", () => {
   it("drops non-finite readings before aggregating", () => {
     const profile = profileObservations(
       [
-        observation("a", "SPY", { "1d": Number.POSITIVE_INFINITY }),
-        observation("b", "SPY", { "1d": 1 }),
+        observation("a", "SPY", { "RELEASE_SESSION": Number.POSITIVE_INFINITY }),
+        observation("b", "SPY", { "RELEASE_SESSION": 1 }),
       ],
       "INFLATION",
     );
-    expect(profile.assets[0].horizons["1d"]?.count).toBe(1);
+    expect(profile.assets[0].horizons["RELEASE_SESSION"]?.count).toBe(1);
   });
 
   it("counts distinct events, not observations", () => {
     const profile = profileObservations(
       [
-        observation("a", "SPY", { "1d": 1 }),
-        observation("a", "QQQ", { "1d": 2 }),
-        observation("b", "SPY", { "1d": 3 }),
+        observation("a", "SPY", { "RELEASE_SESSION": 1 }),
+        observation("a", "QQQ", { "RELEASE_SESSION": 2 }),
+        observation("b", "SPY", { "RELEASE_SESSION": 3 }),
       ],
       "INFLATION",
     );
@@ -104,24 +101,24 @@ describe("profileObservations", () => {
   it("filters to the requested category", () => {
     const profile = profileObservations(
       [
-        observation("a", "SPY", { "1d": 1 }),
-        observation("b", "SPY", { "1d": 99 }, "FED"),
+        observation("a", "SPY", { "RELEASE_SESSION": 1 }),
+        observation("b", "SPY", { "RELEASE_SESSION": 99 }, "FED"),
       ],
       "INFLATION",
     );
-    expect(profile.assets[0].horizons["1d"]?.count).toBe(1);
+    expect(profile.assets[0].horizons["RELEASE_SESSION"]?.count).toBe(1);
   });
 
   it("reports directional counts that sum to the sample size", () => {
     const profile = profileObservations(
       [
-        observation("a", "SPY", { "1d": 1 }),
-        observation("b", "SPY", { "1d": -1 }),
-        observation("c", "SPY", { "1d": 0 }),
+        observation("a", "SPY", { "RELEASE_SESSION": 1 }),
+        observation("b", "SPY", { "RELEASE_SESSION": -1 }),
+        observation("c", "SPY", { "RELEASE_SESSION": 0 }),
       ],
       "INFLATION",
     );
-    const stats = profile.assets[0].horizons["1d"]!;
+    const stats = profile.assets[0].horizons["RELEASE_SESSION"]!;
     expect(stats.positive).toBe(1);
     expect(stats.negative).toBe(1);
     expect(stats.flat).toBe(1);
@@ -131,8 +128,8 @@ describe("profileObservations", () => {
   it("ranks by the size of the typical one-session move", () => {
     const profile = profileObservations(
       [
-        observation("a", "SPY", { "1d": 0.2 }),
-        observation("a", "QQQ", { "1d": -2 }),
+        observation("a", "SPY", { "RELEASE_SESSION": 0.2 }),
+        observation("a", "QQQ", { "RELEASE_SESSION": -2 }),
       ],
       "INFLATION",
     );
@@ -142,8 +139,8 @@ describe("profileObservations", () => {
   it("sorts an asset with no one-day coverage last", () => {
     const profile = profileObservations(
       [
-        observation("a", "SPY", { "1d": 0.2 }),
-        observation("a", "TLT", { "1w": 99 }),
+        observation("a", "SPY", { "RELEASE_SESSION": 0.2 }),
+        observation("a", "TLT", { "SESSION_PLUS_5": 99 }),
       ],
       "INFLATION",
     );
@@ -164,14 +161,14 @@ describe("distributionFor", () => {
   it("returns one point per measured observation, sorted", () => {
     const points = distributionFor(
       [
-        observation("a", "SPY", { "1d": 1 }),
-        observation("b", "SPY", { "1d": -2 }),
+        observation("a", "SPY", { "RELEASE_SESSION": 1 }),
+        observation("b", "SPY", { "RELEASE_SESSION": -2 }),
         observation("c", "SPY", {}),
-        observation("d", "QQQ", { "1d": 5 }),
+        observation("d", "QQQ", { "RELEASE_SESSION": 5 }),
       ],
       "INFLATION",
       "SPY",
-      "1d",
+      "RELEASE_SESSION",
     );
     expect(points.map((p) => p.value)).toEqual([-2, 1]);
     expect(points.map((p) => p.eventId)).toEqual(["b", "a"]);
@@ -180,10 +177,10 @@ describe("distributionFor", () => {
   it("is empty for a horizon with no readings rather than falling back", () => {
     expect(
       distributionFor(
-        [observation("a", "SPY", { "1d": 1 })],
+        [observation("a", "SPY", { "RELEASE_SESSION": 1 })],
         "INFLATION",
         "SPY",
-        "1h",
+        "INTRADAY_60M",
       ),
     ).toEqual([]);
   });
@@ -231,5 +228,25 @@ describe("timingDisplay", () => {
         }).tone,
       ).toBe("caution");
     }
+  });
+});
+
+describe("profileObservations — sessionBasis", () => {
+  it("carries the symbol's declared session basis onto its profile", () => {
+    const profile = profileObservations(
+      [
+        {
+          eventId: "a",
+          title: "a headline",
+          at: "2025-05-13T12:30:00.000Z",
+          category: "INFLATION",
+          symbol: "BTC-USD",
+          sessionBasis: "CONTINUOUS_24_7",
+          values: { RELEASE_SESSION: 1 },
+        },
+      ],
+      "INFLATION",
+    );
+    expect(profile.assets[0].sessionBasis).toBe("CONTINUOUS_24_7");
   });
 });

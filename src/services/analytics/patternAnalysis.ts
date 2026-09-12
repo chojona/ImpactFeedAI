@@ -1,19 +1,21 @@
-import type {
-  Direction,
-  EventCategory,
-  NewsEvent,
-  ReactionWindow,
-} from "@/types/events";
+import type { Direction, EventCategory, NewsEvent, SessionBasis } from "@/types/events";
 import { assetMeta, compareAssetSymbols } from "@/lib/assets";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import { HEADLINE_MEASURE, REACTION_MEASURES } from "@/services/events/reactionMeasures";
+import { assertSingleMeasure, type TaggedValue } from "@/services/events/reactionView";
+import type { ReactionMeasure } from "@/types/events";
 
 /**
  * Per-category aggregate reaction statistics.
  *
- * The aggregation only ever sees measured one-session moves. It deliberately
- * reads `pct1d` instead of the feed's headline field: substituting a one-week or
- * one-hour return when 1d is absent would combine incompatible horizons in a
- * single mean. Null and non-finite readings are dropped before aggregation.
+ * The aggregation only ever sees measured `HEADLINE_MEASURE` (`RELEASE_SESSION`)
+ * moves. It deliberately reads `asset.measures.RELEASE_SESSION` directly rather
+ * than `asset.percentChange`: the two happen to agree today because the
+ * mapper's headline is also `RELEASE_SESSION`, but reading the measure by name
+ * documents the actual invariant this aggregate depends on, rather than an
+ * incidental agreement between two independently-changeable fields.
+ * Substituting `SESSION_PLUS_1` or `INTRADAY_60M` when `RELEASE_SESSION` is
+ * absent would combine incompatible measures in a single mean. Null and
+ * non-finite readings are dropped before aggregation.
  *
  * `eventCount` therefore reports how many events actually contributed to each
  * asset's average, which is the sample size a reader needs in order to discount
@@ -61,12 +63,7 @@ export function analyzeCategory(
     if (!event.timing.reactionEligible) continue;
     let contributed = false;
     for (const asset of event.assets) {
-      if (
-        asset.calculationVersion !== CURRENT_REACTION_CALCULATION_VERSION
-      ) {
-        continue;
-      }
-      const move = asset.pct1d;
+      const move = asset.measures[HEADLINE_MEASURE]?.pctChange ?? null;
       if (move === null || !Number.isFinite(move)) continue;
       contributed = true;
       const direction: Direction = move > 0 ? "UP" : move < 0 ? "DOWN" : "FLAT";
@@ -128,16 +125,16 @@ export function analyzeCategory(
   };
 }
 
-/* ────────────────── per-horizon profiles over measured moves ───────────── */
+/* ────────────────── per-measure profiles over measured moves ───────────── */
 
 /**
  * One event's measured moves for one instrument.
  *
  * Produced by `listReactionObservations`, which applies the same timing and
- * calculation-version gate as the row mapper. Each window is independently
- * nullable because coverage is uneven: Yahoo only retains ~730 days of intraday
- * history, so an older event can have a one-day and one-week reading with no
- * one-hour reading at all.
+ * calculation-version gate as the row mapper. Each measure is independently
+ * absent because coverage is uneven: Yahoo only retains ~730 days of intraday
+ * history, so an older event can have session-family readings with no
+ * `INTRADAY_60M` reading at all — see spec §3.
  */
 export interface ReactionObservation {
   eventId: string;
@@ -146,11 +143,14 @@ export interface ReactionObservation {
   at: string;
   category: EventCategory;
   symbol: string;
-  values: Record<ReactionWindow, number | null>;
+  /** Declared session structure for this instrument — see spec §4.3. */
+  sessionBasis: SessionBasis;
+  /** Absent key, not null value — a measure that was never measured has no entry. */
+  values: Partial<Record<ReactionMeasure, number>>;
 }
 
-export interface HorizonStats {
-  window: ReactionWindow;
+export interface MeasureStats {
+  measure: ReactionMeasure;
   /** Observations behind every number in this row. Never inferred upward. */
   count: number;
   mean: number;
@@ -165,14 +165,16 @@ export interface HorizonStats {
 export interface AssetProfile {
   symbol: string;
   name: string;
-  horizons: Record<ReactionWindow, HorizonStats | null>;
-  /** Distinct events contributing at least one measured window. */
+  /** Declared session structure for this instrument — see spec §4.3. */
+  sessionBasis: SessionBasis;
+  horizons: Record<ReactionMeasure, MeasureStats | null>;
+  /** Distinct events contributing at least one measured measure. */
   events: number;
 }
 
 export interface CategoryProfile {
   category: EventCategory;
-  /** Distinct events with at least one measured move in any window. */
+  /** Distinct events with at least one measured move in any measure. */
   measuredEvents: number;
   assets: AssetProfile[];
 }
@@ -195,13 +197,31 @@ export function median(values: readonly number[]): number {
     : sorted[mid];
 }
 
+/**
+ * Aggregates one measure's tagged values into a statistics row.
+ *
+ * `assertSingleMeasure` is the hard pooling guard spec §7.2 requires: every
+ * value here is tagged with the measure it was read from, and this throws
+ * rather than silently averaging if the tags disagree with `measure` or with
+ * each other. A caller that reaches the throw has already lost the measure
+ * tag on its values somewhere upstream — the bug this exists to catch cannot
+ * be caught by a type check, because the accumulation that would introduce it
+ * type-checks fine.
+ */
 function statsFor(
-  window: ReactionWindow,
-  values: readonly number[],
-): HorizonStats | null {
-  if (values.length === 0) return null;
+  measure: ReactionMeasure,
+  tagged: readonly TaggedValue[],
+): MeasureStats | null {
+  if (tagged.length === 0) return null;
+  const actual = assertSingleMeasure(tagged);
+  if (actual !== null && actual !== measure) {
+    throw new Error(
+      `statsFor(${measure}) received values tagged ${actual} — refusing to pool measures.`,
+    );
+  }
+  const values = tagged.map((t) => t.value);
   return {
-    window,
+    measure,
     count: values.length,
     mean: values.reduce((acc, v) => acc + v, 0) / values.length,
     median: median(values),
@@ -213,15 +233,15 @@ function statsFor(
   };
 }
 
-const WINDOWS: readonly ReactionWindow[] = ["1h", "1d", "1w"];
-
 /**
- * Aggregate observations into per-asset, per-horizon statistics.
+ * Aggregate observations into per-asset, per-measure statistics.
  *
- * Each horizon is summarised over its own observations only. Borrowing a
- * one-week reading to stand in for a missing one-day reading would put two
- * different financial questions in the same average, which is the failure the
- * one-fixed-horizon rule in `analyzeCategory` already guards against.
+ * Each measure is summarised over its own observations only, accumulated into
+ * a measure-tagged bucket so a value can never end up in the wrong measure's
+ * statistics — see {@link statsFor}. Borrowing a `SESSION_PLUS_5` reading to
+ * stand in for a missing `RELEASE_SESSION` reading would put two different
+ * financial questions in the same average, which is the failure the
+ * one-fixed-measure rule in `analyzeCategory` already guards against.
  */
 export function profileObservations(
   observations: readonly ReactionObservation[],
@@ -231,21 +251,36 @@ export function profileObservations(
 
   const bySymbol = new Map<
     string,
-    { values: Record<ReactionWindow, number[]>; events: Set<string> }
+    {
+      sessionBasis: SessionBasis;
+      values: Record<ReactionMeasure, TaggedValue[]>;
+      events: Set<string>;
+    }
   >();
   const measuredEvents = new Set<string>();
 
   for (const observation of inCategory) {
     let entry = bySymbol.get(observation.symbol);
     if (!entry) {
-      entry = { values: { "1h": [], "1d": [], "1w": [] }, events: new Set() };
+      entry = {
+        sessionBasis: observation.sessionBasis,
+        values: {
+          INTRADAY_60M: [],
+          RELEASE_SESSION: [],
+          SESSION_PLUS_1: [],
+          SESSION_PLUS_5: [],
+        },
+        events: new Set(),
+      };
       bySymbol.set(observation.symbol, entry);
     }
     let contributed = false;
-    for (const window of WINDOWS) {
-      const value = observation.values[window];
-      if (value === null || !Number.isFinite(value)) continue;
-      entry.values[window].push(value);
+    for (const measure of REACTION_MEASURES) {
+      const value = observation.values[measure];
+      if (value === undefined || value === null || !Number.isFinite(value)) {
+        continue;
+      }
+      entry.values[measure].push({ measure, value });
       contributed = true;
     }
     if (contributed) {
@@ -260,21 +295,23 @@ export function profileObservations(
     assets.push({
       symbol,
       name: assetMeta(symbol).name,
+      sessionBasis: entry.sessionBasis,
       events: entry.events.size,
       horizons: {
-        "1h": statsFor("1h", entry.values["1h"]),
-        "1d": statsFor("1d", entry.values["1d"]),
-        "1w": statsFor("1w", entry.values["1w"]),
+        INTRADAY_60M: statsFor("INTRADAY_60M", entry.values.INTRADAY_60M),
+        RELEASE_SESSION: statsFor("RELEASE_SESSION", entry.values.RELEASE_SESSION),
+        SESSION_PLUS_1: statsFor("SESSION_PLUS_1", entry.values.SESSION_PLUS_1),
+        SESSION_PLUS_5: statsFor("SESSION_PLUS_5", entry.values.SESSION_PLUS_5),
       },
     });
   }
 
-  // Rank by the size of the typical one-session move, the horizon the rest of
-  // the app headlines. Assets with no one-day coverage sort last rather than
-  // being promoted by a larger reading at another horizon.
+  // Rank by the size of the typical headline-measure move, the measure the
+  // rest of the app headlines. Assets with no RELEASE_SESSION coverage sort
+  // last rather than being promoted by a larger reading at another measure.
   assets.sort((a, b) => {
-    const am = a.horizons["1d"];
-    const bm = b.horizons["1d"];
+    const am = a.horizons[HEADLINE_MEASURE];
+    const bm = b.horizons[HEADLINE_MEASURE];
     if (am === null && bm === null) return compareAssetSymbols(a.symbol, b.symbol);
     if (am === null) return 1;
     if (bm === null) return -1;
@@ -306,14 +343,16 @@ export function distributionFor(
   observations: readonly ReactionObservation[],
   category: EventCategory,
   symbol: string,
-  window: ReactionWindow,
+  measure: ReactionMeasure,
 ): DistributionPoint[] {
   const points: DistributionPoint[] = [];
   for (const observation of observations) {
     if (observation.category !== category) continue;
     if (observation.symbol !== symbol) continue;
-    const value = observation.values[window];
-    if (value === null || !Number.isFinite(value)) continue;
+    const value = observation.values[measure];
+    if (value === undefined || value === null || !Number.isFinite(value)) {
+      continue;
+    }
     points.push({
       eventId: observation.eventId,
       title: observation.title,
@@ -365,7 +404,7 @@ export interface SelectedObservation {
  */
 export interface DistributionSummary {
   symbol: string;
-  window: ReactionWindow;
+  measure: ReactionMeasure;
   /** Observations behind every figure here. Never inferred upward. */
   count: number;
   median: number;
@@ -385,7 +424,7 @@ export interface DistributionSummary {
 
 export interface SummarizeDistributionOptions {
   symbol: string;
-  window: ReactionWindow;
+  measure: ReactionMeasure;
   /** Event to locate within the set. Absent from the set means no selection. */
   selectedEventId?: string | null;
 }
@@ -399,7 +438,7 @@ export interface SummarizeDistributionOptions {
  */
 export function summarizeDistribution(
   points: readonly DistributionPoint[],
-  { symbol, window, selectedEventId = null }: SummarizeDistributionOptions,
+  { symbol, measure, selectedEventId = null }: SummarizeDistributionOptions,
 ): DistributionSummary | null {
   if (points.length === 0) return null;
 
@@ -429,7 +468,7 @@ export function summarizeDistribution(
 
   return {
     symbol,
-    window,
+    measure,
     count,
     median: med,
     mean: values.reduce((acc, v) => acc + v, 0) / count,

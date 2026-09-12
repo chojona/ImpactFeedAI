@@ -1,3 +1,4 @@
+import { HEADLINE_MEASURE } from "@/services/events/reactionMeasures";
 import Link from "next/link";
 
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
@@ -128,7 +129,7 @@ function FeaturedEventPanel({ event }: { event: NewsEvent }) {
             its own — the leader belongs in the bars here. */}
         <MiniReactionBars
           assets={event.assets}
-          window="1d"
+          measure={HEADLINE_MEASURE}
           limit={4}
           offset={0}
         />

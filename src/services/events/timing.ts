@@ -6,11 +6,30 @@ import type {
 export type { ReactionTimingIneligibility } from "@/types/events";
 
 /**
- * Every persisted reaction is tied to the calculation semantics represented by
- * this version. Bumping it makes older rows opt out of reads until they have
- * been deliberately recomputed.
+ * Semantics of the rows in `asset_reactions`, which is now a FROZEN ARCHIVE.
+ *
+ * `asset_reactions` is never written, updated or deleted by v3 work — it is
+ * read only by the pre-cutover read path and by the repair tooling, both of
+ * which must pin to this constant rather than to
+ * {@link CURRENT_REACTION_CALCULATION_VERSION}. Otherwise raising the current
+ * version to 3 would reclassify every surviving v2 row as a deletion
+ * candidate the next time the repair script ran — see
+ * docs/superpowers/specs/2026-09-12-reaction-measurement-contract-design.md
+ * §5.1.
  */
-export const CURRENT_REACTION_CALCULATION_VERSION = 2;
+export const ARCHIVED_ASSET_REACTION_VERSION = 2;
+
+/**
+ * Semantics of the rows in `reaction_measurements`. Read paths discard rows
+ * whose version is not current.
+ *
+ * Version 3: four explicitly-defined measures (`INTRADAY_60M`,
+ * `RELEASE_SESSION`, `SESSION_PLUS_1`, `SESSION_PLUS_5`); a measure's anchor
+ * is fixed by the measure rather than by data availability; session measures
+ * are close-to-close on the canonical US-equity calendar. Superseded version
+ * 2 lived on `asset_reactions` — see {@link ARCHIVED_ASSET_REACTION_VERSION}.
+ */
+export const CURRENT_REACTION_CALCULATION_VERSION = 3;
 
 /**
  * The only timing statuses that can anchor a published reaction.

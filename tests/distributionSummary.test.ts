@@ -7,7 +7,7 @@ import {
   type DistributionPoint,
   type ReactionObservation,
 } from "@/services/analytics/patternAnalysis";
-import type { EventCategory, ReactionWindow } from "@/types/events";
+import type { EventCategory, ReactionMeasure } from "@/types/events";
 
 /**
  * `summarizeDistribution` is the single definition of every number the dot plot
@@ -21,7 +21,7 @@ import type { EventCategory, ReactionWindow } from "@/types/events";
 const observation = (
   eventId: string,
   symbol: string,
-  values: Partial<Record<ReactionWindow, number>>,
+  values: Partial<Record<ReactionMeasure, number>>,
   category: EventCategory = "INFLATION",
 ): ReactionObservation => ({
   eventId,
@@ -29,11 +29,8 @@ const observation = (
   at: "2025-05-13T12:30:00.000Z",
   category,
   symbol,
-  values: {
-    "1h": values["1h"] ?? null,
-    "1d": values["1d"] ?? null,
-    "1w": values["1w"] ?? null,
-  },
+  sessionBasis: "US_EQUITY_RTH",
+  values,
 });
 
 const point = (eventId: string, value: number): DistributionPoint => ({
@@ -49,7 +46,7 @@ const summarize = (
 ) =>
   summarizeDistribution(points, {
     symbol: "SPY",
-    window: "1d",
+    measure: "RELEASE_SESSION" as const,
     selectedEventId,
   });
 
@@ -214,20 +211,20 @@ describe("summarizeDistribution — selected event", () => {
 describe("distributionFor — what reaches the summary", () => {
   it("orders observations ascending so rank matches the drawn axis", () => {
     const observations = [
-      observation("b", "SPY", { "1d": 2 }),
-      observation("a", "SPY", { "1d": -1 }),
-      observation("c", "SPY", { "1d": 0.5 }),
+      observation("b", "SPY", { "RELEASE_SESSION": 2 }),
+      observation("a", "SPY", { "RELEASE_SESSION": -1 }),
+      observation("c", "SPY", { "RELEASE_SESSION": 0.5 }),
     ];
-    const points = distributionFor(observations, "INFLATION", "SPY", "1d");
+    const points = distributionFor(observations, "INFLATION", "SPY", "RELEASE_SESSION");
     expect(points.map((p) => p.eventId)).toEqual(["a", "c", "b"]);
   });
 
   it("excludes an unmeasured window instead of contributing a zero", () => {
     const observations = [
-      observation("a", "SPY", { "1d": 1.5 }),
-      observation("b", "SPY", { "1w": 2 }),
+      observation("a", "SPY", { "RELEASE_SESSION": 1.5 }),
+      observation("b", "SPY", { "SESSION_PLUS_5": 2 }),
     ];
-    const points = distributionFor(observations, "INFLATION", "SPY", "1d");
+    const points = distributionFor(observations, "INFLATION", "SPY", "RELEASE_SESSION");
     const summary = summarize(points);
 
     expect(points).toHaveLength(1);
@@ -240,30 +237,30 @@ describe("distributionFor — what reaches the summary", () => {
     // them rather than mixing split-adjusted daily bars with unadjusted
     // intraday ones. The 1H sample must shrink, and the 1D sample must not.
     const observations = [
-      observation("a", "XLE", { "1d": 1.2, "1w": 2.0 }),
-      observation("b", "XLE", { "1d": -0.4, "1w": 1.1 }),
-      observation("c", "XLE", { "1h": 0.3, "1d": 0.8, "1w": 0.9 }),
+      observation("a", "XLE", { "RELEASE_SESSION": 1.2, "SESSION_PLUS_5": 2.0 }),
+      observation("b", "XLE", { "RELEASE_SESSION": -0.4, "SESSION_PLUS_5": 1.1 }),
+      observation("c", "XLE", { "INTRADAY_60M": 0.3, "RELEASE_SESSION": 0.8, "SESSION_PLUS_5": 0.9 }),
     ];
 
-    const hourly = distributionFor(observations, "INFLATION", "XLE", "1h");
-    const daily = distributionFor(observations, "INFLATION", "XLE", "1d");
+    const hourly = distributionFor(observations, "INFLATION", "XLE", "INTRADAY_60M");
+    const daily = distributionFor(observations, "INFLATION", "XLE", "RELEASE_SESSION");
 
     expect(
-      summarizeDistribution(hourly, { symbol: "XLE", window: "1h" })?.count,
+      summarizeDistribution(hourly, { symbol: "XLE", measure: "INTRADAY_60M" })?.count,
     ).toBe(1);
     expect(
-      summarizeDistribution(daily, { symbol: "XLE", window: "1d" })?.count,
+      summarizeDistribution(daily, { symbol: "XLE", measure: "RELEASE_SESSION" })?.count,
     ).toBe(3);
   });
 
   it("does not borrow another horizon to pad a thin sample", () => {
     const observations = [
-      observation("a", "SPY", { "1h": 9, "1w": 9 }),
-      observation("b", "SPY", { "1d": 1 }),
+      observation("a", "SPY", { "INTRADAY_60M": 9, "SESSION_PLUS_5": 9 }),
+      observation("b", "SPY", { "RELEASE_SESSION": 1 }),
     ];
     const summary = summarizeDistribution(
-      distributionFor(observations, "INFLATION", "SPY", "1d"),
-      { symbol: "SPY", window: "1d" },
+      distributionFor(observations, "INFLATION", "SPY", "RELEASE_SESSION"),
+      { symbol: "SPY", measure: "RELEASE_SESSION" },
     );
     expect(summary?.count).toBe(1);
     expect(summary?.max).toBe(1);
@@ -271,13 +268,13 @@ describe("distributionFor — what reaches the summary", () => {
 
   it("keeps categories apart so an INFLATION rank is over INFLATION only", () => {
     const observations = [
-      observation("a", "SPY", { "1d": 1 }, "INFLATION"),
-      observation("b", "SPY", { "1d": -5 }, "FED"),
-      observation("c", "SPY", { "1d": 2 }, "INFLATION"),
+      observation("a", "SPY", { "RELEASE_SESSION": 1 }, "INFLATION"),
+      observation("b", "SPY", { "RELEASE_SESSION": -5 }, "FED"),
+      observation("c", "SPY", { "RELEASE_SESSION": 2 }, "INFLATION"),
     ];
     const summary = summarizeDistribution(
-      distributionFor(observations, "INFLATION", "SPY", "1d"),
-      { symbol: "SPY", window: "1d", selectedEventId: "c" },
+      distributionFor(observations, "INFLATION", "SPY", "RELEASE_SESSION"),
+      { symbol: "SPY", measure: "RELEASE_SESSION", selectedEventId: "c" },
     );
     expect(summary?.count).toBe(2);
     expect(summary?.selected?.rank).toBe(2);
@@ -285,22 +282,22 @@ describe("distributionFor — what reaches the summary", () => {
 
   it("keeps instruments apart so a QQQ rank is over QQQ only", () => {
     const observations = [
-      observation("a", "QQQ", { "1d": 1 }),
-      observation("b", "SPY", { "1d": -5 }),
+      observation("a", "QQQ", { "RELEASE_SESSION": 1 }),
+      observation("b", "SPY", { "RELEASE_SESSION": -5 }),
     ];
-    const points = distributionFor(observations, "INFLATION", "QQQ", "1d");
+    const points = distributionFor(observations, "INFLATION", "QQQ", "RELEASE_SESSION");
     expect(points).toHaveLength(1);
     expect(points[0].eventId).toBe("a");
   });
 
   it("drops a non-finite reading before it reaches the summary", () => {
     const observations = [
-      observation("a", "SPY", { "1d": Number.NaN }),
-      observation("b", "SPY", { "1d": 2 }),
+      observation("a", "SPY", { "RELEASE_SESSION": Number.NaN }),
+      observation("b", "SPY", { "RELEASE_SESSION": 2 }),
     ];
     const summary = summarizeDistribution(
-      distributionFor(observations, "INFLATION", "SPY", "1d"),
-      { symbol: "SPY", window: "1d" },
+      distributionFor(observations, "INFLATION", "SPY", "RELEASE_SESSION"),
+      { symbol: "SPY", measure: "RELEASE_SESSION" },
     );
     expect(summary?.count).toBe(1);
     expect(Number.isFinite(summary?.median)).toBe(true);

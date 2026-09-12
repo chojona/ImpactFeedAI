@@ -85,6 +85,9 @@ const { CURRENT_REACTION_CALCULATION_VERSION } = await import(
  * Bound parameters of a raw query, minus the leading calculation-version the
  * shared eligibility fragment contributes. What is left is what the *caller*
  * scoped the query to.
+ *
+ * Stage 4 cut the read path over to `reaction_measurements` (v3), so the
+ * fragment's first bound value is the live v3 constant.
  */
 const scopeOf = (values: unknown[]) => {
   expect(values[0]).toBe(CURRENT_REACTION_CALCULATION_VERSION);
@@ -131,7 +134,7 @@ describe("listEvents — rankedCount", () => {
     // ranking rejects cannot be counted as ranked.
     for (const clause of [
       "calculation_version",
-      "pct_change_1d IS NOT NULL",
+      "rm.measure = 'RELEASE_SESSION'",
       "timing_status IN",
       "release_at IS NOT NULL",
       "BTRIM(e.timing_source)",

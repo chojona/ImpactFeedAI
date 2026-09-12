@@ -1,10 +1,11 @@
+import { HEADLINE_MEASURE } from "@/services/events/reactionMeasures";
 import {
-  WINDOW_LABELS,
+  MEASURE_LABELS,
   formatPercentChange,
-  rankByWindow,
+  rankByMeasure,
 } from "@/services/events/reactionView";
 import { moveColor, moveTextClass } from "./reactionTone";
-import type { AssetReaction, ReactionWindow } from "@/types/events";
+import type { AssetReaction, ReactionMeasure } from "@/types/events";
 
 /**
  * The smallest honest reaction visual: the next few movers at one horizon, with
@@ -25,7 +26,7 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
 
 interface Props {
   assets: readonly AssetReaction[];
-  window?: ReactionWindow;
+  measure?: ReactionMeasure;
   limit?: number;
   /** Ranks to skip from the top, for callers that render the leader themselves. */
   offset?: number;
@@ -35,12 +36,12 @@ interface Props {
 
 export function MiniReactionBars({
   assets,
-  window = "1d",
+  measure = HEADLINE_MEASURE,
   limit = 3,
   offset = 1,
   measuredCount,
 }: Props) {
-  const { measured, maxAbs } = rankByWindow(assets, window);
+  const { measured, maxAbs } = rankByMeasure(assets, measure);
   const shown = measured.slice(offset, offset + limit);
   if (shown.length === 0) return null;
 
@@ -93,7 +94,7 @@ export function MiniReactionBars({
         ))}
       </ul>
       <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-4">
-        {total} measured at {WINDOW_LABELS[window]}
+        {total} measured at {MEASURE_LABELS[measure]}
         {remaining > 0 && <span> · {remaining} more</span>}
       </p>
     </div>

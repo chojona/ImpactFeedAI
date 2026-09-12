@@ -19,10 +19,12 @@ import {
   formatMetricSurprise,
   formatMetricValue,
 } from "@/services/macro/metrics";
+import { HEADLINE_MEASURE, type ReactionMeasure } from "@/services/events/reactionMeasures";
 import {
   CURRENT_REACTION_CALCULATION_VERSION,
   reactionTimingEligibility,
 } from "@/services/events/timing";
+import type { PriceBasis } from "@/types/market";
 import type {
   AssetReaction,
   ConsensusStatus,
@@ -30,7 +32,9 @@ import type {
   Direction,
   EventTimingStatus,
   EventTypeName,
+  MeasuredMove,
   NewsEvent,
+  SessionBasis,
 } from "@/types/events";
 
 /** The subset of the Prisma row shape this mapper needs. */
@@ -45,17 +49,21 @@ export interface EventRow {
   timingSource: string | null;
   sourceUrl: string | null;
   explanation: string | null;
-  assetReactions: {
-    assetSymbol: string;
-    priceAtEvent: number;
-    price1h: number | null;
-    price1d: number | null;
-    price1w: number | null;
-    pctChange1h: number | null;
-    pctChange1d: number | null;
-    pctChange1w: number | null;
-    anchorAt: Date | null;
-    calculationVersion: number | null;
+  reactionMeasurements: {
+    symbol: string;
+    measure: ReactionMeasure;
+    anchorKind: "PRE_RELEASE_INTRADAY_BAR" | "PRIOR_SESSION_CLOSE";
+    anchorPrice: number;
+    anchorBarAt: Date;
+    anchorSessionDay: Date;
+    endpointPrice: number;
+    endpointBarAt: Date;
+    endpointSessionDay: Date;
+    releaseSessionDay: Date;
+    pctChange: number;
+    priceBasis: PriceBasis;
+    sessionBasis: SessionBasis;
+    calculationVersion: number;
   }[];
   dataReleases: {
     metricKey: string | null;
@@ -76,6 +84,24 @@ export interface EventRow {
 
 const finiteOrNull = (value: number | null): number | null =>
   value !== null && Number.isFinite(value) ? value : null;
+
+/**
+ * Groups current-version measurement rows by symbol, in first-seen order.
+ * Any other calculation version is excluded here — never at read time inside
+ * a component — so nothing downstream can accidentally read an archived row.
+ */
+function groupMeasurementsBySymbol(
+  rows: readonly EventRow["reactionMeasurements"][number][],
+): [string, EventRow["reactionMeasurements"][number][]][] {
+  const bySymbol = new Map<string, EventRow["reactionMeasurements"][number][]>();
+  for (const row of rows) {
+    if (row.calculationVersion !== CURRENT_REACTION_CALCULATION_VERSION) continue;
+    const list = bySymbol.get(row.symbol) ?? [];
+    list.push(row);
+    bySymbol.set(row.symbol, list);
+  }
+  return [...bySymbol.entries()];
+}
 
 const isoInstant = (value: Date | null): string | null =>
   value !== null && Number.isFinite(value.getTime())
@@ -99,27 +125,58 @@ function directionOf(pct: number | null): Direction | null {
   return "FLAT";
 }
 
-function mapAssetReaction(row: EventRow["assetReactions"][number]): AssetReaction {
-  const meta = assetMeta(row.assetSymbol);
-  const pct1h = finiteOrNull(row.pctChange1h);
-  const pct1d = finiteOrNull(row.pctChange1d);
-  const pct1w = finiteOrNull(row.pctChange1w);
+function toMeasuredMove(
+  row: EventRow["reactionMeasurements"][number],
+): MeasuredMove {
   return {
-    symbol: row.assetSymbol,
+    measure: row.measure,
+    pctChange: row.pctChange,
+    anchorPrice: row.anchorPrice,
+    anchorBarAt: isoInstant(row.anchorBarAt) as string,
+    anchorSessionDay: isoDay(row.anchorSessionDay) as string,
+    endpointPrice: row.endpointPrice,
+    endpointBarAt: isoInstant(row.endpointBarAt) as string,
+    endpointSessionDay: isoDay(row.endpointSessionDay) as string,
+    releaseSessionDay: isoDay(row.releaseSessionDay) as string,
+    anchorKind: row.anchorKind,
+    priceBasis: row.priceBasis,
+  };
+}
+
+/**
+ * One symbol's measurements, already filtered to the current calculation
+ * version. `rows` is never empty — callers only invoke this for a symbol that
+ * grouped at least one row.
+ */
+/** A stored row this defensive to publish: never surfaces a non-finite value. */
+function isUsableRow(row: EventRow["reactionMeasurements"][number]): boolean {
+  return (
+    Number.isFinite(row.anchorPrice) &&
+    Number.isFinite(row.endpointPrice) &&
+    Number.isFinite(row.pctChange)
+  );
+}
+
+function mapAssetReaction(
+  symbol: string,
+  rows: readonly EventRow["reactionMeasurements"][number][],
+): AssetReaction {
+  const meta = assetMeta(symbol);
+  const measures: Partial<Record<ReactionMeasure, MeasuredMove>> = {};
+  for (const row of rows) {
+    if (!isUsableRow(row)) continue;
+    measures[row.measure] = toMeasuredMove(row);
+  }
+  const headline = measures[HEADLINE_MEASURE] ?? null;
+  return {
+    symbol,
     name: meta.name,
     assetType: meta.assetType,
-    priceAtEvent: row.priceAtEvent,
-    price1h: finiteOrNull(row.price1h),
-    price1d: finiteOrNull(row.price1d),
-    price1w: finiteOrNull(row.price1w),
-    pct1h,
-    pct1d,
-    pct1w,
-    anchorAt: isoInstant(row.anchorAt),
-    calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
-    primaryWindow: pct1d === null ? null : "1d",
-    percentChange: pct1d,
-    direction: directionOf(pct1d),
+    sessionBasis: rows[0].sessionBasis,
+    measures,
+    headlineMeasure: headline === null ? null : HEADLINE_MEASURE,
+    percentChange: headline === null ? null : headline.pctChange,
+    direction: directionOf(headline === null ? null : headline.pctChange),
   };
 }
 
@@ -199,14 +256,8 @@ export function mapEvent(row: EventRow): NewsEvent {
     );
   const release = releases[0] ?? null;
   const assets = timingEligibility.eligible
-    ? row.assetReactions
-        .filter(
-          (asset) =>
-            asset.calculationVersion ===
-              CURRENT_REACTION_CALCULATION_VERSION &&
-            Number.isFinite(asset.priceAtEvent),
-        )
-        .map(mapAssetReaction)
+    ? groupMeasurementsBySymbol(row.reactionMeasurements)
+        .map(([symbol, rows]) => mapAssetReaction(symbol, rows))
         .sort((a, b) => compareAssetSymbols(a.symbol, b.symbol))
     : [];
 

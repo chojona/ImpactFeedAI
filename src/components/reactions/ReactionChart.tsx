@@ -5,23 +5,25 @@ import {
   type PlotSeries,
 } from "@/services/events/reactionChart";
 import {
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
   formatPercentChange,
-  pctForWindow,
+  pctForMeasure,
 } from "@/services/events/reactionView";
+import { HEADLINE_MEASURE } from "@/services/events/reactionMeasures";
 import { moveColor, moveTextClass } from "./reactionTone";
-import type { AssetReaction, ReactionWindow } from "@/types/events";
+import type { AssetReaction, ReactionMeasure } from "@/types/events";
 
 /**
- * Reaction chart for one asset: cumulative percent change from the pre-release
- * baseline at each measured window.
+ * Reaction chart for one asset: each of the four v3 measures, independently
+ * observed.
  *
- * **This is not a price chart.** The database stores four prices per asset, so
- * what exists is three observations and an anchor. The component renders the
+ * **This is not a price chart, and it is not a path.** Each `ReactionMeasure`
+ * has its own anchor (see spec §2) — there is no shared pre-release baseline
+ * the four points chart as a trajectory from. The component renders the
  * observations as filled markers and the segments between them as *dashed*
  * connectors, because the line is an aid to reading the sequence, not a
- * measured path. An unmeasured window is drawn as an empty slot with a struck
+ * measured path. An unmeasured measure is drawn as an empty slot with a struck
  * axis label — never as a point on the zero line.
  *
  * Geometry lives in `services/events/reactionChart.ts` and is expressed in
@@ -42,7 +44,7 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
  * The second visual pass added the plot field, a brand-coloured zero reference
  * line and boxed legend keys. None of it touches what is drawn: the measured
  * markers are still the only filled marks, the connectors are still dashed and
- * still labelled "not observed", and an unmeasured window still contributes no
+ * still labelled "not observed", and an unmeasured measure still contributes no
  * point at all. Decoration was added strictly outside the data.
  *
  * When intraday candles exist, they belong in a sibling component that consumes
@@ -53,8 +55,8 @@ interface Props {
   asset: AssetReaction | null;
   /** Other assets on the same event, drawn faintly for cross-asset context. */
   context?: readonly AssetReaction[];
-  /** Window to emphasise. Its marker is ringed and drives the line colour. */
-  highlightWindow?: ReactionWindow;
+  /** Measure to emphasise. Its marker is ringed and drives the line colour. */
+  highlightMeasure?: ReactionMeasure;
   /** Rendered when there is no asset to plot at all. */
   emptyMessage?: string;
 }
@@ -62,33 +64,35 @@ interface Props {
 export function ReactionChart({
   asset,
   context = [],
-  highlightWindow = "1d",
+  highlightMeasure = HEADLINE_MEASURE,
   emptyMessage = "No measured reaction to plot",
 }: Props) {
   if (asset === null) return <EmptyChart message={emptyMessage} />;
 
   const plot = buildReactionPlot({ focus: asset, context });
   const focus = plot.focus;
-  const measured = focus?.points.filter((p) => p.measured) ?? [];
+  // Every point that reaches `focus.points` is a real observation — v3 has
+  // no shared anchor point to filter out, unlike v2's T=0 baseline.
+  const measured = focus?.points ?? [];
 
   if (focus === null || measured.length === 0) {
     return (
-      <EmptyChart message={`No window was measurable for ${asset.symbol}`} />
+      <EmptyChart message={`No measure was measurable for ${asset.symbol}`} />
     );
   }
 
-  const highlighted = pctForWindow(asset, highlightWindow);
+  const highlighted = pctForMeasure(asset, highlightMeasure);
   const lineValue = highlighted ?? measured[measured.length - 1].value;
   const lineColor = moveColor(lineValue);
 
   const summary = [
-    `${asset.symbol} reaction from the pre-release baseline.`,
+    `${asset.symbol} reaction, one independent observation per measure.`,
     ...measured.map(
       (p) => `${p.label}: ${formatPercentChange(p.value) ?? "unavailable"}.`,
     ),
-    plot.missingWindows.length > 0
-      ? `Not measured: ${plot.missingWindows
-          .map((w) => WINDOW_LABELS[w])
+    plot.missingMeasures.length > 0
+      ? `Not measured: ${plot.missingMeasures
+          .map((m) => MEASURE_LABELS[m])
           .join(", ")}.`
       : "",
   ]
@@ -158,10 +162,7 @@ export function ReactionChart({
                 stroke="rgba(150, 176, 255, 0.09)"
                 strokeWidth={1}
                 strokeDasharray={
-                  slot.window !== null &&
-                  plot.missingWindows.includes(slot.window)
-                    ? "2 4"
-                    : undefined
+                  plot.missingMeasures.includes(slot.measure) ? "2 4" : undefined
                 }
                 vectorEffect="non-scaling-stroke"
               />
@@ -189,7 +190,7 @@ export function ReactionChart({
               point={point}
               symbol={asset.symbol}
               color={lineColor}
-              highlighted={point.window === highlightWindow}
+              highlighted={point.measure === highlightMeasure}
             />
           ))}
         </div>
@@ -198,8 +199,7 @@ export function ReactionChart({
       {/* X axis labels — dimmed and explicitly marked for missing windows. */}
       <div className="relative mt-2 ml-16 h-9">
         {plot.slots.map((slot) => {
-          const missing =
-            slot.window !== null && plot.missingWindows.includes(slot.window);
+          const missing = plot.missingMeasures.includes(slot.measure);
           return (
             <div
               key={`x-${slot.label}`}
@@ -214,7 +214,7 @@ export function ReactionChart({
                 {slot.label}
               </div>
               <div className="mt-0.5 text-[9px] uppercase tracking-wide text-ink-4">
-                {slot.window === null ? "release" : missing ? "no data" : null}
+                {missing ? "no data" : null}
               </div>
             </div>
           );
@@ -226,10 +226,10 @@ export function ReactionChart({
         <span className="text-ink-4">
           Slots evenly spaced — the axis is not to scale.
         </span>
-        {plot.missingWindows.length > 0 && (
+        {plot.missingMeasures.length > 0 && (
           <span className="text-warn">
             Not measured:{" "}
-            {plot.missingWindows.map((w) => WINDOW_LABELS[w]).join(", ")}
+            {plot.missingMeasures.map((m) => MEASURE_LABELS[m]).join(", ")}
           </span>
         )}
       </figcaption>
@@ -300,7 +300,7 @@ function ContextPath({ series }: { series: PlotSeries }) {
  * fabricated number on an otherwise honest chart.
  *
  * The tooltip is CSS-only (`group-hover`) so the chart still needs no client
- * JavaScript. It now carries only the absolute price and the window's long
+ * JavaScript. It now carries only the absolute price and the measure's long
  * description; the percentage it used to hide is on the page unconditionally.
  */
 function Marker({
@@ -315,10 +315,7 @@ function Marker({
   highlighted: boolean;
 }) {
   const formatted = formatPercentChange(point.value);
-  const description =
-    point.window === null
-      ? "pre-release baseline"
-      : WINDOW_DESCRIPTIONS[point.window];
+  const description = MEASURE_DESCRIPTIONS[point.measure];
   const above = point.value >= 0;
 
   return (
@@ -331,12 +328,12 @@ function Marker({
           highlighted ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
         }`}
         style={{
-          backgroundColor: point.measured ? color : "var(--color-unmeasured)",
+          backgroundColor: color,
           boxShadow: highlighted ? `0 0 0 4px ${color}2E` : undefined,
         }}
       />
 
-      {point.measured && formatted !== null && (
+      {formatted !== null && (
         <span
           className={`num pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold ${moveTextClass(
             point.value,

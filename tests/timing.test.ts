@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ARCHIVED_ASSET_REACTION_VERSION,
   CURRENT_REACTION_CALCULATION_VERSION,
   eventDateGroup,
   eventWhenDisplay,
@@ -127,8 +128,15 @@ describe("timing presentation", () => {
     ).toContain("no named timing source");
   });
 
-  it("pins the version gate to the current calculation contract", () => {
-    expect(CURRENT_REACTION_CALCULATION_VERSION).toBe(2);
+  it("pins the version gate to the current (v3) calculation contract", () => {
+    expect(CURRENT_REACTION_CALCULATION_VERSION).toBe(3);
+  });
+
+  it("pins the frozen asset_reactions archive to v2, distinct from the current version", () => {
+    expect(ARCHIVED_ASSET_REACTION_VERSION).toBe(2);
+    expect(ARCHIVED_ASSET_REACTION_VERSION).not.toBe(
+      CURRENT_REACTION_CALCULATION_VERSION,
+    );
   });
 
   /**

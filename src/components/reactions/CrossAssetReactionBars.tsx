@@ -1,12 +1,13 @@
 import { DataStateNote } from "@/components/ui/DataStatePanel";
+import { SessionBasisBadge } from "./SessionBasisBadge";
 import {
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
   formatPercentChange,
-  rankByWindow,
+  rankByMeasure,
 } from "@/services/events/reactionView";
 import { moveColor, moveTextClass } from "./reactionTone";
-import type { AssetReaction, ReactionWindow } from "@/types/events";
+import type { AssetReaction, ReactionMeasure } from "@/types/events";
 
 /**
  * Ranked cross-asset comparison for one horizon.
@@ -29,24 +30,24 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
 
 interface Props {
   assets: readonly AssetReaction[];
-  window: ReactionWindow;
+  measure: ReactionMeasure;
   selectedSymbol?: string | null;
   onSelect?: (symbol: string) => void;
 }
 
 export function CrossAssetReactionBars({
   assets,
-  window,
+  measure,
   selectedSymbol = null,
   onSelect,
 }: Props) {
-  const { measured, unmeasured, maxAbs } = rankByWindow(assets, window);
+  const { measured, unmeasured, maxAbs } = rankByMeasure(assets, measure);
 
   if (measured.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-line bg-surface-1 px-4 py-8 text-center">
         <p className="text-[13px] text-ink-3">
-          No instrument has a measured move at {WINDOW_LABELS[window]} for this
+          No instrument has a measured move at {MEASURE_LABELS[measure]} for this
           event.
         </p>
       </div>
@@ -64,12 +65,15 @@ export function CrossAssetReactionBars({
           const formatted = formatPercentChange(value);
           const row = (
             <div className="grid w-full grid-cols-[64px_1fr_66px] items-center gap-2 sm:grid-cols-[86px_1fr_74px] sm:gap-3">
-              <span
-                className={`num truncate text-left text-[12px] font-semibold ${
-                  selected ? "text-brand-bright" : "text-ink-2"
-                }`}
-              >
-                {asset.symbol}
+              <span className="flex min-w-0 items-center gap-1 truncate">
+                <span
+                  className={`num truncate text-left text-[12px] font-semibold ${
+                    selected ? "text-brand-bright" : "text-ink-2"
+                  }`}
+                >
+                  {asset.symbol}
+                </span>
+                <SessionBasisBadge sessionBasis={asset.sessionBasis} />
               </span>
               <span className="relative block h-5 rounded-[3px] bg-canvas/60">
                 <span
@@ -105,7 +109,7 @@ export function CrossAssetReactionBars({
                   type="button"
                   onClick={() => onSelect(asset.symbol)}
                   aria-pressed={selected}
-                  title={`${asset.name} — ${formatted} ${WINDOW_DESCRIPTIONS[window]}`}
+                  title={`${asset.name} — ${formatted} ${MEASURE_DESCRIPTIONS[measure]}`}
                   className={`w-full rounded-md px-1 py-1 transition-colors ${
                     selected ? "bg-brand-tint" : "hover:bg-brand-tint"
                   }`}
@@ -115,7 +119,7 @@ export function CrossAssetReactionBars({
               ) : (
                 <div
                   className="px-1 py-1"
-                  title={`${asset.name} — ${formatted} ${WINDOW_DESCRIPTIONS[window]}`}
+                  title={`${asset.name} — ${formatted} ${MEASURE_DESCRIPTIONS[measure]}`}
                 >
                   {row}
                 </div>
@@ -146,7 +150,7 @@ export function CrossAssetReactionBars({
         </p>
         {unmeasured.length > 0 && (
           <DataStateNote state="unavailable">
-            No {WINDOW_LABELS[window]} measurement:{" "}
+            No {MEASURE_LABELS[measure]} measurement:{" "}
             <span className="num">
               {unmeasured.map((a) => a.symbol).join(", ")}
             </span>

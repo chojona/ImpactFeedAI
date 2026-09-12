@@ -5,7 +5,7 @@ import { mapEvent, type EventRow } from "@/services/events/mapEvent";
 import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
 import type { NewsEvent } from "@/types/events";
 
-/** Build a mapped event with the given per-symbol one-day moves. */
+/** Build a mapped event with the given per-symbol RELEASE_SESSION moves. */
 const event = (
   id: string,
   eventType: EventRow["eventType"],
@@ -23,18 +23,24 @@ const event = (
     sourceUrl: null,
     explanation: null,
     dataReleases: [],
-    assetReactions: Object.entries(moves).map(([assetSymbol, pct]) => ({
-      assetSymbol,
-      priceAtEvent: 100,
-      price1h: null,
-      price1d: pct === null ? null : 100 + pct,
-      price1w: null,
-      pctChange1h: null,
-      pctChange1d: pct,
-      pctChange1w: null,
-      anchorAt: new Date("2025-05-13T13:30:00Z"),
-      calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
-    })),
+    reactionMeasurements: Object.entries(moves)
+      .filter(([, pct]) => pct !== null)
+      .map(([symbol, pct]) => ({
+        symbol,
+        measure: "RELEASE_SESSION" as const,
+        anchorKind: "PRIOR_SESSION_CLOSE" as const,
+        anchorPrice: 100,
+        anchorBarAt: new Date("2025-05-12T13:30:00Z"),
+        anchorSessionDay: new Date("2025-05-12T00:00:00Z"),
+        endpointPrice: 100 + (pct as number),
+        endpointBarAt: new Date("2025-05-13T13:30:00Z"),
+        endpointSessionDay: new Date("2025-05-13T00:00:00Z"),
+        releaseSessionDay: new Date("2025-05-13T00:00:00Z"),
+        pctChange: pct as number,
+        priceBasis: "SPLIT_ADJUSTED" as const,
+        sessionBasis: "US_EQUITY_RTH" as const,
+        calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+      })),
   });
 
 describe("analyzeCategory", () => {
@@ -53,12 +59,40 @@ describe("analyzeCategory", () => {
     expect(spy!.eventCount).toBe(2);
   });
 
-  it("never substitutes another horizon for a missing one-day move", () => {
+  it("never substitutes another measure for a missing RELEASE_SESSION move", () => {
     const measured = event("a", "CPI", { SPY: -2 });
-    const weekOnly = event("b", "CPI", { SPY: null });
-    weekOnly.assets[0].pct1w = 20;
-    weekOnly.assets[0].percentChange = 20;
-    weekOnly.assets[0].primaryWindow = "1w";
+    const weekOnly = mapEvent({
+      id: "b",
+      headline: "b headline",
+      eventType: "CPI",
+      occurredAt: new Date("2025-05-13T12:30:00Z"),
+      releaseAt: new Date("2025-05-13T12:30:00Z"),
+      releaseDate: new Date("2025-05-13T00:00:00Z"),
+      timingStatus: "VERIFIED",
+      timingSource: "Official release calendar",
+      sourceUrl: null,
+      explanation: null,
+      dataReleases: [],
+      reactionMeasurements: [
+        {
+          symbol: "SPY",
+          measure: "SESSION_PLUS_5",
+          anchorKind: "PRIOR_SESSION_CLOSE",
+          anchorPrice: 100,
+          anchorBarAt: new Date("2025-05-12T13:30:00Z"),
+          anchorSessionDay: new Date("2025-05-12T00:00:00Z"),
+          endpointPrice: 120,
+          endpointBarAt: new Date("2025-05-20T13:30:00Z"),
+          endpointSessionDay: new Date("2025-05-20T00:00:00Z"),
+          releaseSessionDay: new Date("2025-05-13T00:00:00Z"),
+          pctChange: 20,
+          priceBasis: "SPLIT_ADJUSTED",
+          sessionBasis: "US_EQUITY_RTH",
+          calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+        },
+      ],
+    });
+    expect(weekOnly.assets[0].headlineMeasure).toBeNull();
 
     const spy = analyzeCategory(
       [measured, weekOnly],
@@ -69,10 +103,44 @@ describe("analyzeCategory", () => {
     expect(spy!.eventCount).toBe(1);
   });
 
-  it("drops non-finite one-day values before averaging", () => {
+  it("drops non-finite RELEASE_SESSION values before averaging", () => {
     const valid = event("a", "CPI", { SPY: 2 });
-    const invalid = event("b", "CPI", { SPY: null });
-    invalid.assets[0].pct1d = Number.NaN;
+    const invalid = mapEvent({
+      id: "b",
+      headline: "b headline",
+      eventType: "CPI",
+      occurredAt: new Date("2025-05-13T12:30:00Z"),
+      releaseAt: new Date("2025-05-13T12:30:00Z"),
+      releaseDate: new Date("2025-05-13T00:00:00Z"),
+      timingStatus: "VERIFIED",
+      timingSource: "Official release calendar",
+      sourceUrl: null,
+      explanation: null,
+      dataReleases: [],
+      reactionMeasurements: [
+        {
+          symbol: "SPY",
+          measure: "RELEASE_SESSION",
+          anchorKind: "PRIOR_SESSION_CLOSE",
+          anchorPrice: 100,
+          anchorBarAt: new Date("2025-05-12T13:30:00Z"),
+          anchorSessionDay: new Date("2025-05-12T00:00:00Z"),
+          endpointPrice: 100,
+          endpointBarAt: new Date("2025-05-13T13:30:00Z"),
+          endpointSessionDay: new Date("2025-05-13T00:00:00Z"),
+          releaseSessionDay: new Date("2025-05-13T00:00:00Z"),
+          pctChange: Number.NaN,
+          priceBasis: "SPLIT_ADJUSTED",
+          sessionBasis: "US_EQUITY_RTH",
+          calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+        },
+      ],
+    });
+    // The row still produces an asset entry (a symbol with a row group is
+    // never omitted), but the non-finite value never reaches `measures` — see
+    // mapEvent's `isUsableRow` guard — so it carries no headline measure.
+    expect(invalid.assets[0].measures).toEqual({});
+    expect(invalid.assets[0].headlineMeasure).toBeNull();
 
     const spy = analyzeCategory(
       [valid, invalid],
@@ -83,18 +151,13 @@ describe("analyzeCategory", () => {
     expect(spy!.eventCount).toBe(1);
   });
 
-  it("defensively excludes timing-ineligible and stale-version rows", () => {
+  it("defensively excludes timing-ineligible events", () => {
     const valid = event("a", "CPI", { SPY: 2 });
     const untrusted = event("b", "CPI", { SPY: 40 });
     untrusted.timing.reactionEligible = false;
     untrusted.timing.ineligibilityReason = "untrusted_status";
-    const stale = event("c", "CPI", { SPY: 30 });
-    stale.assets[0].calculationVersion = 0;
 
-    const pattern = analyzeCategory(
-      [valid, untrusted, stale],
-      "INFLATION",
-    );
+    const pattern = analyzeCategory([valid, untrusted], "INFLATION");
     const spy = pattern.avgReactions.find((asset) => asset.symbol === "SPY");
 
     expect(spy!.avgPercentChange).toBe(2);
