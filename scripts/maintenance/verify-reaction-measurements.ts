@@ -28,6 +28,11 @@ import {
   type ReactionMeasure,
 } from "@/services/events/reactionMeasures";
 import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import {
+  economicCloseInstant,
+  type SessionBasis,
+} from "@/services/market/sessionBasis";
+import { buildSessionCalendar } from "@/services/market/sessionCalendar";
 import type { PriceBasis } from "@/types/market";
 
 /* ─────────────────────── pure invariant checker (tested) ────────────────── */
@@ -45,13 +50,15 @@ export interface VerifiableMeasurementRow {
   releaseSessionDay: string;
   pctChange: number;
   priceBasis: PriceBasis;
-  sessionBasis: string;
+  sessionBasis: SessionBasis;
 }
 
 export interface InvariantContext {
   releaseAt: Date;
   /** The canonical calendar's session days, in order, covering this row. */
   sessionDays: readonly string[];
+  /** From the canonical calendar — required to resolve an equity close. */
+  isEarlyClose: (day: string) => boolean;
 }
 
 export type InvariantViolation =
@@ -61,6 +68,7 @@ export type InvariantViolation =
   | "anchor_kind_family_mismatch"
   | "anchor_session_not_adjacent"
   | "endpoint_session_offset_mismatch"
+  | "anchor_close_not_pre_release"
   | "intraday_anchor_not_pre_release";
 
 const PCT_TOLERANCE = 1e-6;
@@ -130,6 +138,23 @@ export function checkInvariants(
     ) {
       violations.push("endpoint_session_offset_mismatch");
     }
+
+    // The anchor PRICE must have been realised strictly before the release.
+    // Resolved per SessionBasis from the bar itself, NOT by comparing
+    // `anchorBarAt` to `releaseAt` — a daily bar's stamp is an identifier and
+    // usually the session OPEN, so that comparison is meaningless here. This
+    // is the check that catches the Stage-2 BTC defect, where a UTC-day bar
+    // mislabelled onto the previous Eastern date supplied an anchor price not
+    // realised until 11.5h AFTER the release.
+    const anchorClose = economicCloseInstant({
+      basis: row.sessionBasis,
+      sessionDay: row.anchorSessionDay,
+      barAt: row.anchorBarAt,
+      isEarlyClose: ctx.isEarlyClose(row.anchorSessionDay),
+    });
+    if (anchorClose.getTime() >= ctx.releaseAt.getTime()) {
+      violations.push("anchor_close_not_pre_release");
+    }
   } else {
     // INTRADAY_60M: instant ordering against releaseAt is meaningful (the
     // session family's bar stamps are not, per the module doc comment).
@@ -193,7 +218,12 @@ async function main(): Promise<void> {
         continue;
       }
       const sessionDays = spySeries.series.daily.map((bar) => bar.sessionDay);
-      const ctx: InvariantContext = { releaseAt, sessionDays };
+      const referenceCalendar = buildSessionCalendar(sessionDays);
+      const ctx: InvariantContext = {
+        releaseAt,
+        sessionDays,
+        isEarlyClose: (day) => referenceCalendar.isEarlyClose(day),
+      };
 
       for (const row of eventRows) {
         rowsByMeasure.set(row.measure, (rowsByMeasure.get(row.measure) ?? 0) + 1);
@@ -230,7 +260,7 @@ async function main(): Promise<void> {
           releaseSessionDay: row.releaseSessionDay.toISOString().slice(0, 10),
           pctChange: row.pctChange,
           priceBasis: row.priceBasis,
-          sessionBasis: row.sessionBasis,
+          sessionBasis: row.sessionBasis as SessionBasis,
         };
 
         const violations = checkInvariants(verifiable, ctx);
