@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { analyzeCategory } from "@/services/analytics/patternAnalysis";
 import { mapEvent, type EventRow } from "@/services/events/mapEvent";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import { ARCHIVED_ASSET_REACTION_VERSION } from "@/services/events/timing";
 import type { NewsEvent } from "@/types/events";
 
 /** Build a mapped event with the given per-symbol one-day moves. */
@@ -33,7 +33,7 @@ const event = (
       pctChange1d: pct,
       pctChange1w: null,
       anchorAt: new Date("2025-05-13T13:30:00Z"),
-      calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+      calculationVersion: ARCHIVED_ASSET_REACTION_VERSION,
     })),
   });
 

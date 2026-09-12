@@ -9,7 +9,7 @@ import {
   seriesShareBasis,
   type Candle,
 } from "../scripts/ingest/fetch-prices";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import { ARCHIVED_ASSET_REACTION_VERSION } from "@/services/events/timing";
 
 /**
  * Daily Yahoo bars carry a provider timestamp at the session open. `close` is
@@ -350,12 +350,10 @@ describe("buildAssetReaction", () => {
     expect(row.pctChange1h).toBeNull();
   });
 
-  it("persists the baseline bar and calculation version 2", () => {
+  it("persists the baseline bar and archived calculation version 2", () => {
     const row = buildAssetReaction("SPY", snapshot);
     expect(row.anchorAt).toEqual(snapshot.anchorAt);
-    expect(row.calculationVersion).toBe(
-      CURRENT_REACTION_CALCULATION_VERSION,
-    );
+    expect(row.calculationVersion).toBe(ARCHIVED_ASSET_REACTION_VERSION);
     expect(row.calculationVersion).toBe(2);
     expect(row.priceAtEvent).toBe(100);
     expect(row.price1h).toBe(101);

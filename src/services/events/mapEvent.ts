@@ -20,7 +20,7 @@ import {
   formatMetricValue,
 } from "@/services/macro/metrics";
 import {
-  CURRENT_REACTION_CALCULATION_VERSION,
+  ARCHIVED_ASSET_REACTION_VERSION,
   reactionTimingEligibility,
 } from "@/services/events/timing";
 import type {
@@ -116,7 +116,7 @@ function mapAssetReaction(row: EventRow["assetReactions"][number]): AssetReactio
     pct1d,
     pct1w,
     anchorAt: isoInstant(row.anchorAt),
-    calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+    calculationVersion: ARCHIVED_ASSET_REACTION_VERSION,
     primaryWindow: pct1d === null ? null : "1d",
     percentChange: pct1d,
     direction: directionOf(pct1d),
@@ -202,8 +202,7 @@ export function mapEvent(row: EventRow): NewsEvent {
     ? row.assetReactions
         .filter(
           (asset) =>
-            asset.calculationVersion ===
-              CURRENT_REACTION_CALCULATION_VERSION &&
+            asset.calculationVersion === ARCHIVED_ASSET_REACTION_VERSION &&
             Number.isFinite(asset.priceAtEvent),
         )
         .map(mapAssetReaction)

@@ -1,5 +1,5 @@
 import type { AssetReactionRow, PriceSnapshot } from "./types";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import { ARCHIVED_ASSET_REACTION_VERSION } from "@/services/events/timing";
 
 /**
  * Percent change from the anchor, rounded to 2 decimal places.
@@ -17,6 +17,14 @@ const pct = (anchor: number, later: number | null): number | null => {
   return ((later - anchor) / anchor) * 100;
 };
 
+/**
+ * Builds a row for `asset_reactions`, which is a frozen v2 archive — see
+ * `ARCHIVED_ASSET_REACTION_VERSION` in `src/services/events/timing.ts`. The
+ * v2 calculation semantics implemented here are unchanged, so this still
+ * stamps version 2; it is bound to the archive constant rather than the live
+ * (v3) one so the value cannot silently drift if the live constant changes
+ * again.
+ */
 export function buildAssetReaction(
   assetSymbol: string,
   snapshot: PriceSnapshot,
@@ -24,7 +32,7 @@ export function buildAssetReaction(
   return {
     assetSymbol,
     anchorAt: snapshot.anchorAt,
-    calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+    calculationVersion: ARCHIVED_ASSET_REACTION_VERSION,
     priceAtEvent: snapshot.priceAtEvent,
     price1h: snapshot.price1h,
     price1d: snapshot.price1d,

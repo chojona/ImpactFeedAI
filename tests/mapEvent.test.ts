@@ -7,7 +7,7 @@ import {
   type EventRow,
 } from "@/services/events/mapEvent";
 import { reactionSeries, pctForWindow } from "@/services/events/reactionView";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import { ARCHIVED_ASSET_REACTION_VERSION } from "@/services/events/timing";
 import {
   CATEGORY_CONFIG,
   categoryForEventType,
@@ -29,7 +29,7 @@ const reaction = (
   pctChange1d: null,
   pctChange1w: null,
   anchorAt: new Date("2025-05-13T13:30:00Z"),
-  calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+  calculationVersion: ARCHIVED_ASSET_REACTION_VERSION,
   ...over,
 });
 
@@ -159,7 +159,7 @@ describe("mapEvent", () => {
     expect(event.timing.reactionEligible).toBe(true);
     expect(event.assets[0].anchorAt).toBe("2025-05-13T13:30:00.000Z");
     expect(event.assets[0].calculationVersion).toBe(
-      CURRENT_REACTION_CALCULATION_VERSION,
+      ARCHIVED_ASSET_REACTION_VERSION,
     );
   });
 

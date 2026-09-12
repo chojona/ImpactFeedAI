@@ -36,7 +36,7 @@ import {
 import type { ReactionObservation } from "@/services/analytics/patternAnalysis";
 import { mapEvent, type EventRow } from "@/services/events/mapEvent";
 import {
-  CURRENT_REACTION_CALCULATION_VERSION,
+  ARCHIVED_ASSET_REACTION_VERSION,
   REACTION_ELIGIBLE_TIMING_STATUSES,
   reactionTimingEligibility,
 } from "@/services/events/timing";
@@ -141,7 +141,7 @@ async function categoryCounts(
  * this product refuses to rank.
  */
 const MEASURABLE_1D_REACTION = Prisma.sql`
-  ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+  ar.calculation_version = ${ARCHIVED_ASSET_REACTION_VERSION}
   AND ar.pct_change_1d IS NOT NULL
   AND ABS(ar.pct_change_1d) < 'Infinity'::double precision
   AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
@@ -310,7 +310,7 @@ export async function listReactionObservations(
       releaseAt: { not: null },
       timingSource: { not: null },
       assetReactions: {
-        some: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
+        some: { calculationVersion: ARCHIVED_ASSET_REACTION_VERSION },
       },
     },
     orderBy: [{ releaseAt: "desc" }, { id: "asc" }],
@@ -323,7 +323,7 @@ export async function listReactionObservations(
       timingStatus: true,
       timingSource: true,
       assetReactions: {
-        where: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
+        where: { calculationVersion: ARCHIVED_ASSET_REACTION_VERSION },
         select: {
           assetSymbol: true,
           pctChange1h: true,
@@ -417,7 +417,7 @@ export async function getLibraryCoverage(): Promise<LibraryCoverage> {
       SELECT e.event_type, COUNT(DISTINCT e.id)::int AS n
       FROM events e
       JOIN asset_reactions ar ON ar.event_id = e.id
-      WHERE ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+      WHERE ar.calculation_version = ${ARCHIVED_ASSET_REACTION_VERSION}
         AND ar.pct_change_1d IS NOT NULL
         AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
         AND e.release_at IS NOT NULL
@@ -539,7 +539,7 @@ export async function getLibrarySummary(): Promise<LibrarySummary> {
       SELECT COUNT(DISTINCT e.id)::int AS n
       FROM events e
       JOIN asset_reactions ar ON ar.event_id = e.id
-      WHERE ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+      WHERE ar.calculation_version = ${ARCHIVED_ASSET_REACTION_VERSION}
         AND ar.pct_change_1d IS NOT NULL
         AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
         AND e.release_at IS NOT NULL
@@ -576,7 +576,7 @@ export async function getFeaturedEvent(): Promise<NewsEvent | null> {
     SELECT e.id
     FROM events e
     JOIN asset_reactions ar ON ar.event_id = e.id
-    WHERE ar.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+    WHERE ar.calculation_version = ${ARCHIVED_ASSET_REACTION_VERSION}
       AND ar.pct_change_1d IS NOT NULL
       AND ABS(ar.pct_change_1d) < 'Infinity'::double precision
       AND e.timing_status IN ('VERIFIED', 'SCHEDULED')

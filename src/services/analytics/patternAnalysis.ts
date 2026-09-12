@@ -5,7 +5,7 @@ import type {
   ReactionWindow,
 } from "@/types/events";
 import { assetMeta, compareAssetSymbols } from "@/lib/assets";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import { ARCHIVED_ASSET_REACTION_VERSION } from "@/services/events/timing";
 
 /**
  * Per-category aggregate reaction statistics.
@@ -61,9 +61,7 @@ export function analyzeCategory(
     if (!event.timing.reactionEligible) continue;
     let contributed = false;
     for (const asset of event.assets) {
-      if (
-        asset.calculationVersion !== CURRENT_REACTION_CALCULATION_VERSION
-      ) {
+      if (asset.calculationVersion !== ARCHIVED_ASSET_REACTION_VERSION) {
         continue;
       }
       const move = asset.pct1d;

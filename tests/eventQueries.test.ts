@@ -77,7 +77,7 @@ vi.mock("@/services/events/mapEvent", async () => {
 });
 
 const { listEvents } = await import("@/services/events/eventQueries");
-const { CURRENT_REACTION_CALCULATION_VERSION } = await import(
+const { ARCHIVED_ASSET_REACTION_VERSION } = await import(
   "@/services/events/timing"
 );
 
@@ -85,9 +85,13 @@ const { CURRENT_REACTION_CALCULATION_VERSION } = await import(
  * Bound parameters of a raw query, minus the leading calculation-version the
  * shared eligibility fragment contributes. What is left is what the *caller*
  * scoped the query to.
+ *
+ * `eventQueries.ts` still reads `asset_reactions` (v2) ahead of the Stage 4
+ * cutover, so the fragment's first bound value is the archived v2 version,
+ * not the live v3 constant.
  */
 const scopeOf = (values: unknown[]) => {
-  expect(values[0]).toBe(CURRENT_REACTION_CALCULATION_VERSION);
+  expect(values[0]).toBe(ARCHIVED_ASSET_REACTION_VERSION);
   return values.slice(1);
 };
 

@@ -11,12 +11,20 @@
  *
  * A current reaction must satisfy both conditions:
  *   1. the event has reaction-eligible release timing; and
- *   2. AssetReaction.calculationVersion matches the current implementation.
+ *   2. AssetReaction.calculationVersion matches the archived v2 semantics.
+ *
+ * `asset_reactions` is a frozen v2 archive (see
+ * `ARCHIVED_ASSET_REACTION_VERSION` in `src/services/events/timing.ts`) — this
+ * script's notion of "current" is pinned to that archive version, not to the
+ * live `CURRENT_REACTION_CALCULATION_VERSION`, which now describes v3
+ * `reaction_measurements` rows in an unrelated table. Binding this script to
+ * the live constant would reclassify every surviving v2 row as legacy the
+ * moment v3 was introduced.
  *
  * Rows on trusted events are deleted here and can then be recomputed with a
- * matching `backfill:prices -- --event-id ...` scope; rows on untrusted events
- * remain absent until an authoritative release timestamp is added. Both
- * stages are idempotent.
+ * matching `backfill:reaction-measurements -- --event-id ...` scope; rows on
+ * untrusted events remain absent until an authoritative release timestamp is
+ * added. Both stages are idempotent.
  */
 import "dotenv/config";
 
@@ -25,7 +33,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../src/generated/prisma/client";
 import { guardPrismaClient } from "../lib/readonly-prisma";
 import {
-  CURRENT_REACTION_CALCULATION_VERSION,
+  ARCHIVED_ASSET_REACTION_VERSION,
 } from "@/services/events/timing";
 import { planReactionRepair } from "@/services/events/reactionRepair";
 
@@ -106,7 +114,7 @@ async function main(): Promise<void> {
     `repair-reaction-timing (${flags.apply ? "APPLY" : "dry-run — no writes"})`,
   );
   console.log(
-    `current calculation version=${CURRENT_REACTION_CALCULATION_VERSION}\n`,
+    `archived asset_reactions version=${ARCHIVED_ASSET_REACTION_VERSION}\n`,
   );
 
   try {
@@ -155,7 +163,7 @@ async function main(): Promise<void> {
         ? "legacy calculation version"
         : `timing not reaction-eligible (${event.timingStatus})`;
       const next = plan.recomputeAfterDelete
-        ? `delete; then recompute with backfill:prices -- --event-id ${event.id}`
+        ? `delete; then recompute with backfill:reaction-measurements -- --event-id ${event.id}`
         : "delete; do not recompute until timing is verified";
 
       console.log(`${event.id}  ${event.headline}`);
