@@ -8,14 +8,14 @@ import {
 } from "@/services/analytics/patternAnalysis";
 import { halfDomainFor } from "@/services/events/reactionChart";
 import {
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
   formatPercentChange,
   formatPercentagePoints,
 } from "@/services/events/reactionView";
 import { moveColor, moveTextClass } from "@/components/reactions/reactionTone";
 import { formatNewYorkDate } from "@/services/events/timing";
-import type { ReactionWindow } from "@/types/events";
+import type { ReactionMeasure } from "@/types/events";
 
 /**
  * Every historical observation behind one aggregate, as a dot plot.
@@ -51,7 +51,7 @@ const MAX_ROWS = 5;
 interface Props {
   points: readonly DistributionPoint[];
   symbol: string;
-  window: ReactionWindow;
+  measure: ReactionMeasure;
   /** Event to locate within the distribution, when one is in focus. */
   selectedEventId?: string | null;
   /** Omit the per-dot links, for contexts that are already inside an event. */
@@ -61,13 +61,13 @@ interface Props {
 export function ReactionDistribution({
   points,
   symbol,
-  window,
+  measure,
   selectedEventId = null,
   linkDots = true,
 }: Props) {
   const summary = summarizeDistribution(points, {
     symbol,
-    window,
+    measure,
     selectedEventId,
   });
 
@@ -77,7 +77,7 @@ export function ReactionDistribution({
         <span aria-hidden className="num mr-2 text-ink-4">
           —
         </span>
-        No {symbol} observation at {WINDOW_LABELS[window]} in this category.
+        No {symbol} observation at {MEASURE_LABELS[measure]} in this category.
       </p>
     );
   }
@@ -126,7 +126,7 @@ export function ReactionDistribution({
           <Dot
             key={`${point.eventId}-${point.value}`}
             point={point}
-            window={window}
+            measure={measure}
             selected={point.eventId === summary.selected?.eventId}
             link={linkDots}
           />
@@ -143,10 +143,10 @@ export function ReactionDistribution({
       </div>
 
       {summary.selected && (
-        <SelectedCallout summary={summary} symbol={symbol} window={window} />
+        <SelectedCallout summary={summary} symbol={symbol} measure={measure} />
       )}
 
-      <Caption summary={summary} window={window} />
+      <Caption summary={summary} measure={measure} />
     </figure>
   );
 }
@@ -159,11 +159,11 @@ export function ReactionDistribution({
 function SelectedCallout({
   summary,
   symbol,
-  window,
+  measure,
 }: {
   summary: DistributionSummary;
   symbol: string;
-  window: ReactionWindow;
+  measure: ReactionMeasure;
 }) {
   const selected = summary.selected;
   if (!selected) return null;
@@ -200,7 +200,7 @@ function SelectedCallout({
       .{" "}
       <span className="text-ink-4">
         Ranked from most negative to most positive over the{" "}
-        {WINDOW_LABELS[window]} moves shown above, this event included.
+        {MEASURE_LABELS[measure]} moves shown above, this event included.
       </span>
     </p>
   );
@@ -208,10 +208,10 @@ function SelectedCallout({
 
 function Caption({
   summary,
-  window,
+  measure,
 }: {
   summary: DistributionSummary;
-  window: ReactionWindow;
+  measure: ReactionMeasure;
 }) {
   return (
     <figcaption className="mt-3 space-y-1.5 text-[11px] text-ink-3">
@@ -270,7 +270,7 @@ function Caption({
 
       {summary.sufficient ? (
         <p className="text-ink-4">
-          Each dot is one event {WINDOW_DESCRIPTIONS[window]}; select one to
+          Each dot is one event {MEASURE_DESCRIPTIONS[measure]}; select one to
           open it.
         </p>
       ) : (
@@ -288,18 +288,18 @@ function Caption({
 
 function Dot({
   point,
-  window,
+  measure,
   selected,
   link,
 }: {
   point: PlacedPoint;
-  window: ReactionWindow;
+  measure: ReactionMeasure;
   selected: boolean;
   link: boolean;
 }) {
   const date = formatNewYorkDate(point.at);
   const change = formatPercentChange(point.value);
-  const title = `${point.title} — ${change} at ${WINDOW_LABELS[window]}${
+  const title = `${point.title} — ${change} at ${MEASURE_LABELS[measure]}${
     date === null ? "" : ` on ${date}`
   }${selected ? " (this event)" : ""}`;
 
@@ -329,7 +329,7 @@ function Dot({
         role="img"
         title={title}
         aria-current={selected ? "true" : undefined}
-        aria-label={`${point.title}, ${change} at ${WINDOW_LABELS[window]}${
+        aria-label={`${point.title}, ${change} at ${MEASURE_LABELS[measure]}${
           selected ? ", the event shown on this page" : ""
         }`}
         className={`absolute -translate-x-1/2 ${selected ? "z-20" : "z-10"}`}
@@ -344,7 +344,7 @@ function Dot({
     <Link
       href={`/events/${point.eventId}`}
       title={title}
-      aria-label={`${point.title}, ${change} at ${WINDOW_LABELS[window]}`}
+      aria-label={`${point.title}, ${change} at ${MEASURE_LABELS[measure]}`}
       className="absolute z-10 -translate-x-1/2 rounded-full"
       style={style}
     >

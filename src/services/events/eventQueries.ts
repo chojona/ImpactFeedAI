@@ -36,7 +36,7 @@ import {
 import type { ReactionObservation } from "@/services/analytics/patternAnalysis";
 import { mapEvent, type EventRow } from "@/services/events/mapEvent";
 import {
-  ARCHIVED_ASSET_REACTION_VERSION,
+  CURRENT_REACTION_CALCULATION_VERSION,
   REACTION_ELIGIBLE_TIMING_STATUSES,
   reactionTimingEligibility,
 } from "@/services/events/timing";
@@ -69,7 +69,9 @@ export interface EventListResult {
 /* ───────────────────────────── query building ────────────────────────── */
 
 const EVENT_INCLUDE = {
-  assetReactions: true,
+  reactionMeasurements: {
+    where: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
+  },
   dataReleases: true,
 } as const;
 
@@ -132,18 +134,19 @@ async function categoryCounts(
  * A `Prisma.Sql` fragment rather than a copied string so the ranking and the
  * count of ranked rows cannot disagree — the whole point of `rankedCount` is
  * that it marks the exact index where the ranking stops, and it can only do
- * that if it is computed from the identical predicate. It refers to the aliases
- * `e` (events) and `ar` (asset_reactions), so every query embedding it must use
- * those names.
+ * that if it is computed from the identical predicate. It refers to the
+ * aliases `e` (events) and `rm` (reaction_measurements), so every query
+ * embedding it must use those names.
  *
  * The clauses mirror `reactionTimingEligibility` plus the calculation-version
- * gate: a plausible number attached to unsourced timing is exactly the thing
- * this product refuses to rank.
+ * and headline-measure gate: a plausible number attached to unsourced timing,
+ * or to any measure other than the one the product headlines, is exactly the
+ * thing this ranking refuses to use — see spec §15.1.
  */
-const MEASURABLE_1D_REACTION = Prisma.sql`
-  ar.calculation_version = ${ARCHIVED_ASSET_REACTION_VERSION}
-  AND ar.pct_change_1d IS NOT NULL
-  AND ABS(ar.pct_change_1d) < 'Infinity'::double precision
+const MEASURABLE_HEADLINE_MEASUREMENT = Prisma.sql`
+  rm.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
+  AND rm.measure = 'RELEASE_SESSION'
+  AND ABS(rm.pct_change) < 'Infinity'::double precision
   AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
   AND e.release_at IS NOT NULL
   AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
@@ -176,13 +179,13 @@ async function idsByBiggestMove(
   const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
     SELECT e.id
     FROM events e
-    LEFT JOIN asset_reactions ar
-      ON ar.event_id = e.id
-      AND ${MEASURABLE_1D_REACTION}
+    LEFT JOIN reaction_measurements rm
+      ON rm.event_id = e.id
+      AND ${MEASURABLE_HEADLINE_MEASUREMENT}
     WHERE e.id IN (${Prisma.join(ids)})
     GROUP BY e.id, e.occurred_at
     ORDER BY
-      MAX(ABS(ar.pct_change_1d)) DESC NULLS LAST,
+      MAX(ABS(rm.pct_change)) DESC NULLS LAST,
       e.occurred_at DESC,
       e.id ASC
     LIMIT ${limit} OFFSET ${offset}
@@ -209,9 +212,9 @@ async function countRankable(ids: string[]): Promise<number> {
   const rows = await prisma.$queryRaw<{ n: number }[]>(Prisma.sql`
     SELECT COUNT(DISTINCT e.id)::int AS n
     FROM events e
-    JOIN asset_reactions ar
-      ON ar.event_id = e.id
-      AND ${MEASURABLE_1D_REACTION}
+    JOIN reaction_measurements rm
+      ON rm.event_id = e.id
+      AND ${MEASURABLE_HEADLINE_MEASUREMENT}
     WHERE e.id IN (${Prisma.join(ids)})
   `);
   return rows[0]?.n ?? 0;
@@ -309,8 +312,8 @@ export async function listReactionObservations(
       timingStatus: { in: [...REACTION_ELIGIBLE_TIMING_STATUSES] },
       releaseAt: { not: null },
       timingSource: { not: null },
-      assetReactions: {
-        some: { calculationVersion: ARCHIVED_ASSET_REACTION_VERSION },
+      reactionMeasurements: {
+        some: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
       },
     },
     orderBy: [{ releaseAt: "desc" }, { id: "asc" }],
@@ -322,13 +325,13 @@ export async function listReactionObservations(
       releaseAt: true,
       timingStatus: true,
       timingSource: true,
-      assetReactions: {
-        where: { calculationVersion: ARCHIVED_ASSET_REACTION_VERSION },
+      reactionMeasurements: {
+        where: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
         select: {
-          assetSymbol: true,
-          pctChange1h: true,
-          pctChange1d: true,
-          pctChange1w: true,
+          symbol: true,
+          measure: true,
+          pctChange: true,
+          sessionBasis: true,
         },
       },
     },
@@ -344,26 +347,34 @@ export async function listReactionObservations(
     if (!eligibility.eligible || row.releaseAt === null) continue;
     const at = row.releaseAt.toISOString();
     const eventCategory = categoryForEventType(row.eventType);
-    for (const reaction of row.assetReactions) {
+
+    // Group by symbol so each symbol contributes exactly one observation with
+    // every measure it has, rather than one row per measure that a caller
+    // could accidentally merge across symbols.
+    const bySymbol = new Map<
+      string,
+      { sessionBasis: ReactionObservation["sessionBasis"]; values: ReactionObservation["values"] }
+    >();
+    for (const rm of row.reactionMeasurements) {
+      if (!Number.isFinite(rm.pctChange)) continue;
+      const entry = bySymbol.get(rm.symbol) ?? { sessionBasis: rm.sessionBasis, values: {} };
+      entry.values[rm.measure] = rm.pctChange;
+      bySymbol.set(rm.symbol, entry);
+    }
+    for (const [symbol, entry] of bySymbol) {
       observations.push({
         eventId: row.id,
         title: row.headline,
         at,
         category: eventCategory,
-        symbol: reaction.assetSymbol,
-        values: {
-          "1h": finite(reaction.pctChange1h),
-          "1d": finite(reaction.pctChange1d),
-          "1w": finite(reaction.pctChange1w),
-        },
+        symbol,
+        sessionBasis: entry.sessionBasis,
+        values: entry.values,
       });
     }
   }
   return observations;
 }
-
-const finite = (value: number | null): number | null =>
-  value !== null && Number.isFinite(value) ? value : null;
 
 /**
  * What the library actually holds, per category.
@@ -416,12 +427,8 @@ export async function getLibraryCoverage(): Promise<LibraryCoverage> {
     prisma.$queryRaw<CoverageRow[]>(Prisma.sql`
       SELECT e.event_type, COUNT(DISTINCT e.id)::int AS n
       FROM events e
-      JOIN asset_reactions ar ON ar.event_id = e.id
-      WHERE ar.calculation_version = ${ARCHIVED_ASSET_REACTION_VERSION}
-        AND ar.pct_change_1d IS NOT NULL
-        AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
-        AND e.release_at IS NOT NULL
-        AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
+      JOIN reaction_measurements rm ON rm.event_id = e.id
+      WHERE ${MEASURABLE_HEADLINE_MEASUREMENT}
       GROUP BY e.event_type
     `),
   ]);
@@ -531,19 +538,19 @@ export async function getLibrarySummary(): Promise<LibrarySummary> {
       _min: { occurredAt: true },
       _max: { occurredAt: true },
     }),
-    prisma.assetReaction.findMany({
-      distinct: ["assetSymbol"],
-      select: { assetSymbol: true },
+    // §15.1 (approved): the landing-page instrument count is drawn from the
+    // v3 headline measurement, at the current calculation version — not from
+    // the archived asset_reactions table.
+    prisma.reactionMeasurement.findMany({
+      where: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
+      distinct: ["symbol"],
+      select: { symbol: true },
     }),
     prisma.$queryRaw<{ n: number }[]>(Prisma.sql`
       SELECT COUNT(DISTINCT e.id)::int AS n
       FROM events e
-      JOIN asset_reactions ar ON ar.event_id = e.id
-      WHERE ar.calculation_version = ${ARCHIVED_ASSET_REACTION_VERSION}
-        AND ar.pct_change_1d IS NOT NULL
-        AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
-        AND e.release_at IS NOT NULL
-        AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
+      JOIN reaction_measurements rm ON rm.event_id = e.id
+      WHERE ${MEASURABLE_HEADLINE_MEASUREMENT}
     `),
     prisma.event.groupBy({ by: ["eventType"], _count: { _all: true } }),
   ]);
@@ -575,15 +582,10 @@ export async function getFeaturedEvent(): Promise<NewsEvent | null> {
   const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
     SELECT e.id
     FROM events e
-    JOIN asset_reactions ar ON ar.event_id = e.id
-    WHERE ar.calculation_version = ${ARCHIVED_ASSET_REACTION_VERSION}
-      AND ar.pct_change_1d IS NOT NULL
-      AND ABS(ar.pct_change_1d) < 'Infinity'::double precision
-      AND e.timing_status IN ('VERIFIED', 'SCHEDULED')
-      AND e.release_at IS NOT NULL
-      AND NULLIF(BTRIM(e.timing_source), '') IS NOT NULL
+    JOIN reaction_measurements rm ON rm.event_id = e.id
+    WHERE ${MEASURABLE_HEADLINE_MEASUREMENT}
     GROUP BY e.id, e.release_at
-    ORDER BY MAX(ABS(ar.pct_change_1d)) DESC, e.release_at DESC, e.id ASC
+    ORDER BY MAX(ABS(rm.pct_change)) DESC, e.release_at DESC, e.id ASC
     LIMIT 1
   `);
   const id = rows[0]?.id;

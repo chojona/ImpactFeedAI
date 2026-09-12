@@ -25,11 +25,12 @@ import {
   type CategoryCoverage,
   type LibraryCoverage,
 } from "@/services/events/eventQueries";
+import { HEADLINE_MEASURE } from "@/services/events/reactionMeasures";
 import {
-  REACTION_WINDOWS,
-  WINDOW_LABELS,
+  REACTION_MEASURES,
+  MEASURE_LABELS,
 } from "@/services/events/reactionView";
-import type { EventCategory, ReactionWindow } from "@/types/events";
+import type { EventCategory, ReactionMeasure } from "@/types/events";
 
 /**
  * The pattern library: what markets have historically done after each kind of
@@ -70,8 +71,8 @@ const isCategory = (value: string | null): value is EventCategory =>
   value !== null &&
   (FILTERABLE_CATEGORIES as readonly string[]).includes(value);
 
-const isWindow = (value: string | null): value is ReactionWindow =>
-  value !== null && (REACTION_WINDOWS as readonly string[]).includes(value);
+const isWindow = (value: string | null): value is ReactionMeasure =>
+  value !== null && (REACTION_MEASURES as readonly string[]).includes(value);
 
 /**
  * Open on the category with the most measured events so the page lands on
@@ -139,10 +140,10 @@ export default async function PatternsPage({ searchParams }: PageProps) {
   const observations = await listReactionObservations(category);
   const profile = profileObservations(observations, category);
 
-  const requestedWindow = first(params.h);
-  const horizon: ReactionWindow = isWindow(requestedWindow)
-    ? requestedWindow
-    : "1d";
+  const requestedMeasure = first(params.h);
+  const horizon: ReactionMeasure = isWindow(requestedMeasure)
+    ? requestedMeasure
+    : HEADLINE_MEASURE;
 
   const requestedSymbol = first(params.sym);
   const symbol =
@@ -220,7 +221,7 @@ export default async function PatternsPage({ searchParams }: PageProps) {
                 </p>
                 <HorizonMatrix
                   assets={profile.assets}
-                  activeWindow={horizon}
+                  activeMeasure={horizon}
                   selectedSymbol={symbol}
                   hrefForSymbol={(s) => href({ sym: s })}
                 />
@@ -228,7 +229,7 @@ export default async function PatternsPage({ searchParams }: PageProps) {
 
               <Panel padding="md">
                 <PanelHeader
-                  title={`${symbol} · every ${WINDOW_LABELS[horizon]} observation`}
+                  title={`${symbol} · every ${MEASURE_LABELS[horizon]} observation`}
                   aside={
                     <span className="text-[11px] text-ink-3">
                       Select a dot to open its event
@@ -239,7 +240,7 @@ export default async function PatternsPage({ searchParams }: PageProps) {
                 <ReactionDistribution
                   points={distribution}
                   symbol={symbol}
-                  window={horizon}
+                  measure={horizon}
                 />
               </Panel>
             </div>

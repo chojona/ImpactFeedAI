@@ -1,3 +1,4 @@
+import { HEADLINE_MEASURE } from "@/services/events/reactionMeasures";
 import { CATEGORY_CONFIG } from "@/lib/eventCategories";
 import { CategoryBadge, InstrumentBadge } from "@/components/ui/CategoryBadge";
 import { DataStateNote } from "@/components/ui/DataStatePanel";
@@ -7,9 +8,9 @@ import { directionOf } from "@/components/reactions/reactionTone";
 import { ReleaseValueInline } from "./ReleaseValues";
 import { eventWhenDisplay } from "@/services/events/timing";
 import {
-  WINDOW_LABELS,
-  pctForWindow,
-  strongestAtWindow,
+  MEASURE_LABELS,
+  pctForMeasure,
+  strongestAtMeasure,
 } from "@/services/events/reactionView";
 import type { NewsEvent } from "@/types/events";
 
@@ -56,17 +57,17 @@ import type { NewsEvent } from "@/types/events";
  * JavaScript from a list that grows without bound as the reader scrolls.
  */
 
-/** The horizon the feed headlines, matching `NewsEvent.primaryWindow`. */
-const FEED_WINDOW = "1d" as const;
+/** The measure the feed headlines. */
+const FEED_MEASURE = HEADLINE_MEASURE;
 
 interface Props {
   event: NewsEvent;
 }
 
 export function EventCard({ event }: Props) {
-  const headline = strongestAtWindow(event.assets, FEED_WINDOW);
+  const headline = strongestAtMeasure(event.assets, FEED_MEASURE);
   const measuredCount = event.assets.filter(
-    (asset) => pctForWindow(asset, FEED_WINDOW) !== null,
+    (asset) => pctForMeasure(asset, FEED_MEASURE) !== null,
   ).length;
   const direction = directionOf(headline?.value ?? null);
   const categoryColor = CATEGORY_CONFIG[event.category].color;
@@ -133,16 +134,16 @@ export function EventCard({ event }: Props) {
               <ReactionIndicator
                 value={headline.value}
                 symbol={headline.asset.symbol}
-                windowLabel={`over ${WINDOW_LABELS[FEED_WINDOW]}`}
+                windowLabel={`over ${MEASURE_LABELS[FEED_MEASURE]}`}
                 size="md"
               />
-              <span className="eyebrow">{WINDOW_LABELS[FEED_WINDOW]}</span>
+              <span className="eyebrow">{MEASURE_LABELS[FEED_MEASURE]}</span>
             </span>
           </div>
           <div className="mt-2.5">
             <MiniReactionBars
               assets={event.assets}
-              window={FEED_WINDOW}
+              measure={FEED_MEASURE}
               limit={3}
               measuredCount={measuredCount}
             />

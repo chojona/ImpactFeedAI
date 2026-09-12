@@ -3,16 +3,17 @@ import { Activity } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { MetricCell, MetricRow } from "@/components/ui/Metric";
 import { ReactionIndicator } from "@/components/reactions/ReactionIndicator";
+import { SessionBasisBadge } from "@/components/reactions/SessionBasisBadge";
 import { directionOf } from "@/components/reactions/reactionTone";
 import {
-  REACTION_WINDOWS,
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
+  REACTION_MEASURES,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
   formatPercentChange,
-  pctForWindow,
-  rankByWindow,
+  pctForMeasure,
+  rankByMeasure,
 } from "@/services/events/reactionView";
-import type { AssetReaction, ReactionWindow } from "@/types/events";
+import type { AssetReaction, ReactionMeasure } from "@/types/events";
 
 /**
  * The five-second answer to "what did the market do".
@@ -58,11 +59,20 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
 
 const BENCHMARK_SYMBOL = "SPY";
 
-/** Order of preference for the headline. `1d` is the horizon the app quotes. */
-const HEADLINE_PREFERENCE: readonly ReactionWindow[] = ["1d", "1h", "1w"];
+/**
+ * Order of preference for the headline. `RELEASE_SESSION` is the measure the
+ * app quotes (`HEADLINE_MEASURE`); the others are fallbacks only for the rare
+ * event where the headline measure itself was not measurable.
+ */
+const HEADLINE_PREFERENCE: readonly ReactionMeasure[] = [
+  "RELEASE_SESSION",
+  "INTRADAY_60M",
+  "SESSION_PLUS_1",
+  "SESSION_PLUS_5",
+];
 
 export interface ReactionSummary {
-  window: ReactionWindow;
+  measure: ReactionMeasure;
   strongest: { asset: AssetReaction; value: number };
   benchmark: { asset: AssetReaction; value: number | null } | null;
   measured: number;
@@ -71,7 +81,7 @@ export interface ReactionSummary {
   down: number;
   flat: number;
   /** Horizons with at least one reading anywhere in the set. */
-  measuredWindows: ReactionWindow[];
+  measuredMeasures: ReactionMeasure[];
 }
 
 /**
@@ -84,38 +94,38 @@ export function summarizeReaction(
 ): ReactionSummary | null {
   if (assets.length === 0) return null;
 
-  const measuredWindows = REACTION_WINDOWS.filter((window) =>
-    assets.some((asset) => pctForWindow(asset, window) !== null),
+  const measuredMeasures = REACTION_MEASURES.filter((measure) =>
+    assets.some((asset) => pctForMeasure(asset, measure) !== null),
   );
-  if (measuredWindows.length === 0) return null;
+  if (measuredMeasures.length === 0) return null;
 
-  const window =
+  const measure =
     HEADLINE_PREFERENCE.find((candidate) =>
-      measuredWindows.includes(candidate),
-    ) ?? measuredWindows[0];
+      measuredMeasures.includes(candidate),
+    ) ?? measuredMeasures[0];
 
-  const { measured } = rankByWindow(assets, window);
+  const { measured } = rankByMeasure(assets, measure);
   const strongest = measured[0];
   if (strongest === undefined) return null;
 
   const benchmarkAsset = assets.find((a) => a.symbol === BENCHMARK_SYMBOL);
 
   return {
-    window,
+    measure,
     strongest,
     benchmark:
       benchmarkAsset === undefined
         ? null
         : {
             asset: benchmarkAsset,
-            value: pctForWindow(benchmarkAsset, window),
+            value: pctForMeasure(benchmarkAsset, measure),
           },
     measured: measured.length,
     total: assets.length,
     up: measured.filter((r) => r.value > 0).length,
     down: measured.filter((r) => r.value < 0).length,
     flat: measured.filter((r) => r.value === 0).length,
-    measuredWindows,
+    measuredMeasures,
   };
 }
 
@@ -150,7 +160,7 @@ export function EventReactionSummary({
 }: {
   summary: ReactionSummary;
 }) {
-  const { window, strongest, benchmark } = summary;
+  const { measure, strongest, benchmark } = summary;
   const partial = summary.measured < summary.total;
   const chrome = DIRECTION_CHROME[directionOf(strongest.value) ?? "FLAT"];
 
@@ -171,14 +181,14 @@ export function EventReactionSummary({
               <Activity className="h-3.5 w-3.5" strokeWidth={2.5} />
             </span>
             <span className="eyebrow">Largest measured move</span>
-            <Badge size="xs">{WINDOW_LABELS[window]}</Badge>
+            <Badge size="xs">{MEASURE_LABELS[measure]}</Badge>
           </div>
 
           <div className="mt-4">
             <ReactionIndicator
               value={strongest.value}
               symbol={strongest.asset.symbol}
-              windowLabel={WINDOW_DESCRIPTIONS[window]}
+              windowLabel={MEASURE_DESCRIPTIONS[measure]}
               size="hero"
             />
           </div>
@@ -187,11 +197,12 @@ export function EventReactionSummary({
             <span className="num text-[15px] font-semibold text-ink">
               {strongest.asset.symbol}
             </span>
+            <SessionBasisBadge sessionBasis={strongest.asset.sessionBasis} />
             <span className="text-xs text-ink-3">{strongest.asset.name}</span>
           </div>
 
           <p className="mt-3 max-w-sm text-xs leading-relaxed text-ink-3">
-            From the pre-release baseline bar, {WINDOW_DESCRIPTIONS[window]}.
+            From the pre-release baseline bar, {MEASURE_DESCRIPTIONS[measure]}.
           </p>
         </div>
 
@@ -223,7 +234,7 @@ export function EventReactionSummary({
               absenceLabel={
                 benchmark === null ? "Not in universe" : "Not measured"
               }
-              unit={WINDOW_LABELS[window]}
+              unit={MEASURE_LABELS[measure]}
               note={benchmark === null ? undefined : benchmark.asset.name}
             />
 
@@ -249,8 +260,8 @@ export function EventReactionSummary({
                 <>
                   instruments ·{" "}
                   <span className="num">
-                    {summary.measuredWindows
-                      .map((w) => WINDOW_LABELS[w])
+                    {summary.measuredMeasures
+                      .map((m) => MEASURE_LABELS[m])
                       .join(" ")}
                   </span>{" "}
                   stored

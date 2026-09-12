@@ -1,96 +1,144 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  assertSingleMeasure,
   formatPercentChange,
-  measuredWindows,
-  rankByWindow,
-  reactionPath,
-  strongestAtWindow,
-  unmeasuredWindows,
+  measuredMeasures,
+  measurementSeries,
+  rankByMeasure,
+  strongestAtMeasure,
+  unmeasuredMeasures,
 } from "@/services/events/reactionView";
-import type { AssetReaction } from "@/types/events";
+import type { AssetReaction, MeasuredMove, ReactionMeasure } from "@/types/events";
+
+const move = (measure: ReactionMeasure, pctChange: number): MeasuredMove => ({
+  measure,
+  pctChange,
+  anchorPrice: 100,
+  anchorBarAt: "2025-05-12T13:30:00.000Z",
+  anchorSessionDay: "2025-05-12",
+  endpointPrice: 100 + pctChange,
+  endpointBarAt: "2025-05-13T13:30:00.000Z",
+  endpointSessionDay: "2025-05-13",
+  releaseSessionDay: "2025-05-13",
+  anchorKind: measure === "INTRADAY_60M" ? "PRE_RELEASE_INTRADAY_BAR" : "PRIOR_SESSION_CLOSE",
+  priceBasis: "SPLIT_ADJUSTED",
+});
 
 const asset = (
   symbol: string,
-  moves: Partial<Pick<AssetReaction, "pct1h" | "pct1d" | "pct1w">>,
-): AssetReaction => ({
-  symbol,
-  name: symbol,
-  assetType: "INDEX",
-  priceAtEvent: 100,
-  price1h: null,
-  price1d: moves.pct1d === undefined ? null : 101,
-  price1w: null,
-  pct1h: moves.pct1h ?? null,
-  pct1d: moves.pct1d ?? null,
-  pct1w: moves.pct1w ?? null,
-  anchorAt: null,
-  calculationVersion: 2,
-  primaryWindow: moves.pct1d === undefined ? null : "1d",
-  percentChange: moves.pct1d ?? null,
-  direction: null,
-});
+  moves: Partial<Record<ReactionMeasure, number>>,
+): AssetReaction => {
+  const measures: Partial<Record<ReactionMeasure, MeasuredMove>> = {};
+  for (const [measure, pct] of Object.entries(moves) as [ReactionMeasure, number][]) {
+    measures[measure] = move(measure, pct);
+  }
+  const headline = measures.RELEASE_SESSION ?? null;
+  return {
+    symbol,
+    name: symbol,
+    assetType: "INDEX",
+    sessionBasis: "US_EQUITY_RTH",
+    measures,
+    headlineMeasure: headline === null ? null : "RELEASE_SESSION",
+    percentChange: headline?.pctChange ?? null,
+    direction: null,
+  };
+};
 
-describe("rankByWindow", () => {
+describe("rankByMeasure", () => {
   it("separates unmeasured assets instead of ranking them at zero", () => {
     // A zero-length bar and a measured 0.00% are the same picture, so an
     // unmeasured asset must never enter the ranked set.
-    const ranking = rankByWindow(
-      [asset("SPY", { pct1d: 0.4 }), asset("TLT", {}), asset("QQQ", { pct1d: -1.2 })],
-      "1d",
+    const ranking = rankByMeasure(
+      [
+        asset("SPY", { RELEASE_SESSION: 0.4 }),
+        asset("TLT", {}),
+        asset("QQQ", { RELEASE_SESSION: -1.2 }),
+      ],
+      "RELEASE_SESSION",
     );
     expect(ranking.measured.map((r) => r.asset.symbol)).toEqual(["QQQ", "SPY"]);
     expect(ranking.unmeasured.map((a) => a.symbol)).toEqual(["TLT"]);
   });
 
   it("ranks by absolute move, not by signed move", () => {
-    const ranking = rankByWindow(
-      [asset("SPY", { pct1d: 0.5 }), asset("QQQ", { pct1d: -3 })],
-      "1d",
+    const ranking = rankByMeasure(
+      [asset("SPY", { RELEASE_SESSION: 0.5 }), asset("QQQ", { RELEASE_SESSION: -3 })],
+      "RELEASE_SESSION",
     );
     expect(ranking.measured[0].asset.symbol).toBe("QQQ");
   });
 
   it("reports a null scale when nothing was measured", () => {
-    expect(rankByWindow([asset("SPY", {})], "1d").maxAbs).toBeNull();
+    expect(rankByMeasure([asset("SPY", {})], "RELEASE_SESSION").maxAbs).toBeNull();
   });
 
-  it("ranks each window independently", () => {
+  it("ranks each measure independently", () => {
     const assets = [
-      asset("SPY", { pct1h: 2, pct1d: 0.1 }),
-      asset("QQQ", { pct1h: 0.1, pct1d: 2 }),
+      asset("SPY", { INTRADAY_60M: 2, RELEASE_SESSION: 0.1 }),
+      asset("QQQ", { INTRADAY_60M: 0.1, RELEASE_SESSION: 2 }),
     ];
-    expect(rankByWindow(assets, "1h").measured[0].asset.symbol).toBe("SPY");
-    expect(rankByWindow(assets, "1d").measured[0].asset.symbol).toBe("QQQ");
+    expect(rankByMeasure(assets, "INTRADAY_60M").measured[0].asset.symbol).toBe("SPY");
+    expect(rankByMeasure(assets, "RELEASE_SESSION").measured[0].asset.symbol).toBe("QQQ");
   });
 
   it("keeps a genuine zero in the measured set", () => {
-    const ranking = rankByWindow([asset("SPY", { pct1d: 0 })], "1d");
+    const ranking = rankByMeasure([asset("SPY", { RELEASE_SESSION: 0 })], "RELEASE_SESSION");
     expect(ranking.measured).toHaveLength(1);
     expect(ranking.unmeasured).toHaveLength(0);
   });
 });
 
-describe("strongestAtWindow", () => {
-  it("is null when no asset has a reading at that window", () => {
-    expect(strongestAtWindow([asset("SPY", { pct1w: 3 })], "1h")).toBeNull();
+describe("strongestAtMeasure", () => {
+  it("is null when no asset has a reading at that measure", () => {
+    expect(
+      strongestAtMeasure([asset("SPY", { SESSION_PLUS_5: 3 })], "INTRADAY_60M"),
+    ).toBeNull();
   });
 });
 
-describe("measured and unmeasured windows", () => {
-  it("partitions the three windows", () => {
-    const a = asset("SPY", { pct1h: 1, pct1w: -1 });
-    expect(measuredWindows(a)).toEqual(["1h", "1w"]);
-    expect(unmeasuredWindows(a)).toEqual(["1d"]);
+describe("measured and unmeasured measures", () => {
+  it("partitions the four measures", () => {
+    const a = asset("SPY", { INTRADAY_60M: 1, SESSION_PLUS_5: -1 });
+    expect(measuredMeasures(a)).toEqual(["INTRADAY_60M", "SESSION_PLUS_5"]);
+    expect(unmeasuredMeasures(a)).toEqual(["RELEASE_SESSION", "SESSION_PLUS_1"]);
   });
 });
 
-describe("reactionPath", () => {
-  it("starts at the anchor and skips gaps without interpolating", () => {
-    const path = reactionPath(asset("SPY", { pct1h: 0.2, pct1w: 1.7 }));
-    expect(path.map((p) => p.label)).toEqual(["T", "1H", "1W"]);
-    expect(path[0].value).toBe(0);
-    expect(path[0].window).toBeNull();
+describe("measurementSeries", () => {
+  it("emits only the measures present, in canonical order, without interpolating", () => {
+    const series = measurementSeries(asset("SPY", { INTRADAY_60M: 0.2, SESSION_PLUS_5: 1.7 }));
+    expect(series.map((p) => p.label)).toEqual(["First hour", "5 sessions"]);
+    expect(series.map((p) => p.value)).toEqual([0.2, 1.7]);
+  });
+
+  it("returns nothing when no measure was measured", () => {
+    expect(measurementSeries(asset("SPY", {}))).toEqual([]);
+  });
+});
+
+describe("assertSingleMeasure", () => {
+  it("returns the shared measure when every value agrees", () => {
+    expect(
+      assertSingleMeasure([
+        { measure: "RELEASE_SESSION", value: 1 },
+        { measure: "RELEASE_SESSION", value: -2 },
+      ]),
+    ).toBe("RELEASE_SESSION");
+  });
+
+  it("returns null for an empty input rather than throwing", () => {
+    expect(assertSingleMeasure([])).toBeNull();
+  });
+
+  it("throws when values are drawn from more than one measure", () => {
+    expect(() =>
+      assertSingleMeasure([
+        { measure: "RELEASE_SESSION", value: 1 },
+        { measure: "SESSION_PLUS_1", value: 2 },
+      ]),
+    ).toThrow(/more than one measure/);
   });
 });
 

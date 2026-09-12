@@ -6,8 +6,8 @@ import {
   maxAbsMove,
   type EventRow,
 } from "@/services/events/mapEvent";
-import { reactionSeries, pctForWindow } from "@/services/events/reactionView";
-import { ARCHIVED_ASSET_REACTION_VERSION } from "@/services/events/timing";
+import { measurementSeries, pctForMeasure } from "@/services/events/reactionView";
+import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
 import {
   CATEGORY_CONFIG,
   categoryForEventType,
@@ -16,22 +16,50 @@ import {
 } from "@/lib/eventCategories";
 import type { EventCategory, EventTypeName } from "@/types/events";
 
+/** One measurement row. `pctChange` derives from anchor/endpoint unless overridden. */
+const measurement = (
+  symbol: string,
+  measure: EventRow["reactionMeasurements"][number]["measure"],
+  over: Partial<EventRow["reactionMeasurements"][number]> = {},
+): EventRow["reactionMeasurements"][number] => {
+  const anchorPrice = over.anchorPrice ?? 100;
+  const endpointPrice = over.endpointPrice ?? 100;
+  return {
+    symbol,
+    measure,
+    anchorKind: measure === "INTRADAY_60M" ? "PRE_RELEASE_INTRADAY_BAR" : "PRIOR_SESSION_CLOSE",
+    anchorPrice,
+    anchorBarAt: new Date("2025-05-12T13:30:00Z"),
+    anchorSessionDay: new Date("2025-05-12T00:00:00Z"),
+    endpointPrice,
+    endpointBarAt: new Date("2025-05-13T13:30:00Z"),
+    endpointSessionDay: new Date("2025-05-13T00:00:00Z"),
+    releaseSessionDay: new Date("2025-05-13T00:00:00Z"),
+    pctChange: ((endpointPrice - anchorPrice) / anchorPrice) * 100,
+    priceBasis: "SPLIT_ADJUSTED",
+    sessionBasis: "US_EQUITY_RTH",
+    calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+    ...over,
+  };
+};
+
+/** A RELEASE_SESSION-only row for one symbol, at the given pctChange. */
 const reaction = (
-  assetSymbol: string,
-  over: Partial<EventRow["assetReactions"][number]> = {},
-): EventRow["assetReactions"][number] => ({
-  assetSymbol,
-  priceAtEvent: 100,
-  price1h: null,
-  price1d: null,
-  price1w: null,
-  pctChange1h: null,
-  pctChange1d: null,
-  pctChange1w: null,
-  anchorAt: new Date("2025-05-13T13:30:00Z"),
-  calculationVersion: ARCHIVED_ASSET_REACTION_VERSION,
-  ...over,
-});
+  symbol: string,
+  over: { pctChange1h?: number; pctChange1d?: number; pctChange1w?: number } = {},
+): EventRow["reactionMeasurements"][number][] => {
+  const rows: EventRow["reactionMeasurements"][number][] = [];
+  if (over.pctChange1h !== undefined) {
+    rows.push(measurement(symbol, "INTRADAY_60M", { pctChange: over.pctChange1h }));
+  }
+  if (over.pctChange1d !== undefined) {
+    rows.push(measurement(symbol, "RELEASE_SESSION", { pctChange: over.pctChange1d }));
+  }
+  if (over.pctChange1w !== undefined) {
+    rows.push(measurement(symbol, "SESSION_PLUS_5", { pctChange: over.pctChange1w }));
+  }
+  return rows;
+};
 
 const releaseRow = (
   over: Partial<EventRow["dataReleases"][number]> = {},
@@ -52,7 +80,13 @@ const releaseRow = (
   ...over,
 });
 
-const row = (over: Partial<EventRow> = {}): EventRow => ({
+type MeasurementRow = EventRow["reactionMeasurements"][number];
+
+const row = (
+  over: Partial<Omit<EventRow, "reactionMeasurements">> & {
+    reactionMeasurements?: (MeasurementRow | MeasurementRow[])[];
+  } = {},
+): EventRow => ({
   id: "evt-1",
   headline: "CPI prints 2.3% YoY — below prior (Apr 2025)",
   eventType: "CPI",
@@ -63,9 +97,9 @@ const row = (over: Partial<EventRow> = {}): EventRow => ({
   timingSource: "BLS release calendar",
   sourceUrl: "https://fred.stlouisfed.org/series/CPIAUCNS",
   explanation: null,
-  assetReactions: [],
   dataReleases: [],
   ...over,
+  reactionMeasurements: (over.reactionMeasurements ?? []).flat(),
 });
 
 describe("mapEvent", () => {
@@ -104,7 +138,7 @@ describe("mapEvent", () => {
       const event = mapEvent(
         row({
           timingStatus,
-          assetReactions: [reaction("SPY", { pctChange1d: 1.2 })],
+          reactionMeasurements: [reaction("SPY", { pctChange1d: 1.2 })],
         }),
       );
       expect(event.timing.reactionEligible).toBe(false);
@@ -117,7 +151,7 @@ describe("mapEvent", () => {
     const event = mapEvent(
       row({
         timingSource: "   ",
-        assetReactions: [reaction("SPY", { pctChange1d: 1.2 })],
+        reactionMeasurements: [reaction("SPY", { pctChange1d: 1.2 })],
       }),
     );
     expect(event.timing.ineligibilityReason).toBe("missing_timing_source");
@@ -128,7 +162,7 @@ describe("mapEvent", () => {
     const missing = mapEvent(
       row({
         releaseAt: null,
-        assetReactions: [reaction("SPY", { pctChange1d: 1.2 })],
+        reactionMeasurements: [reaction("SPY", { pctChange1d: 1.2 })],
       }),
     );
     expect(missing.timing.ineligibilityReason).toBe(
@@ -139,7 +173,7 @@ describe("mapEvent", () => {
     const invalid = mapEvent(
       row({
         releaseAt: new Date(Number.NaN),
-        assetReactions: [reaction("SPY", { pctChange1d: 1.2 })],
+        reactionMeasurements: [reaction("SPY", { pctChange1d: 1.2 })],
       }),
     );
     expect(invalid.timing.ineligibilityReason).toBe(
@@ -149,26 +183,26 @@ describe("mapEvent", () => {
     expect(invalid.assets).toEqual([]);
   });
 
-  it("accepts official scheduled timing and serializes the actual price anchor", () => {
+  it("accepts official scheduled timing and exposes the headline measure", () => {
     const event = mapEvent(
       row({
         timingStatus: "SCHEDULED",
-        assetReactions: [reaction("SPY", { pctChange1d: 1.2 })],
+        reactionMeasurements: [reaction("SPY", { pctChange1d: 1.2 })],
       }),
     );
     expect(event.timing.reactionEligible).toBe(true);
-    expect(event.assets[0].anchorAt).toBe("2025-05-13T13:30:00.000Z");
-    expect(event.assets[0].calculationVersion).toBe(
-      ARCHIVED_ASSET_REACTION_VERSION,
+    expect(event.assets[0].measures.RELEASE_SESSION?.anchorBarAt).toBe(
+      "2025-05-12T13:30:00.000Z",
     );
+    expect(event.assets[0].headlineMeasure).toBe("RELEASE_SESSION");
   });
 
-  it("drops legacy and unversioned reaction rows", () => {
+  it("drops rows at a stale calculation version", () => {
     const event = mapEvent(
       row({
-        assetReactions: [
-          reaction("SPY", { calculationVersion: null, pctChange1d: 9 }),
-          reaction("QQQ", { calculationVersion: 0, pctChange1d: 8 }),
+        reactionMeasurements: [
+          measurement("SPY", "RELEASE_SESSION", { pctChange: 9, calculationVersion: 2 }),
+          measurement("QQQ", "RELEASE_SESSION", { pctChange: 8, calculationVersion: 1 }),
           reaction("TLT", { pctChange1d: -1 }),
         ],
       }),
@@ -176,25 +210,18 @@ describe("mapEvent", () => {
     expect(event.assets.map((asset) => asset.symbol)).toEqual(["TLT"]);
   });
 
-  it("sanitizes non-finite reaction values instead of publishing them", () => {
+  it("never publishes a non-finite stored value — the measure is simply absent", () => {
     const event = mapEvent(
       row({
-        assetReactions: [
-          reaction("SPY", {
-            price1d: Number.POSITIVE_INFINITY,
-            pctChange1h: Number.NaN,
-            pctChange1d: Number.POSITIVE_INFINITY,
-            pctChange1w: Number.NEGATIVE_INFINITY,
-          }),
+        reactionMeasurements: [
+          measurement("SPY", "RELEASE_SESSION", { pctChange: Number.POSITIVE_INFINITY }),
+          measurement("SPY", "INTRADAY_60M", { anchorPrice: Number.NaN }),
         ],
       }),
     );
     expect(event.assets[0]).toMatchObject({
-      price1d: null,
-      pct1h: null,
-      pct1d: null,
-      pct1w: null,
-      primaryWindow: null,
+      measures: {},
+      headlineMeasure: null,
       percentChange: null,
       direction: null,
     });
@@ -210,46 +237,48 @@ describe("mapEvent", () => {
     expect(event.explanation).toBe("Shelter drove the miss.");
   });
 
-  describe("primary window selection", () => {
-    it("prefers the one-day window", () => {
+  describe("headline measure selection", () => {
+    it("always headlines RELEASE_SESSION when present, regardless of other measures", () => {
       const event = mapEvent(
         row({
-          assetReactions: [
+          reactionMeasurements: [
             reaction("SPY", { pctChange1h: 0.1, pctChange1d: 0.8, pctChange1w: 1.7 }),
           ],
         }),
       );
-      expect(event.assets[0].primaryWindow).toBe("1d");
+      expect(event.assets[0].headlineMeasure).toBe("RELEASE_SESSION");
       expect(event.assets[0].percentChange).toBe(0.8);
       expect(event.assets[0].direction).toBe("UP");
     });
 
-    it("does not substitute one-week or one-hour data for the one-day headline", () => {
+    it("does not substitute another measure for the missing headline", () => {
       const weekOnly = mapEvent(
-        row({ assetReactions: [reaction("SPY", { pctChange1w: -2.4 })] }),
+        row({ reactionMeasurements: [reaction("SPY", { pctChange1w: -2.4 })] }),
       );
-      expect(weekOnly.assets[0].pct1w).toBe(-2.4);
-      expect(weekOnly.assets[0].primaryWindow).toBeNull();
+      expect(weekOnly.assets[0].measures.SESSION_PLUS_5?.pctChange).toBe(-2.4);
+      expect(weekOnly.assets[0].headlineMeasure).toBeNull();
       expect(weekOnly.assets[0].percentChange).toBeNull();
       expect(weekOnly.assets[0].direction).toBeNull();
 
       const hourOnly = mapEvent(
-        row({ assetReactions: [reaction("SPY", { pctChange1h: 0.3 })] }),
+        row({ reactionMeasurements: [reaction("SPY", { pctChange1h: 0.3 })] }),
       );
-      expect(hourOnly.assets[0].pct1h).toBe(0.3);
-      expect(hourOnly.assets[0].primaryWindow).toBeNull();
+      expect(hourOnly.assets[0].measures.INTRADAY_60M?.pctChange).toBe(0.3);
+      expect(hourOnly.assets[0].headlineMeasure).toBeNull();
     });
 
-    it("reports null — not FLAT — when no window was measurable", () => {
-      const event = mapEvent(row({ assetReactions: [reaction("SPY")] }));
-      expect(event.assets[0].primaryWindow).toBeNull();
+    it("reports null — not FLAT — when the headline measure was not measurable", () => {
+      // A symbol only ever appears with a non-headline measure present —
+      // v3 has no placeholder row for "nothing was measured at all".
+      const event = mapEvent(row({ reactionMeasurements: [reaction("SPY", { pctChange1w: 1 })] }));
+      expect(event.assets[0].headlineMeasure).toBeNull();
       expect(event.assets[0].percentChange).toBeNull();
       expect(event.assets[0].direction).toBeNull();
     });
 
     it("reports FLAT for a genuinely zero move", () => {
       const event = mapEvent(
-        row({ assetReactions: [reaction("SPY", { pctChange1d: 0 })] }),
+        row({ reactionMeasurements: [reaction("SPY", { pctChange1d: 0 })] }),
       );
       expect(event.assets[0].direction).toBe("FLAT");
       expect(event.assets[0].percentChange).toBe(0);
@@ -259,7 +288,7 @@ describe("mapEvent", () => {
   it("resolves symbol metadata and orders assets for display", () => {
     const event = mapEvent(
       row({
-        assetReactions: [
+        reactionMeasurements: [
           reaction("XLK", { pctChange1d: 1 }),
           reaction("BTC-USD", { pctChange1d: 2 }),
           reaction("SPY", { pctChange1d: 3 }),
@@ -277,7 +306,7 @@ describe("mapEvent", () => {
 
   it("degrades an unknown symbol to its ticker instead of throwing", () => {
     const event = mapEvent(
-      row({ assetReactions: [reaction("^VIX", { pctChange1d: 5 })] }),
+      row({ reactionMeasurements: [reaction("^VIX", { pctChange1d: 5 })] }),
     );
     expect(event.assets[0].name).toBe("^VIX");
   });
@@ -451,7 +480,7 @@ describe("maxAbsMove", () => {
   it("is the largest absolute measured move", () => {
     const event = mapEvent(
       row({
-        assetReactions: [
+        reactionMeasurements: [
           reaction("SPY", { pctChange1d: -1.2 }),
           reaction("QQQ", { pctChange1d: 3.4 }),
           reaction("TLT", { pctChange1d: -5.1 }),
@@ -464,14 +493,14 @@ describe("maxAbsMove", () => {
   it("ignores unmeasured assets instead of counting them as zero", () => {
     const event = mapEvent(
       row({
-        assetReactions: [reaction("SPY"), reaction("QQQ", { pctChange1d: 1.5 })],
+        reactionMeasurements: [reaction("SPY"), reaction("QQQ", { pctChange1d: 1.5 })],
       }),
     );
     expect(maxAbsMove(event)).toBeCloseTo(1.5, 4);
   });
 
   it("is null when nothing was measured", () => {
-    const event = mapEvent(row({ assetReactions: [reaction("SPY")] }));
+    const event = mapEvent(row({ reactionMeasurements: [reaction("SPY")] }));
     expect(maxAbsMove(event)).toBeNull();
   });
 });
@@ -479,29 +508,42 @@ describe("maxAbsMove", () => {
 describe("reactionView", () => {
   const asset = mapEvent(
     row({
-      assetReactions: [
+      reactionMeasurements: [
         reaction("SPY", { pctChange1h: 0.2, pctChange1w: 1.7 }),
       ],
     }),
   ).assets[0];
 
-  it("reads each window by name", () => {
-    expect(pctForWindow(asset, "1h")).toBe(0.2);
-    expect(pctForWindow(asset, "1d")).toBeNull();
-    expect(pctForWindow(asset, "1w")).toBe(1.7);
+  it("reads each measure by name", () => {
+    expect(pctForMeasure(asset, "INTRADAY_60M")).toBe(0.2);
+    expect(pctForMeasure(asset, "RELEASE_SESSION")).toBeNull();
+    expect(pctForMeasure(asset, "SESSION_PLUS_5")).toBe(1.7);
   });
 
-  it("starts the path at zero and skips unmeasured windows without interpolating", () => {
-    expect(reactionSeries(asset)).toEqual([
-      { label: "T", value: 0 },
-      { label: "1H", value: 0.2 },
-      { label: "1W", value: 1.7 },
+  it("emits only the measures actually present, never interpolating", () => {
+    expect(measurementSeries(asset).map((p: { label: string }) => p.label)).toEqual([
+      "First hour",
+      "5 sessions",
     ]);
+    expect(measurementSeries(asset).map((p: { value: number }) => p.value)).toEqual([0.2, 1.7]);
   });
 
-  it("returns just the anchor when nothing was measured", () => {
-    const bare = mapEvent(row({ assetReactions: [reaction("SPY")] })).assets[0];
-    expect(reactionSeries(bare)).toEqual([{ label: "T", value: 0 }]);
+  it("returns nothing when no measure was measured", () => {
+    // The engine writes no row for what it cannot measure — a symbol only
+    // ever appears in `assets` backed by at least one real measurement.
+    const measures: Record<string, never> = {};
+    expect(
+      measurementSeries({
+        symbol: "SPY",
+        name: "S&P 500",
+        assetType: "INDEX",
+        sessionBasis: "US_EQUITY_RTH",
+        measures,
+        headlineMeasure: null,
+        percentChange: null,
+        direction: null,
+      }),
+    ).toEqual([]);
   });
 });
 

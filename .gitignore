@@ -64,3 +64,4 @@ venv/
 
 # local database snapshots taken before migrations
 /backups/
+.playwright-mcp/

@@ -1,3 +1,9 @@
+import { HEADLINE_MEASURE, MEASURE_LABELS } from "@/services/events/reactionMeasures";
+import {
+  SESSION_BASIS_BADGE,
+  SESSION_BASIS_MEANING,
+} from "@/services/market/sessionBasis";
+import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
 import { Suspense, cache } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -325,7 +331,7 @@ async function CategoryContext({
           }
           className="mb-4"
         />
-        <HorizonMatrix assets={peers} activeWindow="1d" />
+        <HorizonMatrix assets={peers} activeMeasure={HEADLINE_MEASURE} />
       </div>
 
       <EventInHistory
@@ -363,34 +369,72 @@ function MethodSection({
   event: { timing: { source: string | null }; assets: readonly AssetReaction[] };
   hasReaction: boolean;
 }) {
-  const version = event.assets[0]?.calculationVersion ?? null;
+  const version = CURRENT_REACTION_CALCULATION_VERSION;
 
   const terms: { term: string; body: React.ReactNode }[] = [
     {
-      term: "Anchor",
-      body: "Every percentage is measured from the last bar that closed before the release instant, not from the session open.",
-    },
-    {
-      term: "Horizons",
+      term: "Release session",
       body: (
         <>
-          1H is one hour after the release instant; 1D and 1W are one session
-          and one week after the release session. They are four stored prices,
-          so the reaction chart&rsquo;s slots are evenly spaced and its axis is
-          not to scale.
+          The canonical trading session is the first one whose close falls
+          strictly after the release — a release at or after a session&rsquo;s
+          close belongs to the following session, never the one that just
+          ended. For an intra-session release, {MEASURE_LABELS.RELEASE_SESSION}
+          {" "}
+          therefore spans the trading that happened BEFORE the release as well
+          as after it: it is one full session&rsquo;s move, not a
+          release-to-close window.
+        </>
+      ),
+    },
+    {
+      term: "Anchor",
+      body: `Every session-family percentage (${MEASURE_LABELS.RELEASE_SESSION}, ${MEASURE_LABELS.SESSION_PLUS_1}, ${MEASURE_LABELS.SESSION_PLUS_5}) is measured from the prior session's close. ${MEASURE_LABELS.INTRADAY_60M} is measured from the last intraday bar before the release instant instead — a different, temporally tighter anchor, used only where intraday history is available.`,
+    },
+    {
+      term: "Measures",
+      body: (
+        <>
+          {MEASURE_LABELS.INTRADAY_60M} targets 60 minutes after the release,
+          with a 2-hour window before the search for an endpoint bar gives up.
+          {" "}
+          {MEASURE_LABELS.RELEASE_SESSION}, {MEASURE_LABELS.SESSION_PLUS_1} and
+          {" "}
+          {MEASURE_LABELS.SESSION_PLUS_5} are 0, 1 and 5 trading sessions after
+          the release session — never a fixed number of calendar days, since a
+          holiday can widen any of those gaps. Each is an independent
+          observation with its own anchor, not a point on a shared path.
+        </>
+      ),
+    },
+    {
+      term: "Session basis",
+      body: (
+        <>
+          {(Object.keys(SESSION_BASIS_MEANING) as (keyof typeof SESSION_BASIS_MEANING)[]).map(
+            (basis, i) => (
+              <span key={basis}>
+                {i > 0 && " · "}
+                <span className="num font-semibold">
+                  {SESSION_BASIS_BADGE[basis]}
+                </span>{" "}
+                {SESSION_BASIS_MEANING[basis]}
+              </span>
+            ),
+          )}
         </>
       ),
     },
     {
       term: "Absent values",
-      body: "An em dash means the window was not measured. It never means zero — a fabricated 0.00% is indistinguishable from a flat market and would poison every average taken over it.",
+      body: "An em dash means the measure was not measured. It never means zero — a fabricated 0.00% is indistinguishable from a flat market and would poison every average taken over it.",
     },
     {
       term: "Provenance",
       body: (
         <>
           {event.timing.source ?? "No timing source recorded"}
-          {hasReaction && version !== null && (
+          {hasReaction && (
             <>
               {" · calculation version "}
               <span className="num">{version}</span>

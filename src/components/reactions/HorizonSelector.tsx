@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 import {
-  REACTION_WINDOWS,
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
+  REACTION_MEASURES,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
 } from "@/services/events/reactionView";
-import type { ReactionWindow } from "@/types/events";
+import type { ReactionMeasure } from "@/types/events";
 
 /**
  * Horizon switch shared by the event detail view and the pattern library.
@@ -17,9 +17,9 @@ import type { ReactionWindow } from "@/types/events";
  */
 
 interface Props {
-  value: ReactionWindow;
-  onChange?: (window: ReactionWindow) => void;
-  hrefFor?: (window: ReactionWindow) => string;
+  value: ReactionMeasure;
+  onChange?: (measure: ReactionMeasure) => void;
+  hrefFor?: (measure: ReactionMeasure) => string;
   label?: string;
   className?: string;
 }
@@ -55,35 +55,35 @@ export function HorizonSelector({
       aria-label={label}
       className={`flex items-center gap-1 rounded-lg border border-line bg-canvas/60 p-1 ${className}`}
     >
-      {REACTION_WINDOWS.map((window) => {
-        const active = window === value;
-        const title = `Move ${WINDOW_DESCRIPTIONS[window]}`;
+      {REACTION_MEASURES.map((measure) => {
+        const active = measure === value;
+        const title = `Move ${MEASURE_DESCRIPTIONS[measure]}`;
 
         if (hrefFor) {
           return (
             <Link
-              key={window}
-              href={hrefFor(window)}
+              key={measure}
+              href={hrefFor(measure)}
               scroll={false}
               aria-current={active ? "true" : undefined}
               title={title}
               className={`${baseClass} ${stateClass(active)}`}
             >
-              {WINDOW_LABELS[window]}
+              {MEASURE_LABELS[measure]}
             </Link>
           );
         }
 
         return (
           <button
-            key={window}
+            key={measure}
             type="button"
-            onClick={() => onChange?.(window)}
+            onClick={() => onChange?.(measure)}
             aria-pressed={active}
             title={title}
             className={`${baseClass} ${stateClass(active)}`}
           >
-            {WINDOW_LABELS[window]}
+            {MEASURE_LABELS[measure]}
           </button>
         );
       })}

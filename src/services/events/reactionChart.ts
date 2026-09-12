@@ -2,8 +2,8 @@
  * Plot geometry for the reaction chart, as pure functions.
  *
  * Kept out of the component so the part that can silently lie — where a point
- * lands relative to the zero line, and whether an unmeasured window occupies a
- * position at all — is unit-testable without a DOM.
+ * lands relative to the zero line, and whether an unmeasured measure occupies
+ * a position at all — is unit-testable without a DOM.
  *
  * Coordinates are percentages of the plot box, so the component can position
  * SVG geometry and HTML labels in the same coordinate system and stay crisp at
@@ -11,21 +11,29 @@
  *
  * ### Why four ordinal slots rather than a time axis
  *
- * The schema stores observations at T, T+1h, T+1d and T+1w. Those are 0, 1, 24
- * and 168 hours apart. On a time-proportional axis the anchor and the one-hour
- * reading collide in a single pixel while 95% of the width is the empty gap
- * before the one-week point. The slots are therefore evenly spaced and labelled
- * with the window identity, and the component states that the axis is not to
- * scale. When intraday candles exist, a real time axis becomes possible; that
- * is a new builder alongside this one, not a change to it.
+ * `RELEASE_SESSION`, `SESSION_PLUS_1` and `SESSION_PLUS_5` are trading
+ * sessions apart, not a fixed number of hours — a holiday can widen any of
+ * those gaps — and `INTRADAY_60M` sits inside the first of them. On a
+ * time-proportional axis the three session measures would collide near one
+ * edge while the intraday point floats almost on top of them. The slots are
+ * therefore evenly spaced and labelled with the measure identity, and the
+ * component states that the axis is not to scale.
+ *
+ * ### Why there is no shared anchor point
+ *
+ * v2 plotted `priceAtEvent` as a shared "T=0" point every window inherited.
+ * In v3 each measure has its OWN independent anchor (see spec §2) — there is
+ * no single baseline the four measures share, so synthesising a shared start
+ * point would assert a baseline that does not exist. Each measure is either
+ * plotted at its own value or, when unmeasured, contributes no point at all.
  */
 import {
-  REACTION_WINDOWS,
-  WINDOW_LABELS,
-  pctForWindow,
-  priceForWindow,
+  MEASURE_LABELS,
+  REACTION_MEASURES,
+  pctForMeasure,
+  priceForMeasure,
 } from "@/services/events/reactionView";
-import type { AssetReaction, ReactionWindow } from "@/types/events";
+import type { AssetReaction, ReactionMeasure } from "@/types/events";
 
 /** Horizontal inset so the first and last markers are not clipped. */
 const X_INSET = 6;
@@ -40,8 +48,7 @@ const DOMAIN_PADDING = 1.25;
 const MIN_HALF_DOMAIN = 0.25;
 
 export interface PlotSlot {
-  /** Null for the release anchor. */
-  window: ReactionWindow | null;
+  measure: ReactionMeasure;
   label: string;
   xPct: number;
 }
@@ -50,8 +57,6 @@ export interface PlotPoint extends PlotSlot {
   value: number;
   price: number | null;
   yPct: number;
-  /** False for the anchor, which is 0% by definition rather than measurement. */
-  measured: boolean;
 }
 
 export interface PlotSeries {
@@ -67,7 +72,7 @@ export interface PlotTick {
 }
 
 export interface ReactionPlot {
-  /** Every window the schema supports, measured or not. */
+  /** Every measure the contract defines, measured or not. */
   slots: PlotSlot[];
   focus: PlotSeries | null;
   /** Faint background series for cross-asset context. */
@@ -75,20 +80,19 @@ export interface ReactionPlot {
   ticks: PlotTick[];
   zeroYPct: number;
   halfDomain: number;
-  /** Windows the focused asset has no reading for. Never plotted. */
-  missingWindows: ReactionWindow[];
+  /** Measures the focused asset has no reading for. Never plotted. */
+  missingMeasures: ReactionMeasure[];
 }
 
 const slotXPct = (index: number, count: number): number =>
   count <= 1 ? 50 : X_INSET + (index * (100 - 2 * X_INSET)) / (count - 1);
 
-/** All four positions, so an unmeasured window is a visible gap, not a zero. */
+/** All four positions, so an unmeasured measure is a visible gap, not a zero. */
 export function plotSlots(): PlotSlot[] {
-  const windows: (ReactionWindow | null)[] = [null, ...REACTION_WINDOWS];
-  return windows.map((window, index) => ({
-    window,
-    label: window === null ? "T" : `+${WINDOW_LABELS[window]}`,
-    xPct: slotXPct(index, windows.length),
+  return REACTION_MEASURES.map((measure, index) => ({
+    measure,
+    label: MEASURE_LABELS[measure],
+    xPct: slotXPct(index, REACTION_MEASURES.length),
   }));
 }
 
@@ -114,26 +118,15 @@ function seriesFor(
 ): PlotSeries {
   const points: PlotPoint[] = [];
   for (const slot of slots) {
-    if (slot.window === null) {
-      points.push({
-        ...slot,
-        value: 0,
-        price: asset.priceAtEvent,
-        yPct: yPctFor(0, halfDomain),
-        measured: false,
-      });
-      continue;
-    }
-    const value = pctForWindow(asset, slot.window);
-    // A missing window contributes no point at all. Emitting one at y=0 would
-    // draw an unmeasured window as a measured flat market.
+    const value = pctForMeasure(asset, slot.measure);
+    // A missing measure contributes no point at all. Emitting one at y=0
+    // would draw an unmeasured measure as a measured flat market.
     if (value === null) continue;
     points.push({
       ...slot,
       value,
-      price: priceForWindow(asset, slot.window),
+      price: priceForMeasure(asset, slot.measure),
       yPct: yPctFor(value, halfDomain),
-      measured: true,
     });
   }
   return { symbol: asset.symbol, name: asset.name, points };
@@ -178,8 +171,8 @@ export function buildReactionPlot({
 
   const values: number[] = [];
   for (const asset of [...(focus ? [focus] : []), ...contextSeriesAssets]) {
-    for (const window of REACTION_WINDOWS) {
-      const value = pctForWindow(asset, window);
+    for (const measure of REACTION_MEASURES) {
+      const value = pctForMeasure(asset, measure);
       if (value !== null) values.push(value);
     }
   }
@@ -191,15 +184,15 @@ export function buildReactionPlot({
     focus: focus === null ? null : seriesFor(focus, slots, halfDomain),
     context: contextSeriesAssets
       .map((asset) => seriesFor(asset, slots, halfDomain))
-      // A context series with only the anchor point draws nothing useful.
+      // A context series with fewer than two points draws no useful line.
       .filter((series) => series.points.length > 1),
     ticks: ticksFor(halfDomain),
     zeroYPct: yPctFor(0, halfDomain),
     halfDomain,
-    missingWindows:
+    missingMeasures:
       focus === null
-        ? [...REACTION_WINDOWS]
-        : REACTION_WINDOWS.filter((w) => pctForWindow(focus, w) === null),
+        ? [...REACTION_MEASURES]
+        : REACTION_MEASURES.filter((m) => pctForMeasure(focus, m) === null),
   };
 }
 

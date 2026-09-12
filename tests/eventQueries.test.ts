@@ -77,7 +77,7 @@ vi.mock("@/services/events/mapEvent", async () => {
 });
 
 const { listEvents } = await import("@/services/events/eventQueries");
-const { ARCHIVED_ASSET_REACTION_VERSION } = await import(
+const { CURRENT_REACTION_CALCULATION_VERSION } = await import(
   "@/services/events/timing"
 );
 
@@ -86,12 +86,11 @@ const { ARCHIVED_ASSET_REACTION_VERSION } = await import(
  * shared eligibility fragment contributes. What is left is what the *caller*
  * scoped the query to.
  *
- * `eventQueries.ts` still reads `asset_reactions` (v2) ahead of the Stage 4
- * cutover, so the fragment's first bound value is the archived v2 version,
- * not the live v3 constant.
+ * Stage 4 cut the read path over to `reaction_measurements` (v3), so the
+ * fragment's first bound value is the live v3 constant.
  */
 const scopeOf = (values: unknown[]) => {
-  expect(values[0]).toBe(ARCHIVED_ASSET_REACTION_VERSION);
+  expect(values[0]).toBe(CURRENT_REACTION_CALCULATION_VERSION);
   return values.slice(1);
 };
 
@@ -135,7 +134,7 @@ describe("listEvents — rankedCount", () => {
     // ranking rejects cannot be counted as ranked.
     for (const clause of [
       "calculation_version",
-      "pct_change_1d IS NOT NULL",
+      "rm.measure = 'RELEASE_SESSION'",
       "timing_status IN",
       "release_at IS NOT NULL",
       "BTRIM(e.timing_source)",

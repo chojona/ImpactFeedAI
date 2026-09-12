@@ -1,3 +1,4 @@
+import { HEADLINE_MEASURE } from "@/services/events/reactionMeasures";
 import Link from "next/link";
 
 import { ReactionDistribution } from "@/components/patterns/ReactionDistribution";
@@ -7,15 +8,15 @@ import {
   type ReactionObservation,
 } from "@/services/analytics/patternAnalysis";
 import {
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
-  pctForWindow,
-  strongestAtWindow,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
+  pctForMeasure,
+  strongestAtMeasure,
 } from "@/services/events/reactionView";
 import type {
   AssetReaction,
   EventCategory,
-  ReactionWindow,
+  ReactionMeasure,
 } from "@/types/events";
 
 /**
@@ -40,8 +41,8 @@ import type {
  * sample of nine that contains the event you are reading about.
  */
 
-/** The horizon the rest of the app headlines. */
-const WINDOW: ReactionWindow = "1d";
+/** The measure the rest of the app headlines. */
+const MEASURE: ReactionMeasure = HEADLINE_MEASURE;
 
 interface Props {
   eventId: string;
@@ -61,7 +62,7 @@ export function EventInHistory({
   const symbol = focusSymbol(assets, observations, category);
   if (symbol === null) return null;
 
-  const points = distributionFor(observations, category, symbol, WINDOW);
+  const points = distributionFor(observations, category, symbol, MEASURE);
   if (points.length === 0) return null;
 
   return (
@@ -71,14 +72,14 @@ export function EventInHistory({
         title={
           <>
             This release against {category} history · {symbol} ·{" "}
-            {WINDOW_LABELS[WINDOW]}
+            {MEASURE_LABELS[MEASURE]}
           </>
         }
         aside={
           <Link
             href={`/patterns?cat=${category}&sym=${encodeURIComponent(
               symbol,
-            )}&h=${WINDOW}`}
+            )}&h=${MEASURE}`}
             className="rounded font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3 transition-colors hover:text-brand-bright"
           >
             Change instrument →
@@ -87,13 +88,13 @@ export function EventInHistory({
       />
       <p className="mt-1.5 mb-4 max-w-2xl text-[11px] leading-relaxed text-ink-3">
         Every {category} event in the library with a sourced release instant and
-        a measured {symbol} move {WINDOW_DESCRIPTIONS[WINDOW]}. The ringed dot is
+        a measured {symbol} move {MEASURE_DESCRIPTIONS[MEASURE]}. The ringed dot is
         this release.
       </p>
       <ReactionDistribution
         points={points}
         symbol={symbol}
-        window={WINDOW}
+        measure={MEASURE}
         selectedEventId={eventId}
       />
     </Panel>
@@ -119,18 +120,18 @@ function focusSymbol(
   const withHistory = new Set(
     observations
       .filter(
-        (o) => o.category === category && o.values[WINDOW] !== null,
+        (o) => o.category === category && o.values[MEASURE] !== null,
       )
       .map((o) => o.symbol),
   );
 
-  const strongest = strongestAtWindow(assets, WINDOW);
+  const strongest = strongestAtMeasure(assets, MEASURE);
   if (strongest && withHistory.has(strongest.asset.symbol)) {
     return strongest.asset.symbol;
   }
 
   const measured = assets
-    .filter((a) => pctForWindow(a, WINDOW) !== null)
+    .filter((a) => pctForMeasure(a, MEASURE) !== null)
     .map((a) => a.symbol)
     .find((symbol) => withHistory.has(symbol));
 

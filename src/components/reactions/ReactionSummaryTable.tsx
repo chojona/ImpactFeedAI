@@ -1,22 +1,23 @@
 import { InstrumentBadge } from "@/components/ui/CategoryBadge";
+import { SessionBasisBadge } from "./SessionBasisBadge";
 import { ScrollableTable } from "@/components/ui/ScrollableTable";
 import {
-  REACTION_WINDOWS,
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
+  REACTION_MEASURES,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
   formatPercentChange,
-  pctForWindow,
+  pctForMeasure,
 } from "@/services/events/reactionView";
 import { heatCellStyle, moveTextOnTintClass } from "./reactionTone";
-import type { AssetReaction, ReactionWindow } from "@/types/events";
+import type { AssetReaction, ReactionMeasure } from "@/types/events";
 
 /**
  * Cross-asset reaction table: one row per instrument, one column per measured
- * window.
+ * measure.
  *
  * The scanning surface for "what moved, and over what horizon". Cells are
  * tinted in proportion to the largest move in the table, so relative magnitude
- * is readable before the numbers are. An unmeasured window gets **no tint and
+ * is readable before the numbers are. An unmeasured measure gets **no tint and
  * an em dash** — the absence of a fill is the signal that separates "we did not
  * measure this" from "the market did not move", which a 0.00% would erase.
  *
@@ -34,25 +35,25 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
 interface Props {
   assets: readonly AssetReaction[];
   /** Window used for ordering, and emphasised in the header. */
-  sortWindow: ReactionWindow;
+  sortMeasure: ReactionMeasure;
   selectedSymbol?: string | null;
   onSelect?: (symbol: string) => void;
-  onSortWindowChange?: (window: ReactionWindow) => void;
+  onSortMeasureChange?: (measure: ReactionMeasure) => void;
   caption?: string;
 }
 
 export function ReactionSummaryTable({
   assets,
-  sortWindow,
+  sortMeasure,
   selectedSymbol = null,
   onSelect,
-  onSortWindowChange,
+  onSortMeasureChange,
   caption,
 }: Props) {
   const maxAbs = maxAbsAcross(assets);
-  const ordered = orderAssets(assets, sortWindow);
+  const ordered = orderAssets(assets, sortMeasure);
   const measuredCount = assets.filter(
-    (a) => pctForWindow(a, sortWindow) !== null,
+    (a) => pctForMeasure(a, sortMeasure) !== null,
   ).length;
 
   return (
@@ -61,7 +62,7 @@ export function ReactionSummaryTable({
         <table className="w-full min-w-[320px] border-collapse text-sm">
           <caption className="sr-only">
             {caption ??
-              `Percent change from the pre-release baseline for ${assets.length} assets at each measured window.`}
+              `Percent change from the pre-release baseline for ${assets.length} assets at each measured measure.`}
           </caption>
           <thead>
             <tr className="border-b border-line-strong">
@@ -71,32 +72,32 @@ export function ReactionSummaryTable({
               >
                 <span className="eyebrow">Instrument</span>
               </th>
-              {REACTION_WINDOWS.map((window) => (
+              {REACTION_MEASURES.map((measure) => (
                 <th
-                  key={window}
+                  key={measure}
                   scope="col"
-                  aria-sort={window === sortWindow ? "descending" : "none"}
+                  aria-sort={measure === sortMeasure ? "descending" : "none"}
                   className="py-2 pl-3 text-right"
                 >
-                  {onSortWindowChange ? (
+                  {onSortMeasureChange ? (
                     <button
                       type="button"
-                      onClick={() => onSortWindowChange(window)}
-                      aria-pressed={window === sortWindow}
-                      title={`Sort by the move ${WINDOW_DESCRIPTIONS[window]}`}
+                      onClick={() => onSortMeasureChange(measure)}
+                      aria-pressed={measure === sortMeasure}
+                      title={`Sort by the move ${MEASURE_DESCRIPTIONS[measure]}`}
                       className={`eyebrow rounded px-1.5 py-0.5 transition-colors hover:text-ink ${
-                        window === sortWindow ? "text-ink" : ""
+                        measure === sortMeasure ? "text-ink" : ""
                       }`}
                     >
-                      {WINDOW_LABELS[window]}
+                      {MEASURE_LABELS[measure]}
                     </button>
                   ) : (
                     <span
                       className={`eyebrow ${
-                        window === sortWindow ? "text-ink" : ""
+                        measure === sortMeasure ? "text-ink" : ""
                       }`}
                     >
-                      {WINDOW_LABELS[window]}
+                      {MEASURE_LABELS[measure]}
                     </span>
                   )}
                 </th>
@@ -127,35 +128,37 @@ export function ReactionSummaryTable({
                         onClick={() => onSelect(asset.symbol)}
                         aria-pressed={selected}
                         title={`Chart ${asset.symbol}`}
-                        className="flex w-full rounded px-1 py-0.5 text-left"
+                        className="flex w-full items-center gap-1.5 rounded px-1 py-0.5 text-left"
                       >
                         <InstrumentBadge
                           symbol={asset.symbol}
                           name={asset.name}
                           emphasis={selected}
                         />
+                        <SessionBasisBadge sessionBasis={asset.sessionBasis} />
                       </button>
                     ) : (
-                      <span className="flex px-1">
+                      <span className="flex items-center gap-1.5 px-1">
                         <InstrumentBadge
                           symbol={asset.symbol}
                           name={asset.name}
                           emphasis={selected}
                         />
+                        <SessionBasisBadge sessionBasis={asset.sessionBasis} />
                       </span>
                     )}
                   </th>
-                  {REACTION_WINDOWS.map((window) => {
-                    const value = pctForWindow(asset, window);
+                  {REACTION_MEASURES.map((measure) => {
+                    const value = pctForMeasure(asset, measure);
                     const formatted = formatPercentChange(value);
                     return (
                       <td
-                        key={window}
+                        key={measure}
                         style={heatCellStyle(value, maxAbs)}
                         title={
                           formatted === null
-                            ? `${asset.symbol} ${WINDOW_LABELS[window]}: not measured`
-                            : `${asset.symbol} ${formatted} ${WINDOW_DESCRIPTIONS[window]}`
+                            ? `${asset.symbol} ${MEASURE_LABELS[measure]}: not measured`
+                            : `${asset.symbol} ${formatted} ${MEASURE_DESCRIPTIONS[measure]}`
                         }
                         // `moveTextOnTintClass` rather than `moveTextClass`:
                         // these cells are drawn on their own colour, and the
@@ -163,7 +166,7 @@ export function ReactionSummaryTable({
                         // tint the heatmap produces.
                         className={`num py-2 pl-3 pr-2 text-right text-[13px] ${moveTextOnTintClass(
                           value,
-                        )} ${window === sortWindow ? "font-semibold" : ""}`}
+                        )} ${measure === sortMeasure ? "font-semibold" : ""}`}
                       >
                         {formatted ?? (
                           <span aria-label="not measured">—</span>
@@ -183,7 +186,7 @@ export function ReactionSummaryTable({
           <span className="num font-semibold text-ink">
             {measuredCount}/{assets.length}
           </span>{" "}
-          measured at {WINDOW_LABELS[sortWindow]}
+          measured at {MEASURE_LABELS[sortMeasure]}
         </span>
         <span className="text-ink-4">
           <span aria-hidden className="num">
@@ -197,17 +200,17 @@ export function ReactionSummaryTable({
 }
 
 /**
- * Assets with a reading at the sort window first, largest absolute move first;
+ * Assets with a reading at the sort measure first, largest absolute move first;
  * the rest keep their display order at the bottom. Unmeasured rows stay visible
  * because missing coverage is information about the event.
  */
 function orderAssets(
   assets: readonly AssetReaction[],
-  window: ReactionWindow,
+  measure: ReactionMeasure,
 ): AssetReaction[] {
   return [...assets].sort((a, b) => {
-    const av = pctForWindow(a, window);
-    const bv = pctForWindow(b, window);
+    const av = pctForMeasure(a, measure);
+    const bv = pctForMeasure(b, measure);
     if (av === null && bv === null) return 0;
     if (av === null) return 1;
     if (bv === null) return -1;
@@ -218,8 +221,8 @@ function orderAssets(
 function maxAbsAcross(assets: readonly AssetReaction[]): number | null {
   let max: number | null = null;
   for (const asset of assets) {
-    for (const window of REACTION_WINDOWS) {
-      const value = pctForWindow(asset, window);
+    for (const measure of REACTION_MEASURES) {
+      const value = pctForMeasure(asset, measure);
       if (value === null) continue;
       const abs = Math.abs(value);
       if (max === null || abs > max) max = abs;

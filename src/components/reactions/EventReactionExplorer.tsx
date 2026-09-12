@@ -10,14 +10,15 @@ import { ReactionSummaryTable } from "./ReactionSummaryTable";
 import { InstrumentBadge } from "@/components/ui/CategoryBadge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import {
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
-  measuredWindows,
-  pctForWindow,
-  strongestAtWindow,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
+  measuredMeasures,
+  pctForMeasure,
+  strongestAtMeasure,
 } from "@/services/events/reactionView";
+import { HEADLINE_MEASURE } from "@/services/events/reactionMeasures";
 import { formatNewYorkDateTime } from "@/services/events/timing";
-import type { AssetReaction, ReactionWindow } from "@/types/events";
+import type { AssetReaction, ReactionMeasure } from "@/types/events";
 
 /**
  * The interactive shell around the reaction visualizations.
@@ -39,14 +40,14 @@ import type { AssetReaction, ReactionWindow } from "@/types/events";
  * detail view of one instrument and which is the comparison across all of them.
  */
 
-const DEFAULT_WINDOW: ReactionWindow = "1d";
+const DEFAULT_MEASURE: ReactionMeasure = HEADLINE_MEASURE;
 
 interface Props {
   assets: readonly AssetReaction[];
 }
 
 export function EventReactionExplorer({ assets }: Props) {
-  const [horizon, setHorizon] = useState<ReactionWindow>(DEFAULT_WINDOW);
+  const [horizon, setHorizon] = useState<ReactionMeasure>(DEFAULT_MEASURE);
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(() =>
     defaultSymbol(assets),
   );
@@ -57,7 +58,7 @@ export function EventReactionExplorer({ assets }: Props) {
   );
 
   const measuredAtHorizon = assets.filter(
-    (a) => pctForWindow(a, horizon) !== null,
+    (a) => pctForMeasure(a, horizon) !== null,
   ).length;
 
   return (
@@ -71,7 +72,7 @@ export function EventReactionExplorer({ assets }: Props) {
           <span className="num font-semibold text-ink">
             {measuredAtHorizon}/{assets.length}
           </span>{" "}
-          instruments measured {WINDOW_DESCRIPTIONS[horizon]}
+          instruments measured {MEASURE_DESCRIPTIONS[horizon]}
         </p>
       </div>
 
@@ -88,7 +89,7 @@ export function EventReactionExplorer({ assets }: Props) {
             <ReactionChart
               asset={selected}
               context={assets}
-              highlightWindow={horizon}
+              highlightMeasure={horizon}
             />
           </div>
         </Panel>
@@ -109,27 +110,27 @@ export function EventReactionExplorer({ assets }: Props) {
           />
           <ReactionSummaryTable
             assets={assets}
-            sortWindow={horizon}
+            sortMeasure={horizon}
             selectedSymbol={selected?.symbol ?? null}
             onSelect={setSelectedSymbol}
-            onSortWindowChange={setHorizon}
+            onSortMeasureChange={setHorizon}
           />
         </Panel>
       </div>
 
       <Panel as="section" aria-label="Cross-asset reaction ranking">
         <PanelHeader
-          title={`Which instruments reacted most · ${WINDOW_LABELS[horizon]}`}
+          title={`Which instruments reacted most · ${MEASURE_LABELS[horizon]}`}
           aside={
             <span className="text-[11px] text-ink-3">
-              Ranked by absolute move {WINDOW_DESCRIPTIONS[horizon]}
+              Ranked by absolute move {MEASURE_DESCRIPTIONS[horizon]}
             </span>
           }
           className="mb-4"
         />
         <CrossAssetReactionBars
           assets={assets}
-          window={horizon}
+          measure={horizon}
           selectedSymbol={selected?.symbol ?? null}
           onSelect={setSelectedSymbol}
         />
@@ -151,11 +152,13 @@ function SelectedAssetHeader({
   horizon,
 }: {
   asset: AssetReaction;
-  horizon: ReactionWindow;
+  horizon: ReactionMeasure;
 }) {
-  const value = pctForWindow(asset, horizon);
-  const anchor = formatNewYorkDateTime(asset.anchorAt);
-  const windows = measuredWindows(asset);
+  const value = pctForMeasure(asset, horizon);
+  // Each measure carries its OWN anchor now — there is no single asset-level
+  // baseline to show independent of which measure is selected.
+  const anchor = formatNewYorkDateTime(asset.measures[horizon]?.anchorBarAt ?? null);
+  const windows = measuredMeasures(asset);
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
@@ -169,25 +172,25 @@ function SelectedAssetHeader({
             <>
               {" · measured at "}
               <span className="num">
-                {windows.map((w) => WINDOW_LABELS[w]).join(", ")}
+                {windows.map((w) => MEASURE_LABELS[w]).join(", ")}
               </span>
             </>
           )}
         </p>
       </div>
       <div className="shrink-0 text-right">
-        <div className="eyebrow">{WINDOW_LABELS[horizon]}</div>
+        <div className="eyebrow">{MEASURE_LABELS[horizon]}</div>
         <div className="mt-1">
           <ReactionIndicator
             value={value}
             symbol={asset.symbol}
-            windowLabel={WINDOW_DESCRIPTIONS[horizon]}
+            windowLabel={MEASURE_DESCRIPTIONS[horizon]}
             size="lg"
           />
         </div>
         {value === null && (
           <div className="mt-0.5 text-[10px] text-warn">
-            No {WINDOW_LABELS[horizon]} reading
+            No {MEASURE_LABELS[horizon]} reading
           </div>
         )}
       </div>
@@ -201,8 +204,8 @@ function SelectedAssetHeader({
  * falling back to the first row, so the chart is never empty when data exists.
  */
 function defaultSymbol(assets: readonly AssetReaction[]): string | null {
-  const strongest = strongestAtWindow(assets, DEFAULT_WINDOW);
+  const strongest = strongestAtMeasure(assets, DEFAULT_MEASURE);
   if (strongest) return strongest.asset.symbol;
-  const anyMeasured = assets.find((a) => measuredWindows(a).length > 0);
+  const anyMeasured = assets.find((a) => measuredMeasures(a).length > 0);
   return anyMeasured?.symbol ?? assets[0]?.symbol ?? null;
 }

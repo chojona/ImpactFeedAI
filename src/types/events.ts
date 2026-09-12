@@ -42,8 +42,11 @@ export type AssetType = "STOCK" | "CRYPTO" | "INDEX" | "FOREX" | "COMMODITY";
 
 export type Direction = "UP" | "DOWN" | "FLAT";
 
-/** The reaction windows the schema currently stores. */
-export type ReactionWindow = "1h" | "1d" | "1w";
+export type { ReactionMeasure } from "@/services/events/reactionMeasures";
+export type { SessionBasis } from "@/services/market/sessionBasis";
+import type { ReactionMeasure } from "@/services/events/reactionMeasures";
+import type { SessionBasis } from "@/services/market/sessionBasis";
+import type { PriceBasis } from "@/types/market";
 
 /** Mirrors the Prisma timing-provenance enum without importing generated code. */
 export type EventTimingStatus =
@@ -74,27 +77,40 @@ export interface EventTimingView {
   ineligibilityReason: ReactionTimingIneligibility | null;
 }
 
+/**
+ * One resolved reaction measurement for one asset — see
+ * docs/superpowers/specs/2026-09-12-reaction-measurement-contract-design.md.
+ * Every field is a stored value or a formatting of one; nothing here is
+ * interpolated or borrowed from another measure.
+ */
+export interface MeasuredMove {
+  measure: ReactionMeasure;
+  pctChange: number;
+  anchorPrice: number;
+  /** Provider bar stamp — an identifier, not necessarily a close instant. */
+  anchorBarAt: string;
+  anchorSessionDay: string;
+  endpointPrice: number;
+  endpointBarAt: string;
+  endpointSessionDay: string;
+  releaseSessionDay: string;
+  anchorKind: "PRE_RELEASE_INTRADAY_BAR" | "PRIOR_SESSION_CLOSE";
+  priceBasis: PriceBasis;
+}
+
 export interface AssetReaction {
   symbol: string;
   name: string;
   assetType: AssetType;
-  /** Price the reaction is measured from. Always present — the row requires it. */
-  priceAtEvent: number;
-  price1h: number | null;
-  price1d: number | null;
-  price1w: number | null;
-  pct1h: number | null;
-  pct1d: number | null;
-  pct1w: number | null;
-  /** Actual candle used as the return baseline. ISO 8601 UTC. */
-  anchorAt: string | null;
-  calculationVersion: number;
-  /**
-   * The feed and aggregate headline use one fixed horizon: one trading session.
-   * Other measured windows remain available on the detail view.
-   */
-  primaryWindow: ReactionWindow | null;
-  /** Percent change over `primaryWindow`. Null when nothing was measurable. */
+  /** Declared session structure for this instrument — see spec §4.3. */
+  sessionBasis: SessionBasis;
+  /** Only measures that were actually measured. Absence is omission, never a
+   *  zero and never borrowed from another measure. */
+  measures: Partial<Record<ReactionMeasure, MeasuredMove>>;
+  /** The measure actually present at HEADLINE_MEASURE, or null if absent. */
+  headlineMeasure: ReactionMeasure | null;
+  /** Percent change at the headline measure. Null when it was not measured —
+   *  never back-filled from another measure. */
   percentChange: number | null;
   /** Null when `percentChange` is null — not FLAT, which would assert no move. */
   direction: Direction | null;

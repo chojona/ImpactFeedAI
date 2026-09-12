@@ -3,18 +3,19 @@ import Link from "next/link";
 import {
   MIN_AGGREGATE_SAMPLE,
   type AssetProfile,
-  type HorizonStats,
+  type MeasureStats,
 } from "@/services/analytics/patternAnalysis";
 import {
-  REACTION_WINDOWS,
-  WINDOW_DESCRIPTIONS,
-  WINDOW_LABELS,
+  REACTION_MEASURES,
+  MEASURE_DESCRIPTIONS,
+  MEASURE_LABELS,
   formatPercentChange,
 } from "@/services/events/reactionView";
 import { InstrumentBadge } from "@/components/ui/CategoryBadge";
+import { SessionBasisBadge } from "@/components/reactions/SessionBasisBadge";
 import { ScrollableTable } from "@/components/ui/ScrollableTable";
 import { moveColor, moveTextClass } from "@/components/reactions/reactionTone";
-import type { ReactionWindow } from "@/types/events";
+import type { ReactionMeasure } from "@/types/events";
 
 /**
  * Typical historical reaction per instrument, per horizon.
@@ -36,21 +37,21 @@ import type { ReactionWindow } from "@/types/events";
 interface Props {
   assets: readonly AssetProfile[];
   /** Horizon the caller is emphasising; also drives the selectable link. */
-  activeWindow: ReactionWindow;
+  activeMeasure: ReactionMeasure;
   selectedSymbol?: string | null;
   hrefForSymbol?: (symbol: string) => string;
 }
 
 export function HorizonMatrix({
   assets,
-  activeWindow,
+  activeMeasure,
   selectedSymbol = null,
   hrefForSymbol,
 }: Props) {
   const scale = Math.max(
     1e-6,
     ...assets.flatMap((asset) =>
-      REACTION_WINDOWS.map((w) => Math.abs(asset.horizons[w]?.median ?? 0)),
+      REACTION_MEASURES.map((w) => Math.abs(asset.horizons[w]?.median ?? 0)),
     ),
   );
 
@@ -69,20 +70,20 @@ export function HorizonMatrix({
             >
               Instrument
             </th>
-            {REACTION_WINDOWS.map((window) => (
+            {REACTION_MEASURES.map((measure) => (
               <th
-                key={window}
+                key={measure}
                 scope="col"
-                title={`Median move ${WINDOW_DESCRIPTIONS[window]}`}
+                title={`Median move ${MEASURE_DESCRIPTIONS[measure]}`}
                 className={`eyebrow py-2 pl-3 text-right ${
-                  window === activeWindow ? "text-ink" : ""
+                  measure === activeMeasure ? "text-ink" : ""
                 }`}
               >
-                {WINDOW_LABELS[window]}
+                {MEASURE_LABELS[measure]}
               </th>
             ))}
             <th scope="col" className="eyebrow py-2 pl-4 text-left">
-              Observed range · {WINDOW_LABELS[activeWindow]}
+              Observed range · {MEASURE_LABELS[activeMeasure]}
             </th>
           </tr>
         </thead>
@@ -107,32 +108,36 @@ export function HorizonMatrix({
                       href={hrefForSymbol(asset.symbol)}
                       scroll={false}
                       aria-current={selected ? "true" : undefined}
-                      className="flex rounded"
+                      className="flex items-center gap-1.5 rounded"
                     >
                       <InstrumentBadge
                         symbol={asset.symbol}
                         name={asset.name}
                         emphasis={selected}
                       />
+                      <SessionBasisBadge sessionBasis={asset.sessionBasis} />
                     </Link>
                   ) : (
-                    <InstrumentBadge
-                      symbol={asset.symbol}
-                      name={asset.name}
-                      emphasis={selected}
-                    />
+                    <span className="flex items-center gap-1.5">
+                      <InstrumentBadge
+                        symbol={asset.symbol}
+                        name={asset.name}
+                        emphasis={selected}
+                      />
+                      <SessionBasisBadge sessionBasis={asset.sessionBasis} />
+                    </span>
                   )}
                 </th>
-                {REACTION_WINDOWS.map((window) => (
+                {REACTION_MEASURES.map((measure) => (
                   <MedianCell
-                    key={window}
-                    stats={asset.horizons[window]}
-                    emphasised={window === activeWindow}
+                    key={measure}
+                    stats={asset.horizons[measure]}
+                    emphasised={measure === activeMeasure}
                   />
                 ))}
                 <td className="py-2 pl-4">
                   <RangeStrip
-                    stats={asset.horizons[activeWindow]}
+                    stats={asset.horizons[activeMeasure]}
                     scale={scale}
                   />
                 </td>
@@ -149,7 +154,7 @@ function MedianCell({
   stats,
   emphasised,
 }: {
-  stats: HorizonStats | null;
+  stats: MeasureStats | null;
   emphasised: boolean;
 }) {
   if (stats === null) {
@@ -193,7 +198,7 @@ function RangeStrip({
   stats,
   scale,
 }: {
-  stats: HorizonStats | null;
+  stats: MeasureStats | null;
   scale: number;
 }) {
   if (stats === null) {
