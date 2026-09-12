@@ -16,6 +16,7 @@
  * https://www.nyse.com/markets/hours-calendars (retrieved 2026-09-12).
  */
 import { easternWallClock } from "@/services/macro/time";
+import { newYorkMinuteOfDay } from "@/services/market/sessionCalendar.internal";
 
 /** Inclusive bounds of the curated early-close table. Extend together. */
 export const EARLY_CLOSE_RANGE_START = "2022-01-01";
@@ -79,4 +80,54 @@ export function buildSessionCalendar(
         0,
       ),
   };
+}
+
+/** Minutes past ET midnight bounding the window where an early close matters. */
+const AMBIGUITY_START_MINUTE = 13 * 60;
+const AMBIGUITY_END_MINUTE = 16 * 60;
+
+export type ReleaseSessionRefusal =
+  | "no_session_after_release"
+  | "early_close_unknown";
+
+export type ReleaseSessionResolution =
+  | { status: "resolved"; day: string; index: number }
+  | { status: "refused"; reason: ReleaseSessionRefusal };
+
+/**
+ * The release session: the first canonical session whose CLOSE is strictly
+ * after `releaseAt`.
+ *
+ * A release timestamped exactly at a close therefore belongs to the
+ * FOLLOWING session — the closing instant belongs to the session that just
+ * ended, not the one about to start.
+ *
+ * An early close can only change the answer for a release in [13:00, 16:00)
+ * ET: before 13:00 neither close has passed, at or after 16:00 both have.
+ * Inside that window, on a date the curated table does not cover, this
+ * refuses rather than assuming a normal 16:00 close — see spec §4.4.
+ */
+export function resolveReleaseSession(
+  calendar: SessionCalendar,
+  releaseAt: Date,
+): ReleaseSessionResolution {
+  if (!Number.isFinite(releaseAt.getTime())) {
+    return { status: "refused", reason: "no_session_after_release" };
+  }
+
+  const minute = newYorkMinuteOfDay(releaseAt);
+  const inAmbiguityWindow =
+    minute >= AMBIGUITY_START_MINUTE && minute < AMBIGUITY_END_MINUTE;
+
+  for (let index = 0; index < calendar.sessionDays.length; index += 1) {
+    const day = calendar.sessionDays[index];
+    if (inAmbiguityWindow && !calendar.earlyCloseKnown(day)) {
+      return { status: "refused", reason: "early_close_unknown" };
+    }
+    const close = calendar.closeInstant(day, { honourEarlyClose: true });
+    if (close.getTime() > releaseAt.getTime()) {
+      return { status: "resolved", day, index };
+    }
+  }
+  return { status: "refused", reason: "no_session_after_release" };
 }
