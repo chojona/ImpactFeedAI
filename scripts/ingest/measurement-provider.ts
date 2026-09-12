@@ -18,6 +18,7 @@ import type {
   DailyBar,
   IntradayBar,
 } from "@/services/events/reactionMeasurement";
+import { sessionBasisFor, type SessionBasis } from "@/services/market/sessionBasis";
 import type { PriceBasis } from "@/types/market";
 
 const yahooFinance = new YahooFinance({
@@ -38,9 +39,31 @@ const sessionDayFormat = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-/** US-Eastern calendar day of a provider bar stamp, YYYY-MM-DD. */
-export const toSessionDay = (barAt: Date): string =>
-  sessionDayFormat.format(barAt);
+/**
+ * The session day a DAILY bar belongs to, YYYY-MM-DD.
+ *
+ * Yahoo does not stamp every instrument the same way, so the session day
+ * cannot be derived from the stamp alone. Audited over 2025-06-01..2025-08-01:
+ *
+ *   equities   stamped 13:30Z (09:30 ET)  ET date == UTC date  42/42 bars
+ *   futures    stamped 04:00Z / 13:30Z    ET date == UTC date  44..52/52 bars
+ *   BTC-USD    stamped 00:00Z             ET date != UTC date  62/62 bars
+ *
+ * BTC-USD daily bars are UTC calendar days: the bar stamped 2025-07-03T00:00Z
+ * IS UTC day 2025-07-03 and closes at 2025-07-04T00:00Z. Labelling it with the
+ * Eastern date of its stamp (2025-07-02) shifted every continuous-market
+ * measurement back a day and made anchors post-release — the Stage-2 defect.
+ *
+ * Scope is deliberately limited to the three declared bases and to what the
+ * audit actually measured; it is not generalised beyond that evidence.
+ */
+export const dailySessionDayFor = (
+  basis: SessionBasis,
+  barAt: Date,
+): string =>
+  basis === "CONTINUOUS_24_7"
+    ? barAt.toISOString().slice(0, 10)
+    : sessionDayFormat.format(barAt);
 
 export interface SeriesFetchResult {
   daily: DailyBar[];
@@ -68,6 +91,7 @@ export interface MeasurementSeriesProvider {
  * never used to accept or reject a measurement.
  */
 function diagnosticBasisRatio(
+  basis: SessionBasis,
   daily: readonly DailyBar[],
   intraday: readonly IntradayBar[],
 ): number | null {
@@ -81,7 +105,7 @@ function diagnosticBasisRatio(
   const ratios: number[] = [];
   const seen = new Set<string>();
   for (const bar of intraday) {
-    const day = toSessionDay(bar.barAt);
+    const day = dailySessionDayFor(basis, bar.barAt);
     if (seen.has(day)) continue;
     const dailyClose = dailyCloseByDay.get(day);
     if (
@@ -105,6 +129,13 @@ export function createYahooMeasurementProvider(): MeasurementSeriesProvider {
   return {
     id: "yahoo-finance2@3.14.0",
     async fetchSeries({ symbol, releaseAt }) {
+      // Fail closed: without a declared basis the daily stamping convention is
+      // unknown, and guessing it is exactly the defect this mapping fixes.
+      const basis = sessionBasisFor(symbol);
+      if (basis === null) {
+        return { status: "failed", reason: `undeclared sessionBasis for ${symbol}` };
+      }
+
       let daily: DailyBar[] = [];
       try {
         const res = await yahooFinance.chart(symbol, {
@@ -116,7 +147,7 @@ export function createYahooMeasurementProvider(): MeasurementSeriesProvider {
           return: "array",
         });
         daily = res.quotes.map((q) => ({
-          sessionDay: toSessionDay(q.date),
+          sessionDay: dailySessionDayFor(basis, q.date),
           barAt: q.date,
           close: q.close,
         }));
@@ -157,7 +188,7 @@ export function createYahooMeasurementProvider(): MeasurementSeriesProvider {
           daily,
           dailyBasis: YAHOO_DAILY_BASIS,
           intraday,
-          basisRatio: diagnosticBasisRatio(daily, intraday),
+          basisRatio: diagnosticBasisRatio(basis, daily, intraday),
         },
       };
     },

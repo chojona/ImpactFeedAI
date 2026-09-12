@@ -11,7 +11,7 @@ import {
   type ReactionMeasure,
 } from "@/services/events/reactionMeasures";
 import {
-  nativeCloseMinuteFor,
+  economicCloseInstant,
   sessionBasisFor,
   type SessionBasis,
 } from "@/services/market/sessionBasis";
@@ -19,7 +19,6 @@ import {
   resolveReleaseSession,
   type SessionCalendar,
 } from "@/services/market/sessionCalendar";
-import { easternWallClock } from "@/services/macro/time";
 import type { PriceBasis } from "@/types/market";
 
 export interface DailyBar {
@@ -102,26 +101,27 @@ export function resolveSessionMeasurements(
     return { status: "refused", reason: "no_anchor_session" };
   }
 
-  // The anchor session must close, for THIS instrument, strictly before the
-  // release. This is what rejects an after-hours release on a late-closing
-  // instrument, and a release timestamped exactly at a close.
-  const closeMinute = nativeCloseMinuteFor(
-    sessionBasis,
-    input.calendar.isEarlyClose(anchorDay),
-  );
-  const anchorClose = easternWallClock(
-    anchorDay,
-    Math.floor(closeMinute / 60),
-    closeMinute % 60,
-  );
-  if (anchorClose.getTime() >= input.releaseAt.getTime()) {
-    return { status: "refused", reason: "anchor_not_pre_release" };
-  }
-
   const byDay = new Map(input.daily.map((bar) => [bar.sessionDay, bar]));
   const anchorBar = byDay.get(anchorDay);
   if (anchorBar === undefined || !usable(anchorBar.close)) {
     return { status: "refused", reason: "unusable_anchor_price" };
+  }
+
+  // The anchor PRICE must have been realised strictly before the release.
+  // Resolved from the bar itself — a daily bar's stamp is an identifier (and
+  // for most bases, the session OPEN), never the instant its close became
+  // known, and the session label alone cannot supply it either for a
+  // continuous market. Looking the bar up first is therefore required, not
+  // incidental ordering. This is what rejects an after-hours release on a
+  // late-closing instrument and a release timestamped exactly at a close.
+  const anchorClose = economicCloseInstant({
+    basis: sessionBasis,
+    sessionDay: anchorDay,
+    barAt: anchorBar.barAt,
+    isEarlyClose: input.calendar.isEarlyClose(anchorDay),
+  });
+  if (anchorClose.getTime() >= input.releaseAt.getTime()) {
+    return { status: "refused", reason: "anchor_not_pre_release" };
   }
 
   const measurements: ResolvedMeasurement[] = [];
