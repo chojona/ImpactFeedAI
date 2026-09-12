@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { buildSessionCalendar } from "@/services/market/sessionCalendar";
-import { resolveSessionMeasurements } from "@/services/events/reactionMeasurement";
+import {
+  resolveIntradayMeasurement,
+  resolveSessionMeasurements,
+} from "@/services/events/reactionMeasurement";
+import type { PriceBasis } from "@/types/market";
 
 const DAYS = [
   "2025-07-01", "2025-07-02", "2025-07-03",
@@ -165,5 +169,150 @@ describe("resolveSessionMeasurements", () => {
       releaseAt: new Date("2025-07-03T12:30:00Z"),
     });
     expect(out).toMatchObject({ status: "refused", reason: "unusable_anchor_price" });
+  });
+});
+
+const hourly = (
+  iso: string,
+  open: number | null,
+  priceBasis: PriceBasis = "AS_TRADED",
+) => ({
+  barAt: new Date(iso),
+  open,
+  priceBasis,
+});
+
+const intradayBase = {
+  symbol: "SPY",
+  releaseSessionDay: "2025-07-03",
+};
+
+describe("resolveIntradayMeasurement", () => {
+  it("anchors on the last bar opening strictly before the release", () => {
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T12:00:00Z", 100),
+        hourly("2025-07-03T13:30:00Z", 102),
+      ],
+    });
+    expect(out.status).toBe("resolved");
+    if (out.status !== "resolved") return;
+    expect(out.measurements[0]).toMatchObject({
+      measure: "INTRADAY_60M",
+      anchorKind: "PRE_RELEASE_INTRADAY_BAR",
+      anchorPrice: 100,
+      anchorBarAt: new Date("2025-07-03T12:00:00Z"),
+      endpointPrice: 102,
+      endpointBarAt: new Date("2025-07-03T13:30:00Z"),
+      priceBasis: "AS_TRADED",
+    });
+    expect(out.measurements[0].pctChange).toBeCloseTo(2, 10);
+  });
+
+  it("rejects a bar at exactly the release instant as an anchor", () => {
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T12:30:00Z", 100),
+        hourly("2025-07-03T13:30:00Z", 102),
+      ],
+    });
+    expect(out).toMatchObject({ status: "refused", reason: "no_intraday_anchor" });
+  });
+
+  it("rejects a stale anchor older than two hours", () => {
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T10:00:00Z", 100),
+        hourly("2025-07-03T13:30:00Z", 102),
+      ],
+    });
+    expect(out).toMatchObject({ status: "refused", reason: "no_intraday_anchor" });
+  });
+
+  it("rejects an endpoint beyond the slip window", () => {
+    // Target 13:30Z; the next bar is the following morning.
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T12:00:00Z", 100),
+        hourly("2025-07-07T13:30:00Z", 102),
+      ],
+    });
+    expect(out).toMatchObject({ status: "refused", reason: "no_intraday_endpoint" });
+  });
+
+  it("tolerates one missing bar inside the slip window", () => {
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T12:00:00Z", 100),
+        hourly("2025-07-03T14:30:00Z", 103),
+      ],
+    });
+    expect(out.status).toBe("resolved");
+  });
+
+  it("skips unusable opens without borrowing another field", () => {
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T12:00:00Z", 100),
+        hourly("2025-07-03T13:30:00Z", null),
+        hourly("2025-07-03T14:00:00Z", 105),
+      ],
+    });
+    if (out.status !== "resolved") throw new Error("expected resolved");
+    expect(out.measurements[0].endpointPrice).toBe(105);
+  });
+
+  it("refuses an undeclared symbol", () => {
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      symbol: "NVDA",
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T12:00:00Z", 100),
+        hourly("2025-07-03T13:30:00Z", 102),
+      ],
+    });
+    expect(out).toMatchObject({ status: "refused", reason: "undeclared_symbol" });
+  });
+
+  it("is unaffected by the daily series' basis — XLK/XLE are never suppressed", () => {
+    // resolveIntradayMeasurement has no daily-series input at all: XLK's
+    // SPLIT_ADJUSTED daily series cannot reach this function, so it cannot
+    // suppress an otherwise-valid AS_TRADED intraday reading. This is the
+    // exact case the v2 cross-series guard wrongly rejected — see spec §15.2.
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      symbol: "XLK",
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T12:00:00Z", 232.89, "AS_TRADED"),
+        hourly("2025-07-03T13:30:00Z", 234.0, "AS_TRADED"),
+      ],
+    });
+    expect(out.status).toBe("resolved");
+  });
+
+  it("rejects a single measurement that would combine mismatched bases", () => {
+    const out = resolveIntradayMeasurement({
+      ...intradayBase,
+      releaseAt: new Date("2025-07-03T12:30:00Z"),
+      intraday: [
+        hourly("2025-07-03T12:00:00Z", 100, "AS_TRADED"),
+        hourly("2025-07-03T13:30:00Z", 102, "SPLIT_ADJUSTED"),
+      ],
+    });
+    expect(out).toMatchObject({ status: "refused", reason: "mixed_price_basis" });
   });
 });
