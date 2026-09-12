@@ -2071,14 +2071,29 @@ Compare the projected v3 counts against the measured v2 baseline:
 | `RELEASE_SESSION` rows | n/a | ~240 | ≥ 228 (95 % of 20×12) |
 | `SESSION_PLUS_1` rows | 240 (as "1d") | ~240 | ≥ 228 |
 | `SESSION_PLUS_5` rows | ~236 (as "1w") | ~240 | ≥ 228 |
-| `INTRADAY_60M` rows | 110 | **≥ 120** | must **rise** — XLK/XLE now qualify |
+| `INTRADAY_60M` rows | 110 | **108 observed 2026-09-12** | semantic gate — see below; the old `≥ 120` threshold is withdrawn |
 | Events with mixed anchor sessions | 11 | **0** | must be 0 |
 | Distinct `anchorKind` per measure | n/a | 1 | must be 1 |
+
+**Revised intraday gate (spec §14.6).** The original `INTRADAY_60M > 110`
+threshold is withdrawn. It assumed v3 would recover XLK/XLE across the same 11
+events v2 captured, but intraday history ages out of the provider's ~720-day
+rolling retention, so two of those events are no longer obtainable. The gate is
+now semantic: v3 must produce every `INTRADAY_60M` measurement currently
+obtainable from the provider, and every absence must have an explicit expected
+refusal reason. 108 is the observed Stage-2 baseline, not a product invariant.
+Never adjust implementation or provider scope to hit a number.
+
+**Mandatory economic-anchor audit.** Before any Stage-3 write, recompute the
+economic close instant of every proposed SESSION row and confirm **zero** land
+at or after their release. Stage 2 found 57 such rows (all BTC-USD) — see spec
+§15.3.
 
 **Failure thresholds — stop and investigate rather than proceeding:**
 - any measure below 95 % of the expected row count
 - any event with more than one anchor session across its instruments
-- `INTRADAY_60M` not strictly greater than 110
+- any `INTRADAY_60M` absence lacking an explicit expected refusal reason
+- any SESSION row whose anchor economic close is at or after its release
 - any refusal reason other than `no_intraday_anchor` / `no_intraday_endpoint`
   appearing more than twice
 

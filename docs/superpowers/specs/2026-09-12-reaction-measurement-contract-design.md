@@ -267,24 +267,46 @@ window.
 
 ### 4.5 Anchor validity guard
 
-A session measurement requires the anchor session's **native close instant for
-that instrument** to be strictly before `releaseAt`. Otherwise no rows are
-written for that instrument for that event.
+A session measurement requires the anchor bar's **economic close instant** — the
+instant that bar's closing price actually became known — to be strictly before
+`releaseAt`. Otherwise no rows are written for that instrument for that event.
+
+Three things are distinct and must never be conflated:
+
+| Concept | What it is | What it is NOT |
+| --- | --- | --- |
+| **bar timestamp** (`barAt`) | the provider's stamp; an identifier, and for most bases the bar *open* | not the instant the close became known |
+| **session day** | a label placing the bar on the canonical calendar | not, by itself, enough to date the close |
+| **economic close instant** | when the bar's `close` price was realised | not derivable from the label alone |
+
+The economic close is resolved per `sessionBasis`, **from the bar**:
+
+| Basis | Economic close of a daily bar |
+| --- | --- |
+| `US_EQUITY_RTH` | 16:00 ET on its session day (13:00 ET on an early close), DST-correct |
+| `EXTENDED_FUTURES` | 17:00 ET on its session day, DST-correct |
+| `CONTINUOUS_24_7` | exactly one UTC day after the bar's own stamp — there is no wall-clock close to use |
 
 This guard is necessary because for an **after-hours release** the anchor session
-is the release's own calendar day, and an instrument whose native close is later
-than 16:00 ET would otherwise contribute a post-release anchor. A 17:00 ET
-release on Wednesday resolves to release session Thursday and anchor session
-Wednesday; `SPY` closed at 16:00 (valid) but `BTC-USD` does not close until
-~19:00 (invalid — rejected).
+is the release's own calendar day, and an instrument whose close is later than
+16:00 ET would otherwise contribute a post-release anchor. A 17:00 ET release on
+Wednesday resolves to release session Thursday and anchor session Wednesday;
+`SPY` closed at 16:00 (valid) but `BTC-USD`'s bar has not closed (invalid —
+rejected).
 
 The same guard resolves the **release-exactly-at-close** case without a special
-rule: at exactly 16:00:00.000 the anchor close is not *strictly* before
+rule: at exactly the close instant the anchor is not *strictly* before
 `releaseAt`, so session measures are not produced. `INTRADAY_60M` is unaffected
 and may still be produced.
 
+Because the close instant is derived from the bar, the engine must resolve the
+anchor **bar** before applying the guard. That ordering is required, not
+incidental.
+
 Fail-closed is consistent with the project's existing timing philosophy: a
 measurement that cannot be defended is absent, never approximated.
+
+See §15.3 for the defect that established these rules empirically.
 
 ---
 
@@ -450,7 +472,7 @@ family:
 | Family | Instant invariants | Session invariants |
 | --- | --- | --- |
 | `INTRADAY_60M` | `anchorBarAt < releaseAt`; `releaseAt + 60 min ≤ endpointBarAt ≤ releaseAt + 60 min + slip` | `anchorSessionDay ≤ releaseSessionDay` |
-| `RELEASE_SESSION` / `SESSION_PLUS_n` | native close of `anchorSessionDay` for this `sessionBasis` `< releaseAt` (§4.5) | `anchorSessionDay` is the canonical session immediately preceding `releaseSessionDay`; `endpointSessionDay` is exactly `n` canonical sessions after `releaseSessionDay` |
+| `RELEASE_SESSION` / `SESSION_PLUS_n` | **economic close instant** of the anchor BAR for this `sessionBasis` `< releaseAt` (§4.5) — resolved from the bar, never from `anchorBarAt` compared to `releaseAt` | `anchorSessionDay` is the canonical session immediately preceding `releaseSessionDay`; `endpointSessionDay` is exactly `n` canonical sessions after `releaseSessionDay` |
 
 This is the point the reviewer raised: a measure with different semantics is
 represented explicitly rather than accommodated by loosening a shared rule.
@@ -702,6 +724,65 @@ guarantee within any one row.
 
 ---
 
+### 15.3 The BTC-USD lookahead defect — FOUND IN STAGE 2, FIXED
+
+The Stage-2 dry run (2026-09-12) proposed 828 rows. Auditing every SESSION row
+against its true economic close found **57 of 720 anchored on a price realised
+AFTER the release. All 57 were BTC-USD**, across 19 of the 20 eligible events.
+
+**Root cause — two components disagreeing about what a daily bar is.**
+
+1. The provider labelled *every* daily bar with the America/New_York date of its
+   stamp. Audited over 2025-06-01..2025-08-01:
+
+   | Instrument | Stamp (UTC) | ET date == UTC date | Mismatched |
+   | --- | --- | --- | --- |
+   | 8 equity ETFs | 13:30 | yes | 0/42 each |
+   | 3 futures | 04:00, occasionally 13:30 | yes | 0/44–52 each |
+   | `BTC-USD` | 00:00 | **no** | **62/62** |
+
+   BTC-USD daily bars are **UTC calendar days**. Verified against the 1h series:
+   the bar stamped `2025-07-03T00:00Z` has open 108845.02, exactly the close of
+   the 1h bar ending `2025-07-02T23:00Z` — so it *begins* at its stamp and its
+   close is realised at `2025-07-04T00:00Z`. Labelling it session `2025-07-02`
+   shifted every continuous-market measurement back by one day.
+
+2. The anchor guard synthesised a close of 19:00 ET on the **labelled** day. For
+   a bar labelled `2025-07-02` that is `2025-07-02T23:00Z`, while the price was
+   actually realised at `2025-07-04T00:00Z` — the guard was wrong by 25 hours
+   and so accepted a post-release anchor as valid.
+
+The guard's source comment stated the right semantics ("the bar dated D closes
+at UTC midnight") but that reasoning only holds under UTC-date labelling, which
+the provider did not apply. Neither component was wrong alone; they disagreed.
+
+**Consequence.** BTC's `RELEASE_SESSION` was not measuring the release at all.
+For the July 2022 CPI print it reported +1.77% over the window
+`2022-07-14T00:00Z → 2022-07-15T00:00Z` — beginning half a day *after* the
+print, with a baseline that already contained the reaction.
+
+**Resolution (approved, implemented).**
+
+- Daily session-day interpretation is keyed on the declared `SessionBasis`:
+  UTC date for `CONTINUOUS_24_7`, Eastern date otherwise. Scoped to the three
+  declared bases and to what the audit measured; not generalised further.
+- The economic close instant is modelled explicitly per basis and derived from
+  the bar (§4.5). The `nativeCloseMinuteFor` helper was removed rather than
+  retuned: its continuous value was the wrong *model*, not a wrong constant.
+- The verifier gained `anchor_close_not_pre_release` (§6.2). Note the spec
+  already required this invariant — the verification script had under-implemented
+  §6.2, checking only session adjacency and offset, and so would have passed all
+  57 contaminated rows.
+
+**Corrected values.** June 2025 NFP BTC `RELEASE_SESSION`: −1.4717% anchored on
+109647.98 → **+0.7245%** anchored on 108859.32. July 2022 CPI: +1.7705% →
+**+4.5962%**. SESSION row count is unchanged at 720; equities and futures are
+byte-identical.
+
+**Standing rule.** Never assume `endpointBarAt` is the instant its closing price
+became known. A provider's stamping convention is per-instrument and must be
+measured, not inferred.
+
 ## 14. Decisions — locked 2026-09-12
 
 1. **Early-close table.** Kept, isolated inside the canonical calendar module,
@@ -718,6 +799,26 @@ guarantee within any one row.
 4. **TypeScript language server.** Installed globally as developer tooling
    (`typescript-language-server@6.0.0`); it reuses the project's own TypeScript.
    No entry was added to `package.json` or `package-lock.json`.
+5. **Basis-aware daily session-day semantics.** A daily bar's session day is
+   interpreted from the instrument's declared `SessionBasis`, not from a single
+   timezone applied to every instrument. Bar timestamp, session day and economic
+   close instant are three distinct concepts. See §4.5 and §15.3.
+6. **Intraday availability gate (replaces `INTRADAY_60M > 110`).** The old
+   numeric threshold was calibrated on the assumption that v3 would recover
+   XLK/XLE across the same 11 events v2 captured. It cannot be met by
+   re-fetching, because intraday history ages out of the provider's rolling
+   ~720-day retention. The gate is now **semantic**:
+
+   > v3 must produce every `INTRADAY_60M` measurement currently obtainable from
+   > the configured provider under this contract, and every absence must carry an
+   > explicit expected refusal reason.
+
+   **108 is recorded as the Stage-2 observed baseline on 2026-09-12, not a
+   permanent product invariant.** It decomposes as: v2 had 110; v3 recovers +18
+   valid XLK/XLE measurements that v2 suppressed; 24 measurements from two events
+   (2024-09-11, 2024-09-18) have aged out of retention; all 132 absences share
+   the single explained refusal reason `no_intraday_anchor`. Implementation and
+   provider scope must never be adjusted merely to reach a numeric threshold.
 
 ### 14.1 Open items deferred out of this work
 
