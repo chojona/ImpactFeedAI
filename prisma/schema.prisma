@@ -56,8 +56,9 @@ model Event {
   explanation  String?
   createdAt    DateTime          @default(now()) @map("created_at")
 
-  assetReactions AssetReaction[]
-  dataReleases   DataRelease[]
+  assetReactions       AssetReaction[]
+  dataReleases         DataRelease[]
+  reactionMeasurements ReactionMeasurement[]
 
   @@unique([headline, occurredAt], name: "event_natural_key")
   @@index([occurredAt])
@@ -198,4 +199,88 @@ model Candle {
   @@index([symbol, interval, openTime])
   @@index([ingestionVersion])
   @@map("candles")
+}
+
+/// Which standardized interval a v3 reaction measurement describes.
+///
+/// A measure's anchor is fixed by the measure, never by what data happened to
+/// be available. That is what makes two values stored under the same measure
+/// comparable — see
+/// docs/superpowers/specs/2026-09-12-reaction-measurement-contract-design.md.
+enum ReactionMeasure {
+  INTRADAY_60M
+  RELEASE_SESSION
+  SESSION_PLUS_1
+  SESSION_PLUS_5
+}
+
+/// Which kind of observation a measurement is anchored on. Determined by the
+/// measure, never by what data happened to be available.
+enum ReactionAnchorKind {
+  PRE_RELEASE_INTRADAY_BAR
+  PRIOR_SESSION_CLOSE
+}
+
+/// The instrument's own session structure. Recorded so a cross-asset
+/// comparison can disclose it instead of implying every SESSION_* value
+/// covers the same amount of tradeable time.
+enum SessionBasis {
+  US_EQUITY_RTH
+  EXTENDED_FUTURES
+  CONTINUOUS_24_7
+}
+
+/// One standardized, fully specified v3 reaction measurement.
+///
+/// A row exists only when the measurement was actually made. There is no
+/// nullable price, no nullable percent and no placeholder row: an
+/// unmeasurable window produces no row at all, which makes a fabricated zero
+/// unrepresentable rather than merely discouraged.
+///
+/// Additive alongside `AssetReaction`, which remains a frozen v2 archive and
+/// is never modified by this model's introduction — see
+/// `ARCHIVED_ASSET_REACTION_VERSION` in `src/services/events/timing.ts`.
+model ReactionMeasurement {
+  id      String          @id @default(uuid())
+  eventId String          @map("event_id")
+  event   Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  symbol  String
+  measure ReactionMeasure
+
+  anchorKind   ReactionAnchorKind @map("anchor_kind")
+  anchorPrice  Float              @map("anchor_price")
+  /// Provider bar identifier for the anchor observation. For a session close
+  /// this is the provider's daily-bar stamp (normally the session open), not
+  /// a closing-tick instant — it identifies the source bar.
+  anchorBarAt  DateTime           @map("anchor_bar_at") @db.Timestamptz(3)
+  /// Canonical session the anchor observation belongs to.
+  anchorSessionDay DateTime       @map("anchor_session_day") @db.Date
+
+  endpointPrice      Float    @map("endpoint_price")
+  endpointBarAt      DateTime @map("endpoint_bar_at") @db.Timestamptz(3)
+  endpointSessionDay DateTime @map("endpoint_session_day") @db.Date
+
+  /// Canonical session containing the release; origin of every SESSION_* offset.
+  releaseSessionDay DateTime @map("release_session_day") @db.Date
+
+  /// ((endpointPrice - anchorPrice) / anchorPrice) * 100.
+  pctChange Float @map("pct_change")
+
+  /// Basis of BOTH observations in this row. A measurement is written only
+  /// when the anchor and endpoint bars share a basis, so one column describes
+  /// the pair. Different measures for the same instrument may legitimately
+  /// use different bases from each other.
+  priceBasis   PriceBasis   @map("price_basis")
+  sessionBasis SessionBasis @map("session_basis")
+
+  provider           String
+  calculationVersion Int      @map("calculation_version")
+  fetchedAt          DateTime @map("fetched_at") @db.Timestamptz(3)
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@unique([eventId, symbol, measure, calculationVersion], name: "reaction_measurement_key")
+  @@index([eventId, calculationVersion])
+  @@index([symbol, measure, calculationVersion])
+  @@index([measure, calculationVersion])
+  @@map("reaction_measurements")
 }
