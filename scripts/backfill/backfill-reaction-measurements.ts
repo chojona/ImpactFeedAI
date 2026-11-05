@@ -52,7 +52,7 @@ import {
 import { buildSessionCalendar, resolveReleaseSession } from "@/services/market/sessionCalendar";
 import { REACTION_ELIGIBLE_TIMING_STATUSES } from "@/services/events/timing";
 import { utcDateOnly } from "@/services/macro/time";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import { COMPUTED_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
 
 const APPLY_CONFIRMATION = "WRITE_MEASUREMENTS";
 const CONFIRMATION_ENV = "REACTION_MEASUREMENT_BACKFILL_CONFIRM";
@@ -193,7 +193,7 @@ function toRow(
     priceBasis: m.priceBasis,
     sessionBasis: m.sessionBasis,
     provider: providerId,
-    calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+    calculationVersion: COMPUTED_REACTION_CALCULATION_VERSION,
     fetchedAt,
   };
 }
@@ -275,7 +275,7 @@ async function processSymbol(
       where: {
         eventId,
         symbol,
-        calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+        calculationVersion: COMPUTED_REACTION_CALCULATION_VERSION,
         measure: { in: rows.map((r) => r.measure) },
       },
     });
@@ -312,7 +312,7 @@ async function main(): Promise<void> {
     `backfill-reaction-measurements${flags.apply ? " (APPLY — writing)" : " (dry-run — no writes)"}`,
   );
   console.log(`  provider  ${provider.id}`);
-  console.log(`  version   ${CURRENT_REACTION_CALCULATION_VERSION}\n`);
+  console.log(`  version   ${COMPUTED_REACTION_CALCULATION_VERSION}\n`);
 
   try {
     const events = await prisma.event.findMany({
