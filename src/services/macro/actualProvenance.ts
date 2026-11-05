@@ -64,7 +64,7 @@ export function qualifyHistoricalActual(actual: HistoricalActual, policy: {
   if (!actual.providerRevisionKey?.trim() || !hasEvidence(actual.revisionEvidence)) reasons.push("missing_revision_evidence");
   if (actual.valueKind === "INITIAL_REPORTED" && !hasEvidence(actual.initialReleaseEvidence)) reasons.push("missing_initial_release_evidence");
   if (policy.requireInitial && actual.valueKind !== "INITIAL_REPORTED") reasons.push("initial_actual_required");
-  if (actual.availabilityQuality === "UNRESOLVED" || !actual.availabilityPolicyVersion?.trim() || !hasEvidence(actual.availabilityEvidence) || !validDate(actual.availableAt)) reasons.push("unverified_availability");
+  if (!["VERIFIED_INSTANT", "CONSERVATIVE_DATE_BOUND"].includes(actual.availabilityQuality) || !actual.availabilityPolicyVersion?.trim() || !hasEvidence(actual.availabilityEvidence) || !validDate(actual.availableAt)) reasons.push("unverified_availability");
   if (
     !validDate(policy.cutoff) || !validDate(policy.recordedThrough) ||
     !validDate(actual.fetchedAt) || !validDate(actual.recordedAt) ||

@@ -72,6 +72,8 @@ export function checkInvariants(
   if (!["US_EQUITY_RTH", "EXTENDED_FUTURES", "CONTINUOUS_24_7"].includes(row.sessionBasis)) return ["unsupported_session_basis"];
   if (!["AS_TRADED", "SPLIT_ADJUSTED", "SPLIT_DIVIDEND_ADJUSTED"].includes(row.priceBasis)) violations.push("invalid_price_basis");
   if (![row.anchorBarAt, row.endpointBarAt, ctx.releaseAt].every(d => d instanceof Date && Number.isFinite(d.getTime()))) return [...violations, "invalid_timestamp"];
+  const validDay = (day: string) => /^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(Date.parse(`${day}T00:00:00Z`)) && new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) === day;
+  if (![row.anchorSessionDay, row.endpointSessionDay, row.releaseSessionDay, ...ctx.sessionDays].every(validDay)) return [...violations, "non_canonical_session_day"];
   if (ctx.earlyCloseKnown && [row.anchorSessionDay, row.endpointSessionDay, row.releaseSessionDay].some(d => !ctx.earlyCloseKnown!(d))) violations.push("unsupported_calendar_range");
   // Independent origin check: first canonical EQUITY close after release,
   // regardless of the stored origin/offset. Fixtures supply official hours.

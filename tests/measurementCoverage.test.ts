@@ -93,6 +93,9 @@ describe("additional row-level corruptions", () => {
   it("rejects delayed availability at the decision timestamp", () => {
     expect(checkInvariants({ ...row, anchorAvailableAt: event.releaseAt! }, ctx)).toContain("anchor_not_available_before_release");
   });
+  it("rejects malformed and impossible session labels without throwing", () => {
+    for (const anchorSessionDay of ["garbage", "2025-02-30"]) expect(checkInvariants({ ...row, anchorSessionDay }, ctx)).toContain("non_canonical_session_day");
+  });
   it("rejects provider daily labels inconsistent with bar stamps", () => {
     expect(checkInvariants({ ...row, anchorBarAt: new Date("2025-03-07T14:30:00Z") }, ctx)).toContain("daily_bar_session_mismatch");
   });

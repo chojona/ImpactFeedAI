@@ -50,7 +50,7 @@ import {
   type ResolvedMeasurement,
 } from "@/services/events/reactionMeasurement";
 import { buildSessionCalendar, resolveReleaseSession } from "@/services/market/sessionCalendar";
-import { REACTION_ELIGIBLE_TIMING_STATUSES } from "@/services/events/timing";
+import { isReactionTimingEligible, REACTION_ELIGIBLE_TIMING_STATUSES } from "@/services/events/timing";
 import { utcDateOnly } from "@/services/macro/time";
 import { COMPUTED_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
 
@@ -323,10 +323,11 @@ async function main(): Promise<void> {
         ...(flags.eventIds.length > 0 ? { id: { in: flags.eventIds } } : {}),
       },
       orderBy: [{ releaseAt: "asc" }, { id: "asc" }],
-      select: { id: true, headline: true, eventType: true, releaseAt: true },
+      select: { id: true, headline: true, eventType: true, releaseAt: true, timingStatus: true, timingSource: true },
     });
 
-    const selected = flags.limit === null ? events : events.slice(0, flags.limit);
+    const eligible = events.filter(isReactionTimingEligible);
+    const selected = flags.limit === null ? eligible : eligible.slice(0, flags.limit);
     console.log(`Timing-eligible events: ${events.length}   selected: ${selected.length}\n`);
 
     for (const event of selected) {
