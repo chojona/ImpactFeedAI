@@ -27,7 +27,7 @@ export function resolveScriptDatabaseUrl(): string | undefined {
  * when neither connection variable is set — every script needs one to do
  * anything useful, so there is no sensible way to continue.
  */
-export function createScriptPrismaClient(): PrismaClient {
+export function createScriptPrismaClient(options: { readOnly?: boolean } = {}): PrismaClient {
   const connectionString = resolveScriptDatabaseUrl();
   if (!connectionString) {
     console.error(
@@ -37,6 +37,8 @@ export function createScriptPrismaClient(): PrismaClient {
     process.exit(1);
   }
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
+    adapter: new PrismaPg({ connectionString,
+      ...(options.readOnly ? { options: "-c default_transaction_read_only=on" } : {}),
+    }),
   });
 }
