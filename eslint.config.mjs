@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vitest coverage HTML/JS artifacts (gitignored; still present after local runs)
+    "coverage/**",
   ]),
 ]);
 
