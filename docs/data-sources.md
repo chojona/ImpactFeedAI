@@ -12,6 +12,31 @@ defines the separate vintage/publication/availability evidence needed before
 these become historical context inputs. Existing provider/price notes below
 are source inventory, not a fresh verification of provider limits or pricing.
 
+**Machine-readable registry (November 27, 2026):** provider coverage, free-tier
+limits, publication lags, revision behaviour, point-in-time eligibility,
+licensing and auth requirements now live in
+[`src/services/sources/`](../src/services/sources/registry.ts), one file per
+provider. Each coverage claim is **TESTED** (a live request returned it, with
+the date), **ADVERTISED** (the provider documents it, nothing here exercised it)
+or **UNAVAILABLE** (refused under the stated access tier, with the reason). The
+registry is checked by `validateRegistry` in the test suite. `npm run
+audit:sources` prints the per-provider audit offline. When this prose and the
+registry disagree, the registry's dated evidence wins. Headline findings from
+the 2026-11-27 validation:
+
+- **Alpha Vantage free key:** every `TIME_SERIES_INTRADAY` call (1/5/60-min,
+  latest or `month=` 2022–2024) is premium-only. Daily is compact (last 100
+  sessions). Only weekly has deep history (1999 onward). Limit: 25 requests/day.
+- **BLS key:** valid. v2 accepts 20-year spans with catalog and calculations.
+  The API still carries no publication timestamps, and values are current.
+- **Yahoo:** 1m covers the last 30 days at 8 days per request, 5m covers 60
+  days, 1h covers 730 days (from 2024-11-29). Daily SPY starts 1993-01-29.
+- **FRED `SP500`:** licensed to a rolling 10 years (from 2016-11-28).
+- **SF Fed Bauer–Swanson:** 361 FOMC announcements, 1988-02-04 → 2023-12-13.
+  Nothing after 2023 is published.
+- **Local NQ archive:** 1m outrights 2010-06-07 → 2026-10-06, but only 11
+  sessions are certified for strict use.
+
 An inventory of the data ImpactFeedAI uses and might use. Only the entries
 marked **Integrated** exist in the codebase; everything else is a candidate.
 

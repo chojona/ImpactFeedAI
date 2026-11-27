@@ -73,7 +73,10 @@ category as one statistical indicator. `src/lib/assets.ts` supplies the
 Server-side reads belong in `src/services/`. Current event queries and mapping
 live in `services/events/`, persisted candle access in `services/market/`,
 canonical macro transforms/provenance in `services/macro/`, and descriptive
-statistics in `services/analytics/`. Components render prepared values rather
+statistics in `services/analytics/`. The data-source registry (provider
+coverage, limits, licensing, point-in-time eligibility, last validation) lives
+in `services/sources/` as static metadata with pure audit functions; it never
+fetches. Components render prepared values rather
 than calculate research results. There are no application write routes or
 Server Actions today, and no model calls.
 
