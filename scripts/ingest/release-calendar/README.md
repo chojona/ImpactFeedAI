@@ -1,8 +1,8 @@
 # Historical release-calendar acquisition
 
-Builds an evidence-preserving calendar of **when** each macro release and FOMC
-decision reached the public. It answers timing only; values (actuals) and
-expectations live elsewhere (see [Ownership](#ownership-and-hand-off)).
+Builds a calendar of macro releases and FOMC decisions with evidence for each
+known schedule, publication date and clock. See [Ownership](#ownership-and-hand-off)
+for how to use these facts alongside actuals and expectations.
 
 ```bash
 npm run calendar:build                                     # fed + sffed + bea + fred
@@ -29,11 +29,11 @@ projected onto the existing `HistoricalReleaseCalendarProvider` contract by
 
 | Source | Access | Evidence kind | What it proves |
 |---|---|---|---|
-| Fed statement pages (`federalreserve.gov`), discovered via `fomchistoricalYYYY.htm` + `fomccalendars.htm` | HTTPS, honest UA, 2 s/host | `OFFICIAL_RELEASE_RECORD` | Exact time from 2016 onward ("For release at 2:00 p.m. EDT"); date only for 1994–2015 ("For immediate release") |
+| Fed statement pages (`federalreserve.gov`), discovered via `fomchistoricalYYYY.htm` + `fomccalendars.htm` | HTTPS, honest UA, 2 s/host | `OFFICIAL_RELEASE_RECORD` | Intended time in "For release at 2:00 p.m. EDT" lines and the date of the statement |
 | SF Fed Bauer–Swanson workbook (`frbsf.org`) | HTTPS, honest UA | `SECONDARY_RESEARCH_DATASET` | Announcement time + unscheduled flag 1988–2023. **Never makes a timing VERIFIED.** |
 | BEA news releases (`www.bea.gov/news/...`, archive 1996+) | HTTPS, honest UA, 2 s/host | `OFFICIAL_RELEASE_RECORD` | "EMBARGOED UNTIL RELEASE AT 8:30 a.m. EDT, …" / pre-2009 "FOR WIRE TRANSMISSION: 8:30 A.M. EDT, …" |
 | BEA release-schedule ICS | HTTPS, honest UA | `OFFICIAL_SCHEDULE` | Scheduled instants, current + next year |
-| BLS archived releases | **Operator-saved files only (`--bls-dir`)** | `OFFICIAL_RELEASE_RECORD` | Release day (archive file name) + embargo instant |
+| BLS archived releases | **Operator-saved files only (`--bls-dir`)** | `OFFICIAL_RELEASE_RECORD` | Release day from the archive file name and intended embargo time |
 | FRED `release/dates` | API key | reconciliation only | Days FRED recorded a release; never creates or upgrades a record |
 
 `polite-fetch.ts` is the only network path. It enforces a host allowlist,
@@ -55,81 +55,84 @@ non-browser clients with 403 and prohibits bot activity outside BLS usage policy
 Each saved document's file mtime is recorded as `retrievedAt`, and its canonical
 `https://www.bls.gov/news.release/...` URL as the citation.
 
-## Timing rules
+## Timing and identity
 
-| Status | Meaning | Projected onto contract |
-|---|---|---|
-| `VERIFIED` | An official release record states the clock time | yes, `releaseAt` set |
-| `SCHEDULED` | Only an official schedule states the time | yes |
-| `DATE_ONLY` | An official document proves the day only | yes, `releaseAt: null` |
-| `SECONDARY_ONLY` | Only research evidence exists (e.g. pre-1994 FOMC) | **no** (null) |
+Each record has an `identities` array of metric, reference period and stage
+tuples. The resolver indexes every tuple. The scalar `referencePeriodStart`,
+`releaseStage` and `metricKeys` fields remain available for display. A bundle
+can pair different metrics with different months. The December 2025 BLS jobs
+release identifies October and November payroll first prints and November
+unemployment. An unresolved reference period provides no lookup key.
 
-There is no fallback clock: 08:30 or 14:00 are never assumed.
+`timingFacts` carries three independently sourced clocks:
 
-**Conflict policy.** The official publication determines the timing.
-- `DATE_CONFLICT` and `TIME_CONFLICT` are raised **only** when official publication evidence disagrees
-  with itself: two release records, or a document whose file-name day and embargo day differ. Such
-  records are withheld (null) by the contract provider.
-- An official schedule that differs from the publication (a reschedule) yields
-  `SCHEDULE_DIFFERS_FROM_RECORD`. That flag is informational: the published date and time are used.
-- A research time that differs from the official timing yields `SECONDARY_DIFFERS_FROM_OFFICIAL`.
-  That flag is also informational. Research timing never becomes `VERIFIED`.
-- A published date beats a scheduled clock time: the record is `DATE_ONLY` from the publication.
+| Fact | Meaning |
+|---|---|
+| `intendedEmbargo` | The time printed in an embargo, wire-transmission or "For release at" line |
+| `documentedPublication` | An official source documents that formal publication occurred at this time |
+| `earliestEvidencedAvailability` | Earliest public availability supported by the retained evidence, with its precision and scope |
 
-- **DST**: the publisher's Washington wall clock is authoritative. A printed
-  EST/EDT label that disagrees with `America/New_York` at that instant is
-  flagged `ZONE_LABEL_MISMATCH` and never used to shift the time.
-- **Shutdowns / reschedules**: the official record's date wins. If an official
-  schedule disagrees, the record gets `SCHEDULE_DIFFERS_FROM_RECORD` and still resolves. Reference
-  periods come only from release titles, never from "previous month", because
-  shutdown-delayed releases (September 2025 payrolls on 2025-11-20) break that rule.
-- **Unscheduled FOMC actions**: conference calls, notation votes, "(unscheduled)"
-  headings, and the Bauer–Swanson `Unscheduled=1` flag set `unscheduled: true` +
-  `UNSCHEDULED`. Pre-February-1994 rows carry `IMPLICIT_ANNOUNCEMENT`.
-- **Stages**: GDP stage wording is kept source-faithful (`ADVANCE`,
-  `SECOND_ESTIMATE`, `THIRD_ESTIMATE`, and the pre-2009 `PRELIMINARY` / `FINAL`).
-  The verbatim wording is in `stageLabel`. Monthly releases are `INITIAL` for
-  their reference month.
-- **FOMC identity**: `referencePeriodStart` is the announcement day; the metric key is `FED_TARGET_UPPER`.
+Each clock is null when unresolved. For May 15, 2024 CPI, the formal release
+and intended embargo are both 08:30 ET. BLS documented that related files were
+public around 07:58 ET. This evidence applies to the related files as a group.
+The resolver does not infer when a particular headline or core CPI value was
+first available. [BLS incident report](https://www.bls.gov/bls/teamofexperts60dayreport202411.pdf)
+
+`releaseAtKind` identifies the meaning of the legacy `releaseAt` field.
+`VERIFIED` carries a documented publication time, `SCHEDULED` an official
+schedule, and `DATE_ONLY` a null instant. The record provider returns the
+three facts as Date objects and omits secondary-only or conflicted records.
+Refresh older `records.json` snapshots from the source cache before resolving
+them. Those files predate explicit clock semantics and bundled identities.
+
+- A published date takes precedence over a scheduled clock. A discrepancy
+  with a retained schedule is flagged `SCHEDULE_DIFFERS_FROM_RECORD`.
+- Conflicting official publication dates or times are withheld. Conflicting
+  embargo clocks leave the intended time unresolved. Conflicting schedule
+  clocks are withheld if there is no publication.
+- Secondary research is retained for reconciliation. A research clock cannot
+  qualify an instant for the resolver.
+- Eastern clock fields must round-trip through `America/New_York`. Nonexistent
+  readings remain unresolved. Repeated readings require a matching offset or
+  EST/EDT abbreviation. A stale EST/EDT label on a unique clock reading is
+  flagged `ZONE_LABEL_MISMATCH`.
+- An official cancellation retires the associated schedule. BEA's explicit
+  replacement language retires superseded stages within the same reference
+  period, with the citation retained in `scheduleChanges`. The Q3 2025 GDP
+  initial estimate replaced the advance and second estimates, and the updated
+  estimate replaced the third. A replacement keeps its published stage.
+  [BEA schedule update](https://www.bea.gov/news/blog/2025-12-10/economic-release-schedule-updates)
+- Unscheduled FOMC actions carry the `UNSCHEDULED` flag when supported.
+  Pre-February-1994 research rows carry `IMPLICIT_ANNOUNCEMENT`. The FOMC
+  reference period is the announcement day and the metric is `FED_TARGET_UPPER`.
 
 ## Ownership and hand-off
 
-This layer owns **historical release timing** only.
+- **Actuals** can use `releaseDate` to look up an ALFRED vintage for each
+  identity. Actual first-print and availability claims require independent
+  evidence under the historical provenance policy.
+- **Expectations** need a cutoff supported for the metric and vintage. A
+  scheduled or formal publication clock alone cannot establish whether a
+  forecast preceded earlier public access. Apply the historical provenance
+  policy when assigning a conservative date bound.
+- **Daily market context** can inspect the calendar through
+  `createRecordCalendarProvider(records)`, including the selected clock's
+  meaning and any other evidenced clocks.
 
-- **Actuals (Agent 03)**: use `record.releaseDate` as the ALFRED vintage date
-  (`realtime_start = realtime_end = releaseDate`) to read the first print, and
-  `record.releaseStage` / `referencePeriodStart` to key it. Do not derive timing
-  from ALFRED vintages; they are date-only.
-- **Expectations (Agent 04)**: an expectation is pre-release only if its as-of
-  is strictly before `releaseAt` (VERIFIED/SCHEDULED). For `DATE_ONLY` records,
-  require the as-of to fall before the start of `releaseDate` in New York.
-- **Daily market context (Agent 14)**: anchor context cutoffs on
-  `createRecordCalendarProvider(records)`, which returns contract-validated
-  timing. `SECONDARY_ONLY` and conflicted records resolve to null by design.
+## Prior acquisition run (2026-11-27)
 
-## Measured coverage (live run, 2026-11-27)
-
-| Family | VERIFIED | SCHEDULED | DATE_ONLY | SECONDARY_ONLY | Span |
-|---|---|---|---|---|---|
-| BEA GDP | 360 | 14 | – | – | 1996 → 2027 schedule |
-| BEA Personal Income & Outlays | 358 | 14 | – | – | 1996 → 2027 schedule |
-| FOMC statements | 92 | – | 155 | 131 | 1988 → 2026 |
-| BLS CPI / PPI / Employment Situation | operator-supplied | | | | |
-
-- **FRED reconciliation:** 361/361 GDP and 359/359 PIO official days appear in FRED. FRED
-  also lists 54 GDP and 20 PIO days with no BEA release (comprehensive-revision data loads,
-  e.g. 1999-10-29 → 11-03). That is why FRED stays reconciliation-only.
-- **FOMC `SECONDARY_ONLY`:** pre-1994 implicit announcements (98), 1994–1999 no-change meetings
-  that had no statement, and three 2020 facility announcements that are not policy statements.
-- **`ZONE_LABEL_MISMATCH`:** 12 BEA releases printed EDT/EST against the zone in force,
-  clustered around the 2007 DST rule change. The wall clock was kept.
-- **Excluded:** 8 BEA pages had no embargo or wire line (listed in `run-report.json`).
-- **Replay:** an offline replay reproduces `records.json` byte for byte.
+The live run covered BEA archives from 1996, the current and next year's BEA
+schedule, and FOMC records from 1988. FRED matched 361 of 361 GDP release days
+and 359 of 359 PIO release days. FRED also listed 54 GDP and 20 PIO days
+without a BEA release, including comprehensive revision data loads. The same
+run recorded 12 BEA zone-label mismatches around the 2007 DST rule change and
+eight pages without an embargo or wire line. Offline replay reproduced the
+calendar byte for byte.
 
 ## Known gaps
 
 - BLS depth equals whatever an operator saves (the archives reach back to CPI 1999-06, Employment Situation 1995 and PPI 1998).
-- Fed 1994–2015 statements are `DATE_ONLY` from the official page. Bauer–Swanson
+- Fed 1994–2015 statements usually provide a date only. Bauer–Swanson
   supplies research-grade times (`SECONDARY_TIME_ONLY`) through 2023.
-- BEA ICS covers the current and next year only. Older BEA timing depends on
-  each release page or its text attachment carrying an embargo or wire line.
+- BEA ICS covers the current and next year only. Older BEA embargo timing
+  depends on the archive page or text attachment carrying an embargo or wire line.

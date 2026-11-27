@@ -7,9 +7,13 @@
  *   npm run repair:data-releases              # apply
  *   npm run repair:data-releases -- --limit 3 # apply to the first 3 only
  *
- * Scope — deliberately narrow. Only these four fields are ever written:
+ * Scope — deliberately narrow. Only these fields are ever written:
  *
  *     metricName · actualValue · priorValue · surpriseMagnitude
+ *     actualSource · actualSourceUrl
+ *
+ * Source attribution must travel with the numbers: repairing a legacy PPIFIS
+ * row onto PPIFID must not leave NSA values attributed to the SA series.
  *
  * Never touched: DataRelease.id, DataRelease.eventId, DataRelease.expectedValue
  * (that comes from the curated seed and is the human's input, not ours), and
@@ -23,6 +27,7 @@
  * of writing — see scripts/lib/readonly-prisma.ts.
  */
 import "dotenv/config";
+import { pathToFileURL } from "node:url";
 
 import { SEED_EVENTS } from "../ingest/events-seed";
 import { fetchMacroRelease } from "../ingest/fetch-macro";
@@ -30,7 +35,9 @@ import {
   CURATED_SERIES_BY_EVENT_TYPE,
   type CanonicalMetric,
   type MetricUnit,
+  type SeasonalAdjustment,
 } from "@/services/macro/metrics";
+import { forecastBasisAllowsSurprise } from "../ingest/fetch-macro";
 import { createScriptPrismaClient } from "../lib/prisma";
 import { createDryRunPrismaClient } from "../lib/readonly-prisma";
 
@@ -79,8 +86,19 @@ const PLAUSIBLE: Record<MetricUnit, [number, number]> = {
 type Classification =
   | "numeric correction"
   | "metric-name-only correction"
+  | "provenance correction"
   | "unchanged"
   | "unable to derive";
+
+interface ReleaseValues {
+  metricName: string;
+  actualValue: number | null;
+  priorValue: number | null;
+  surpriseMagnitude: number | null;
+  expectedValue: number | null;
+  actualSource: string | null;
+  actualSourceUrl: string | null;
+}
 
 interface Row {
   releaseId: string;
@@ -88,22 +106,68 @@ interface Row {
   headline: string;
   eventType: string;
   metric: CanonicalMetric;
-  old: {
-    metricName: string;
-    actualValue: number | null;
-    priorValue: number | null;
-    surpriseMagnitude: number | null;
-    expectedValue: number | null;
-  };
-  next: {
-    metricName: string;
-    actualValue: number | null;
-    priorValue: number | null;
-    surpriseMagnitude: number | null;
-    expectedValue: number | null;
-  } | null;
+  expectedSeasonalAdjustment: SeasonalAdjustment | null;
+  old: ReleaseValues;
+  next: ReleaseValues | null;
   classification: Classification;
   problems: string[];
+}
+
+/** Fields written on repair — values and the series that produced them. */
+export function repairWriteData(next: ReleaseValues): {
+  metricName: string;
+  actualValue: number | null;
+  priorValue: number | null;
+  surpriseMagnitude: number | null;
+  actualSource: string | null;
+  actualSourceUrl: string | null;
+} {
+  return {
+    metricName: next.metricName,
+    actualValue: next.actualValue,
+    priorValue: next.priorValue,
+    surpriseMagnitude: next.surpriseMagnitude,
+    actualSource: next.actualSource,
+    actualSourceUrl: next.actualSourceUrl,
+  };
+}
+
+/**
+ * Surprise rules for repair validation.
+ *
+ * - Null surprise is valid when the forecast basis is unknown/incompatible
+ *   for an SA/NSA-sensitive metric (no fabricated comparison).
+ * - Non-null surprise must equal actual − expected.
+ * - Metrics with basis `na` always require a defined surprise when expected
+ *   exists (handled via forecastBasisAllowsSurprise).
+ */
+export function validateSurpriseConsistency(args: {
+  metric: CanonicalMetric;
+  expectedValue: number;
+  actualValue: number;
+  surpriseMagnitude: number | null;
+  expectedSeasonalAdjustment: SeasonalAdjustment | null | undefined;
+}): string[] {
+  const want =
+    Math.round((args.actualValue - args.expectedValue) * 1e4) / 1e4;
+  const basisOk = forecastBasisAllowsSurprise(
+    args.metric.seasonalAdjustment,
+    args.expectedSeasonalAdjustment,
+  );
+  if (args.surpriseMagnitude === null) {
+    if (basisOk) {
+      return [
+        `surprise null ≠ actual − expected (${want}) — basis allows a surprise`,
+      ];
+    }
+    return [];
+  }
+  if (Math.abs(args.surpriseMagnitude - want) > 1e-9) {
+    return [
+      `surprise ${fmt(args.surpriseMagnitude)} ≠ actual − expected (${want})`,
+    ];
+  }
+  return [];
 }
 
 const fmt = (v: number | null): string => (v === null ? "null" : String(v));
@@ -143,13 +207,15 @@ function validate(row: Row): string[] {
         `unit mismatch: |actual/expected| = ${ratio.toFixed(2)} (expected 0.05–20)`,
       );
     }
-    // surprise must be exactly actual − expected in the canonical unit.
-    const want = Math.round((actualValue - expectedValue) * 1e4) / 1e4;
-    if (surpriseMagnitude === null || Math.abs(surpriseMagnitude - want) > 1e-9) {
-      problems.push(
-        `surprise ${fmt(surpriseMagnitude)} ≠ actual − expected (${want})`,
-      );
-    }
+    problems.push(
+      ...validateSurpriseConsistency({
+        metric: row.metric,
+        expectedValue,
+        actualValue,
+        surpriseMagnitude,
+        expectedSeasonalAdjustment: row.expectedSeasonalAdjustment,
+      }),
+    );
   } else if (surpriseMagnitude !== null) {
     problems.push("surprise is non-null but there is no expectedValue");
   }
@@ -215,6 +281,7 @@ async function main(): Promise<void> {
           occurredAt,
           expectedValue: seed.expectedValue ?? null,
           metricNameOverride: null,
+          expectedSeasonalAdjustment: seed.expectedSeasonalAdjustment ?? null,
         });
 
         const row: Row = {
@@ -223,12 +290,15 @@ async function main(): Promise<void> {
           headline: seed.headline,
           eventType: event.eventType,
           metric: binding.metric,
+          expectedSeasonalAdjustment: seed.expectedSeasonalAdjustment ?? null,
           old: {
             metricName: release.metricName,
             actualValue: release.actualValue,
             priorValue: release.priorValue,
             surpriseMagnitude: release.surpriseMagnitude,
             expectedValue: release.expectedValue,
+            actualSource: release.actualSource,
+            actualSourceUrl: release.actualSourceUrl,
           },
           next: fixed
             ? {
@@ -237,6 +307,8 @@ async function main(): Promise<void> {
                 priorValue: fixed.priorValue,
                 surpriseMagnitude: fixed.surpriseMagnitude,
                 expectedValue: fixed.expectedValue,
+                actualSource: fixed.actualSource,
+                actualSourceUrl: fixed.actualSourceUrl,
               }
             : null,
           classification: "unable to derive",
@@ -249,11 +321,16 @@ async function main(): Promise<void> {
             row.next.priorValue !== row.old.priorValue ||
             row.next.surpriseMagnitude !== row.old.surpriseMagnitude;
           const nameChanged = row.next.metricName !== row.old.metricName;
+          const attributionChanged =
+            row.next.actualSource !== row.old.actualSource ||
+            row.next.actualSourceUrl !== row.old.actualSourceUrl;
           row.classification = numericChanged
             ? "numeric correction"
             : nameChanged
               ? "metric-name-only correction"
-              : "unchanged";
+              : attributionChanged
+                ? "provenance correction"
+                : "unchanged";
         }
         row.problems = validate(row);
         rows.push(row);
@@ -285,6 +362,7 @@ async function main(): Promise<void> {
     const counts: Record<Classification, number> = {
       "numeric correction": 0,
       "metric-name-only correction": 0,
+      "provenance correction": 0,
       unchanged: 0,
       "unable to derive": 0,
     };
@@ -295,6 +373,7 @@ async function main(): Promise<void> {
     console.log(`total rows                  ${queue.length}`);
     console.log(`numeric corrections         ${counts["numeric correction"]}`);
     console.log(`metric-name-only            ${counts["metric-name-only correction"]}`);
+    console.log(`provenance corrections      ${counts["provenance correction"]}`);
     console.log(`unchanged                   ${counts.unchanged}`);
     console.log(`unable to derive            ${counts["unable to derive"]}`);
     console.log(`rows failing validation     ${invalid.length}`);
@@ -310,7 +389,8 @@ async function main(): Promise<void> {
     const toWrite = queue.filter(
       (r) =>
         r.classification === "numeric correction" ||
-        r.classification === "metric-name-only correction",
+        r.classification === "metric-name-only correction" ||
+        r.classification === "provenance correction",
     );
 
     if (flags.dryRun) {
@@ -334,12 +414,7 @@ async function main(): Promise<void> {
       try {
         await prisma.dataRelease.update({
           where: { id: row.releaseId },
-          data: {
-            metricName: row.next.metricName,
-            actualValue: row.next.actualValue,
-            priorValue: row.next.priorValue,
-            surpriseMagnitude: row.next.surpriseMagnitude,
-          },
+          data: repairWriteData(row.next),
         });
         completed.push(row.releaseId);
         console.log(`✓ repaired: ${row.headline.slice(0, 64)}`);
@@ -362,7 +437,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error("Fatal:", err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error("Fatal:", err);
+    process.exit(1);
+  });
+}

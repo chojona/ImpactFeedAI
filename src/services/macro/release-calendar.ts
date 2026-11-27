@@ -44,10 +44,28 @@ export interface ReleaseTimingProvenance {
   readonly retrievedAt: Date;
 }
 
+export interface ReleaseClockFact<Instant> {
+  readonly at: Instant;
+  readonly sourceUrl: string;
+  readonly precision: "MINUTE" | "APPROXIMATE_MINUTE";
+  readonly scope: "RELEASE" | "RELATED_FILES";
+}
+
+export interface ReleaseClockFacts<Instant> {
+  readonly intendedEmbargo: ReleaseClockFact<Instant> | null;
+  readonly documentedPublication: ReleaseClockFact<Instant> | null;
+  readonly earliestEvidencedAvailability: ReleaseClockFact<Instant> | null;
+}
+
+export type ReleaseAtKind = "DOCUMENTED_PUBLICATION" | "OFFICIAL_SCHEDULE" | "DATE_ONLY";
+
 interface ReleaseTimingBase {
   /** YYYY-MM-DD in America/New_York for instant-bearing results. */
   readonly releaseDate: string;
   readonly provenance: ReleaseTimingProvenance;
+  /** Record-backed providers expose the selected clock's meaning and any other evidenced clocks. */
+  readonly releaseAtKind?: ReleaseAtKind;
+  readonly timingFacts?: ReleaseClockFacts<Date>;
 }
 
 export interface VerifiedReleaseTiming extends ReleaseTimingBase {
@@ -207,12 +225,25 @@ function validateTiming(
   }
   const releaseDate = requireIsoDay(timing.releaseDate, "releaseDate");
   const provenance = validateProvenance(timing.provenance, providerId);
+  const kind = timing.timingStatus === "VERIFIED" ? "DOCUMENTED_PUBLICATION"
+    : timing.timingStatus === "SCHEDULED" ? "OFFICIAL_SCHEDULE" : "DATE_ONLY";
+  if (timing.releaseAtKind !== undefined && timing.releaseAtKind !== kind) {
+    throw new TypeError("releaseAtKind must agree with timingStatus");
+  }
+  const metadata = {
+    ...(timing.releaseAtKind === undefined ? {} : { releaseAtKind: timing.releaseAtKind }),
+    ...(timing.timingFacts === undefined ? {} : { timingFacts: {
+      intendedEmbargo: validateClockFact(timing.timingFacts.intendedEmbargo),
+      documentedPublication: validateClockFact(timing.timingFacts.documentedPublication),
+      earliestEvidencedAvailability: validateClockFact(timing.timingFacts.earliestEvidencedAvailability),
+    } }),
+  };
 
   if (timing.timingStatus === "DATE_ONLY") {
     if (timing.releaseAt !== null) {
       throw new TypeError("DATE_ONLY timing must have releaseAt null");
     }
-    return { timingStatus: "DATE_ONLY", releaseDate, releaseAt: null, provenance };
+    return { timingStatus: "DATE_ONLY", releaseDate, releaseAt: null, provenance, ...metadata };
   }
 
   if (
@@ -243,10 +274,25 @@ function validateTiming(
       "releaseAt must fall on releaseDate in America/New_York",
     );
   }
+  if (timing.timingStatus === "VERIFIED" && metadata.timingFacts &&
+    metadata.timingFacts.documentedPublication?.at.getTime() !== releaseAt.getTime()) {
+    throw new TypeError("VERIFIED releaseAt must match the documented publication");
+  }
 
   return timing.timingStatus === "VERIFIED"
-    ? { timingStatus: "VERIFIED", releaseDate, releaseAt, provenance }
-    : { timingStatus: "SCHEDULED", releaseDate, releaseAt, provenance };
+    ? { timingStatus: "VERIFIED", releaseDate, releaseAt, provenance, ...metadata }
+    : { timingStatus: "SCHEDULED", releaseDate, releaseAt, provenance, ...metadata };
+}
+
+function validateClockFact(fact: ReleaseClockFact<Date> | null): ReleaseClockFact<Date> | null {
+  if (fact === null) return null;
+  if (fact.precision !== "MINUTE" && fact.precision !== "APPROXIMATE_MINUTE") {
+    throw new TypeError("clock fact precision is invalid");
+  }
+  if (fact.scope !== "RELEASE" && fact.scope !== "RELATED_FILES") {
+    throw new TypeError("clock fact scope is invalid");
+  }
+  return { ...fact, at: requireInstant(fact.at, "clock fact at"), sourceUrl: requireHttpsUrl(fact.sourceUrl, "clock fact sourceUrl") };
 }
 
 /**

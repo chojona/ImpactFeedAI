@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import { easternWallClock } from "@/services/macro/time";
 import {
+  assertSessionCalendarComplete,
+  authoritativeSessionDaysOverlapping,
   buildSessionCalendar,
+  EARLY_CLOSE_RANGE_END,
+  isNyseFullClose,
+  NYSE_SCHEDULE_RANGE_END,
   resolveReleaseSession,
 } from "@/services/market/sessionCalendar";
 
@@ -63,7 +69,82 @@ describe("buildSessionCalendar", () => {
   it("reports whether a date is inside the curated early-close range", () => {
     expect(cal.earlyCloseKnown("2025-07-03")).toBe(true);
     expect(cal.earlyCloseKnown("2021-07-03")).toBe(false);
-    expect(cal.earlyCloseKnown("2027-07-03")).toBe(false);
+    expect(cal.earlyCloseKnown("2028-01-03")).toBe(false);
+  });
+});
+
+describe("NYSE schedule coverage 2025-01-09 and 2027", () => {
+  const HOLIDAYS_2027 = [
+    "2027-01-01",
+    "2027-01-18",
+    "2027-02-15",
+    "2027-03-26",
+    "2027-05-31",
+    "2027-06-18",
+    "2027-07-05",
+    "2027-09-06",
+    "2027-11-25",
+    "2027-12-24",
+  ] as const;
+
+  it("extends curated coverage through 2027-12-31 and still fails closed past it", () => {
+    expect(EARLY_CLOSE_RANGE_END).toBe("2027-12-31");
+    expect(NYSE_SCHEDULE_RANGE_END).toBe("2027-12-31");
+  });
+
+  it("treats 2025-01-09 as a full close, not a session", () => {
+    expect(isNyseFullClose("2025-01-09")).toBe(true);
+    const around = authoritativeSessionDaysOverlapping(
+      easternWallClock("2025-01-08", 9, 30),
+      easternWallClock("2025-01-10", 16, 0),
+    );
+    expect(around).toMatchObject({ status: "ok" });
+    if (around.status !== "ok") throw new Error("expected ok");
+    expect(around.days).not.toContain("2025-01-09");
+    expect(around.days).toEqual(["2025-01-08", "2025-01-10"]);
+  });
+
+  it("accepts a window covering the 2025-01-10 08:30 ET jobs report", () => {
+    const from = easternWallClock("2025-01-10", 8, 30);
+    const to = easternWallClock("2025-01-10", 16, 0);
+    const expected = authoritativeSessionDaysOverlapping(from, to);
+    expect(expected).toMatchObject({ status: "ok" });
+    if (expected.status !== "ok") throw new Error("expected ok");
+    expect(expected.days).toContain("2025-01-10");
+    expect(expected.days).not.toContain("2025-01-09");
+
+    const calendar = buildSessionCalendar(expected.days);
+    expect(assertSessionCalendarComplete(calendar, from, to)).toMatchObject({
+      status: "ok",
+    });
+  });
+
+  it.each(HOLIDAYS_2027)("treats 2027 holiday %s as a full close", (day) => {
+    expect(isNyseFullClose(day)).toBe(true);
+    expect(buildSessionCalendar([day]).isEarlyClose(day)).toBe(false);
+  });
+
+  it("resolves the sole 2027 early close at 13:00 ET", () => {
+    const calendar = buildSessionCalendar(["2027-11-26"]);
+    expect(calendar.isEarlyClose("2027-11-26")).toBe(true);
+    expect(
+      calendar.closeInstant("2027-11-26", { honourEarlyClose: true }),
+    ).toEqual(easternWallClock("2027-11-26", 13, 0));
+  });
+
+  it("refuses 2028-01-03 as outside the curated schedule range", () => {
+    const from = easternWallClock("2028-01-03", 9, 30);
+    const to = easternWallClock("2028-01-03", 16, 0);
+    expect(authoritativeSessionDaysOverlapping(from, to)).toMatchObject({
+      status: "refused",
+      reason: "nyse_schedule_unknown",
+    });
+    expect(
+      assertSessionCalendarComplete(buildSessionCalendar([]), from, to),
+    ).toMatchObject({
+      status: "refused",
+      reason: "nyse_schedule_unknown",
+    });
   });
 });
 

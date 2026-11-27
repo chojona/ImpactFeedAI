@@ -71,14 +71,14 @@ const partsFormatter = new Intl.DateTimeFormat("en-US", {
   second: "2-digit",
 });
 
-/** Offset of US Eastern from UTC, in ms, at a specific instant. */
-function easternOffsetMsAt(instant: Date): number {
+/** Encode the New York clock fields as UTC so they can be compared numerically. */
+function easternFieldsAsUtc(instant: Date): number {
   const parts = partsFormatter.formatToParts(instant);
   const read = (type: Intl.DateTimeFormatPartTypes): number => {
     const part = parts.find((p) => p.type === type);
     return part ? Number(part.value) : 0;
   };
-  const asIfUtc = Date.UTC(
+  return Date.UTC(
     read("year"),
     read("month") - 1,
     read("day"),
@@ -87,24 +87,20 @@ function easternOffsetMsAt(instant: Date): number {
     read("minute"),
     read("second"),
   );
-  return asIfUtc - instant.getTime();
 }
 
 /**
  * The UTC instant at which the US Eastern wall clock reads
  * `<isoDay> <hour>:<minute>`.
  *
- * Two passes: the offset is first sampled at the naive instant, then re-sampled
- * at the corrected one. Near a DST transition those differ, and the second
- * sample is the one that belongs to the instant actually being returned.
- *
- * Returns an invalid Date for an unparseable `isoDay`, matching `new Date()`
- * semantics so callers keep their existing `Number.isNaN(t.getTime())` guards.
+ * Returns an invalid Date for invalid or nonexistent local times. A repeated
+ * local time requires an explicit UTC offset in minutes (e.g. EDT is -240).
  */
 export function easternWallClock(
   isoDay: string,
   hour: number,
   minute: number,
+  utcOffsetMinutes?: number,
 ): Date {
   const day = utcDateOnly(isoDay);
   if (
@@ -120,9 +116,16 @@ export function easternWallClock(
   }
   const naiveUtc = day.getTime() + hour * 60 * 60_000 + minute * 60_000;
 
-  const firstPass = naiveUtc - easternOffsetMsAt(new Date(naiveUtc));
-  const secondPass = naiveUtc - easternOffsetMsAt(new Date(firstPass));
-  return new Date(secondPass);
+  // Both offsets in effect on a transition day are found by sampling on
+  // either side. Round-trip the candidate's full local date and time.
+  const offsets = new Set([naiveUtc - 86_400_000, naiveUtc + 86_400_000].map(
+    (ms) => easternFieldsAsUtc(new Date(ms)) - ms,
+  ));
+  const matches = [...offsets]
+    .filter((offset) => utcOffsetMinutes === undefined || offset === utcOffsetMinutes * 60_000)
+    .map((offset) => new Date(naiveUtc - offset))
+    .filter((candidate) => easternFieldsAsUtc(candidate) === naiveUtc);
+  return matches.length === 1 ? matches[0] : new Date(NaN);
 }
 
 /** Conventional 08:30 ET release time for US economic data. */

@@ -85,8 +85,8 @@ export interface EasternInstant {
 
 /**
  * Resolve a publisher's local clock reading on a New York calendar day.
- * The wall clock is authoritative (agencies publish in Washington local time);
- * a printed EST/EDT label is checked against it, never used to shift it.
+ * EST/EDT can select one occurrence of a repeated hour. For a unique wall
+ * time, keep the publisher's clock and flag an outdated abbreviation.
  */
 export function easternInstant(
   day: string,
@@ -97,9 +97,18 @@ export function easternInstant(
 ): EasternInstant | null {
   const hm = to24h(hour12, minute, meridiem);
   if (!hm) return null;
-  const at = easternWallClock(day, hm.h, hm.m);
-  if (Number.isNaN(at.getTime())) return null;
   const label = zoneLabel ? zoneLabel.toUpperCase() : null;
+  const numeric = /^(?:(?:UTC|GMT)\s*)?([+-])(\d{2}):?(\d{2})$/.exec(label ?? "");
+  if (label && !numeric && label !== "EST" && label !== "EDT" && label !== "ET") return null;
+  const offset = numeric && Number(numeric[2]) <= 23 && Number(numeric[3]) <= 59
+    ? (numeric[1] === "-" ? -1 : 1) * (Number(numeric[2]) * 60 + Number(numeric[3]))
+    : undefined;
+  if (numeric && offset === undefined) return null;
+  let at = easternWallClock(day, hm.h, hm.m, offset);
+  if (!numeric && Number.isNaN(at.getTime()) && (label === "EST" || label === "EDT")) {
+    at = easternWallClock(day, hm.h, hm.m, label === "EST" ? -300 : -240);
+  }
+  if (Number.isNaN(at.getTime())) return null;
   const statedZone: StatedZone | null =
     label === "EST" || label === "EDT" || label === "ET" ? label : null;
   const zoneLabelMismatch =
@@ -109,8 +118,8 @@ export function easternInstant(
 
 /** Matches "8:30 a.m.", "8:30 A.M.", "2:00 p.m", "10:00am". Groups: hour, minute, a|p. */
 export const CLOCK_RE = /(\d{1,2}):(\d{2})\s*([AaPp])\.?\s*[Mm]\.?/;
-/** Optional zone after a clock reading: "(ET)", "EDT", "(EST)". */
-export const ZONE_RE = /^\s*\(?\s*(EST|EDT|ET)\b\)?/i;
+/** Optional zone or UTC offset after a clock reading. */
+export const ZONE_RE = /^\s*\(?\s*(EST|EDT|ET|(?:(?:UTC|GMT)\s*)?[+-]\d{2}:?\d{2}|UTC|GMT)\b\)?/i;
 
 export interface ClockReading {
   readonly hour: number;

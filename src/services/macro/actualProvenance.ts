@@ -38,13 +38,13 @@ export type ProvenanceRefusal =
   | "unverified_availability" | "invalid_temporal_order" | "not_available_before_cutoff"
   | "not_known_to_system" | "recorded_after_data_freeze" | "initial_actual_required";
 const validDate = (date: Date | null): date is Date => date instanceof Date && Number.isFinite(date.getTime());
-const hasEvidence = (evidence: EvidenceReference | null): boolean => {
+export function isValidEvidenceReference(evidence: EvidenceReference | null): boolean {
   if (!evidence || !/^[a-f0-9]{64}$/i.test(evidence.payloadSha256)) return false;
   try {
     const url = new URL(evidence.sourceUrl);
     return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash;
   } catch { return false; }
-};
+}
 
 /** Evidence must be independently reviewed before entering this contract.
  * Required fields are necessary conditions, never an automated source audit.
@@ -61,10 +61,10 @@ export function qualifyHistoricalActual(actual: HistoricalActual, policy: {
   if (![actual.id, actual.seriesKey, actual.metricKey, actual.unit, actual.provider].every(x => x.trim()) || !Number.isFinite(actual.value)) reasons.push("missing_identity_or_value");
   if (!validDate(actual.referencePeriodStart) || !validDate(actual.referencePeriodEnd) || actual.referencePeriodStart.getTime() > actual.referencePeriodEnd.getTime()) reasons.push("invalid_reference_period");
   if (actual.valueKind !== "INITIAL_REPORTED" && actual.valueKind !== "REVISED_HISTORICAL") reasons.push("unqualified_value_kind");
-  if (!actual.providerRevisionKey?.trim() || !hasEvidence(actual.revisionEvidence)) reasons.push("missing_revision_evidence");
-  if (actual.valueKind === "INITIAL_REPORTED" && !hasEvidence(actual.initialReleaseEvidence)) reasons.push("missing_initial_release_evidence");
+  if (!actual.providerRevisionKey?.trim() || !isValidEvidenceReference(actual.revisionEvidence)) reasons.push("missing_revision_evidence");
+  if (actual.valueKind === "INITIAL_REPORTED" && !isValidEvidenceReference(actual.initialReleaseEvidence)) reasons.push("missing_initial_release_evidence");
   if (policy.requireInitial && actual.valueKind !== "INITIAL_REPORTED") reasons.push("initial_actual_required");
-  if (!["VERIFIED_INSTANT", "CONSERVATIVE_DATE_BOUND"].includes(actual.availabilityQuality) || !actual.availabilityPolicyVersion?.trim() || !hasEvidence(actual.availabilityEvidence) || !validDate(actual.availableAt)) reasons.push("unverified_availability");
+  if (!["VERIFIED_INSTANT", "CONSERVATIVE_DATE_BOUND"].includes(actual.availabilityQuality) || !actual.availabilityPolicyVersion?.trim() || !isValidEvidenceReference(actual.availabilityEvidence) || !validDate(actual.availableAt)) reasons.push("unverified_availability");
   if (
     !validDate(policy.cutoff) || !validDate(policy.recordedThrough) ||
     !validDate(actual.fetchedAt) || !validDate(actual.recordedAt) ||
