@@ -11,7 +11,7 @@ import { buttonClass } from "@/components/ui/Button";
 export default function EventNotFound() {
   return (
     <div className="flex flex-1 flex-col text-ink-2">
-      <Header active="feed" />
+      <Header active="events" />
       <main className="mx-auto w-full max-w-2xl px-5 py-24 sm:px-6">
         <p className="eyebrow">404</p>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink">

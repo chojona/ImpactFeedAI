@@ -1,5 +1,17 @@
 # Data Sources
 
+**November 5, 2026 coverage update:** source integration code is not proof of
+live historical coverage. The [read-only repository/database audit](audits/2026-11-05-repository-audit.md)
+found 50 events, 21 legacy release rows (all missing metric keys, reference
+periods and complete actual provenance), zero verified forecasts, 828 v3
+measurements across 20 events, and 1,276 SPY/QQQ hourly candles only. No
+VIX/Treasury context series is stored. Curated day-level ALFRED requests can
+fall back to latest values without persisted vintage status; bulk FRED/BLS
+values do not prove first prints. The [Phase 1 plan](phase-1-market-context-plan.md)
+defines the separate vintage/publication/availability evidence needed before
+these become historical context inputs. Existing provider/price notes below
+are source inventory, not a fresh verification of provider limits or pricing.
+
 An inventory of the data ImpactFeedAI uses and might use. Only the entries
 marked **Integrated** exist in the codebase; everything else is a candidate.
 
@@ -123,7 +135,7 @@ is a market-moving release currently missing from the pipeline.
 ### Treasury · **Planned**
 
 `fiscaldata.treasury.gov` for auction results and the daily yield curve. Free,
-official. Relevant to Phase 2 (rate environment) and to auction-day events.
+official. Relevant to V2 Phase 1 market context (rate environment; see the roadmap) and to auction-day events.
 
 ---
 
@@ -190,7 +202,7 @@ For a daily-close fallback Yahoo exposes only the daily bar's timestamp,
 normally at session open, so `anchorAt` identifies the bar rather than an exact
 closing tick.
 
-Missing from the universe and needed for Phase 2: **VIX and Treasury yields**.
+Missing from the universe and needed for V2 Phase 1 market context: **VIX and Treasury yields**.
 
 ### Yahoo Finance — candle storage · **Integrated (prototype)**
 
@@ -230,7 +242,7 @@ support historically.
 
 ### FRED (market series) · **Planned**
 
-Free daily series that cover several Phase 2 needs without a new provider:
+Free daily series that cover several V2 Phase 1 market-context needs without a new provider:
 
 - `VIXCLS` — VIX daily close
 - `DGS2`, `DGS10`, `DGS30` — constant-maturity Treasury yields
@@ -259,7 +271,7 @@ intraday and options products are paid *(verify)*.
 
 ## Options
 
-**Status: Planned / Researching. Nothing built. Phase 5.**
+**Status: Planned / Researching. Nothing built. Unscheduled — not in the V2 roadmap (see its scope discipline).**
 
 Options data is where "what is the market positioned for" gets answered, and
 also where costs jump.
@@ -295,7 +307,7 @@ document and the least likely to be free.
 - **Volume profile / footprint** — derivable from tick data rather than bought
   directly. The cost is in the tick data and the processing.
 
-**Realistic assessment:** order flow is a Phase 5+ item, and it may end up
+**Realistic assessment:** order flow is an unscheduled item beyond the V2 roadmap, and it may end up
 limited to a recent window (last 1–2 years) rather than the deep history the
 rest of the platform has. That asymmetry has to be visible in the product —
 an analog engine cannot weight a feature that only exists for 5% of the sample.

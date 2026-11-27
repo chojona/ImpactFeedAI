@@ -8,8 +8,8 @@ import { HorizonMatrix } from "@/components/patterns/HorizonMatrix";
 import { InsufficientData } from "@/components/patterns/InsufficientData";
 import { ReactionDistribution } from "@/components/patterns/ReactionDistribution";
 import { HorizonSelector } from "@/components/reactions/HorizonSelector";
+import { LibraryCoverageMetrics } from "@/components/terminal/LibraryCoverageMetrics";
 import { DataStatePanel } from "@/components/ui/DataStatePanel";
-import { MetricCell, MetricRow } from "@/components/ui/Metric";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageSection } from "@/components/ui/PageSection";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -23,7 +23,6 @@ import {
   getLibraryCoverage,
   listReactionObservations,
   type CategoryCoverage,
-  type LibraryCoverage,
 } from "@/services/events/eventQueries";
 import { HEADLINE_MEASURE } from "@/services/events/reactionMeasures";
 import {
@@ -167,7 +166,7 @@ export default async function PatternsPage({ searchParams }: PageProps) {
   };
 
   return (
-    <PatternsShell aside={<LibraryTotals coverage={coverage} />}>
+    <PatternsShell aside={<LibraryCoverageMetrics coverage={coverage} />}>
       <PageSection
         eyebrow="Coverage"
         icon={<Database className="h-3 w-3" strokeWidth={2.5} />}
@@ -248,61 +247,6 @@ export default async function PatternsPage({ searchParams }: PageProps) {
         </div>
       </PageSection>
     </PatternsShell>
-  );
-}
-
-/**
- * The library in four numbers.
- *
- * `Priced` and `Consensus` are the two that matter and both are usually far
- * below `Events`, which is the whole point: the gap *is* the current state of
- * the research programme, and burying it in a table row made the page look more
- * complete than the data is.
- */
-function LibraryTotals({ coverage }: { coverage: LibraryCoverage }) {
-  const { totals } = coverage;
-  return (
-    // Brand-tinted: this strip is the page's identity, and the four numbers on
-    // it describe the dataset rather than any single market.
-    <Panel tone="brand" padding="md" className="w-full lg:w-auto">
-      <MetricRow columns={4} aria-label="Library totals">
-        <MetricCell
-          label="Events"
-          value={totals.events.toLocaleString()}
-          size="md"
-          state="measured"
-          note="ingested"
-        />
-        <MetricCell
-          label="Verified timing"
-          value={totals.trustedTiming.toLocaleString()}
-          size="md"
-          state="measured"
-          note="can be anchored"
-        />
-        <MetricCell
-          label="Priced"
-          value={totals.measuredEvents.toLocaleString()}
-          size="md"
-          tone={totals.measuredEvents > 0 ? "brand" : "neutral"}
-          state="measured"
-          note="reaction measured"
-        />
-        <MetricCell
-          label="Consensus"
-          value={
-            totals.consensusVerified > 0
-              ? totals.consensusVerified.toLocaleString()
-              : null
-          }
-          size="md"
-          state="unsupported"
-          absenceLabel="None"
-          note="verified forecast"
-          noteTone={totals.consensusVerified > 0 ? "muted" : "caution"}
-        />
-      </MetricRow>
-    </Panel>
   );
 }
 
