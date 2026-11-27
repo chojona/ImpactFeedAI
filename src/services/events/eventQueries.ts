@@ -591,3 +591,126 @@ export async function getFeaturedEvent(): Promise<NewsEvent | null> {
   const id = rows[0]?.id;
   return id === undefined ? null : getEventById(id);
 }
+
+/**
+ * Releases whose exact instant is sourced and has not yet occurred.
+ *
+ * Only VERIFIED/SCHEDULED rows with a non-empty timing source qualify. The
+ * library is mostly historical today, so an empty result is the honest default
+ * — this never invents a BLS/Fed schedule entry that is not stored.
+ */
+export async function listUpcomingSourcedReleases(
+  options: { after?: Date; take?: number } = {},
+): Promise<NewsEvent[]> {
+  const after = options.after ?? new Date();
+  const take = options.take ?? 12;
+  const rows = await prisma.event.findMany({
+    where: {
+      timingStatus: { in: [...REACTION_ELIGIBLE_TIMING_STATUSES] },
+      releaseAt: { gte: after },
+      timingSource: { not: null },
+    },
+    orderBy: [{ releaseAt: "asc" }, { id: "asc" }],
+    take,
+    include: EVENT_INCLUDE,
+  });
+  return rows
+    .filter((row) => (row.timingSource?.trim().length ?? 0) > 0)
+    .map((row) => mapEvent(row as EventRow));
+}
+
+/**
+ * Most recent events that carry a current-version headline measurement.
+ */
+export async function listRecentMeasuredEvents(
+  take = 9,
+): Promise<NewsEvent[]> {
+  const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT e.id
+    FROM events e
+    JOIN reaction_measurements rm ON rm.event_id = e.id
+    WHERE ${MEASURABLE_HEADLINE_MEASUREMENT}
+    GROUP BY e.id, e.release_at
+    ORDER BY e.release_at DESC NULLS LAST, e.id ASC
+    LIMIT ${take}
+  `);
+  if (rows.length === 0) return [];
+  const ids = rows.map((row) => row.id);
+  const events = await prisma.event.findMany({
+    where: { id: { in: ids } },
+    include: EVENT_INCLUDE,
+  });
+  const byId = new Map(events.map((row) => [row.id, row]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((row): row is (typeof events)[number] => row !== undefined)
+    .map((row) => mapEvent(row as EventRow));
+}
+
+/**
+ * Events whose displayable release instant or date falls in `[from, to]`.
+ *
+ * Prefer `releaseAt`, then a calendar `releaseDate`, then `occurredAt`. Rows
+ * without any of those are omitted rather than forced onto "today".
+ */
+export async function listCalendarEvents(options: {
+  from: Date;
+  to: Date;
+  take?: number;
+}): Promise<NewsEvent[]> {
+  const take = options.take ?? 200;
+  const rows = await prisma.event.findMany({
+    where: {
+      OR: [
+        { releaseAt: { gte: options.from, lte: options.to } },
+        {
+          AND: [
+            { releaseAt: null },
+            { releaseDate: { gte: options.from, lte: options.to } },
+          ],
+        },
+        {
+          AND: [
+            { releaseAt: null },
+            { releaseDate: null },
+            { occurredAt: { gte: options.from, lte: options.to } },
+          ],
+        },
+      ],
+    },
+    orderBy: [
+      { releaseAt: "desc" },
+      { releaseDate: "desc" },
+      { occurredAt: "desc" },
+      { id: "asc" },
+    ],
+    take,
+    include: EVENT_INCLUDE,
+  });
+  return rows.map((row) => mapEvent(row as EventRow));
+}
+
+/**
+ * Timing-eligible events that still have no current-version reaction rows.
+ * Used by the quality console so a pending backfill is visible as a gap.
+ */
+export async function listPendingReactionEvents(
+  take = 24,
+): Promise<NewsEvent[]> {
+  const rows = await prisma.event.findMany({
+    where: {
+      timingStatus: { in: [...REACTION_ELIGIBLE_TIMING_STATUSES] },
+      releaseAt: { not: null },
+      timingSource: { not: null },
+      reactionMeasurements: {
+        none: { calculationVersion: CURRENT_REACTION_CALCULATION_VERSION },
+      },
+    },
+    orderBy: [{ releaseAt: "desc" }, { id: "asc" }],
+    take,
+    include: EVENT_INCLUDE,
+  });
+  return rows
+    .filter((row) => (row.timingSource?.trim().length ?? 0) > 0)
+    .map((row) => mapEvent(row as EventRow));
+}

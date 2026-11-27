@@ -15,9 +15,9 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ImpactFeedAI — Macro market intelligence",
+  title: "ImpactFeedAI — Personal macro research terminal",
   description:
-    "Trace the market reaction behind every major event. Cross-asset breakdowns of tariffs, Fed decisions, CPI prints, and geopolitical shocks.",
+    "Personal macroeconomic research terminal: daily briefs, economic calendar, event reactions, patterns and data-quality visibility.",
 };
 
 export default function RootLayout({

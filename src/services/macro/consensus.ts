@@ -16,7 +16,11 @@ export interface ConsensusQuery {
 
 export interface ConsensusEstimate {
   value: number;
-  /** When the estimate snapshot was observed. Must not be after releaseAt. */
+  /**
+   * When the estimate snapshot was observed.
+   * Must be strictly before `releaseAt` (`asOf < releaseAt`) when a release
+   * instant is known — equality is not pre-release knowledge.
+   */
   asOf: Date;
   source: string;
   sourceUrl: string;
@@ -56,8 +60,10 @@ export function validateConsensusEstimate(
   if (parsedUrl.protocol !== "https:") {
     throw new Error("Consensus sourceUrl must use HTTPS.");
   }
-  if (releaseAt && estimate.asOf.getTime() > releaseAt.getTime()) {
-    throw new Error("Consensus as-of timestamp cannot be after the release.");
+  if (releaseAt && estimate.asOf.getTime() >= releaseAt.getTime()) {
+    throw new Error(
+      "Consensus as-of timestamp must be strictly before the release.",
+    );
   }
   return {
     ...estimate,

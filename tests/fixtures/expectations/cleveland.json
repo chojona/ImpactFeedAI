@@ -1,0 +1,34 @@
+[
+  {
+    "id": "cleveland:cpi-yoy:2023-08",
+    "kind": "MODEL_NOWCAST",
+    "metricKey": "CPI_HEADLINE",
+    "referencePeriodStart": "2023-08-01",
+    "horizon": "release_print",
+    "value": 3.6,
+    "unit": "pct_yoy",
+    "asOf": null,
+    "asOfQuality": "DATE_ONLY",
+    "asOfDate": "2023-09-12",
+    "source": "Cleveland Fed Inflation Nowcasting",
+    "sourceUrl": "https://www.clevelandfed.org/indicators-and-data/inflation-nowcasting",
+    "licenseNote": "Public Cleveland Fed research nowcast. Updated calendar date only — DATE_ONLY; not survey consensus.",
+    "providerRecordId": "nowcast:cpi_yoy:2023-08:2023-09-12"
+  },
+  {
+    "id": "cleveland:core-pce-mom:2023-08",
+    "kind": "MODEL_NOWCAST",
+    "metricKey": "PCE_CORE",
+    "referencePeriodStart": "2023-08-01",
+    "horizon": "release_print",
+    "value": 0.2,
+    "unit": "pct_level",
+    "asOf": null,
+    "asOfQuality": "DATE_ONLY",
+    "asOfDate": "2023-09-28",
+    "source": "Cleveland Fed Inflation Nowcasting",
+    "sourceUrl": "https://www.clevelandfed.org/indicators-and-data/inflation-nowcasting",
+    "licenseNote": "Public Cleveland Fed research nowcast. MoM nowcast unit as published on the site table; not interchangeable with YoY without explicit mapping.",
+    "providerRecordId": "nowcast:core_pce_mom:2023-08:2023-09-28"
+  }
+]
