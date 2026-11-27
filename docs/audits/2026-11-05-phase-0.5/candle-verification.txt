@@ -1,0 +1,32 @@
+candles table: 1,276 rows
+
+Coverage
+  QQQ    1h   AS_TRADED                  638 rows  2024-09-09 → 2025-07-03
+  SPY    1h   AS_TRADED                  638 rows  2024-09-09 → 2025-07-03
+
+Volume: 726/726 extended-hours rows have NULL volume (withheld, not zeroed)
+
+Invariants
+  ✓ every row carries the current ingestion version
+  ✓ no duplicate (symbol, interval, open_time, price_basis)
+  ✓ every row declares a provider
+  ✓ no fabricated extended-hours zero volume persisted
+      0 extended-hours row(s) stored with volume = 0
+  ✓ every stored bar satisfies the OHLC invariants
+  ✓ SQL and TypeScript agree on OHLC coherence
+  ✓ timestamps are strictly increasing within each series
+  ✓ no candle is stamped in the future
+  ✓ every row is classified into a session
+      REGULAR=550 EXTENDED=726
+  ✓ no symbol/interval series mixes price bases
+
+10/10 invariants hold.
+(node:60758) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)

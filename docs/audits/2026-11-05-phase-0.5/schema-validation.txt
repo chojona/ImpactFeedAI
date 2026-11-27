@@ -1,0 +1,8 @@
+
+> impactfeed-ai@0.1.0 db:validate
+> prisma validate
+
+The schema at prisma/schema.prisma is valid 🚀
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.

@@ -1,7 +1,12 @@
 #!/usr/bin/env tsx
 /**
- * Backfill v3 reaction measurements (`reaction_measurements`) around
- * timing-eligible events.
+ * Backfill reaction measurements (`reaction_measurements`) around
+ * timing-eligible events, at COMPUTED_REACTION_CALCULATION_VERSION.
+ *
+ * WRITE FREEZE: --apply is refused while the computed version (v4) differs
+ * from the live read version (v3) and no qualified, explicitly authorized
+ * cutover is committed in src/services/events/measurementWriteGate.ts.
+ * Dry-runs remain available and report the gate status.
  *
  * Default mode is dry-run. Applying is deliberately cumbersome:
  *
@@ -50,9 +55,13 @@ import {
   type ResolvedMeasurement,
 } from "@/services/events/reactionMeasurement";
 import { buildSessionCalendar, resolveReleaseSession } from "@/services/market/sessionCalendar";
-import { REACTION_ELIGIBLE_TIMING_STATUSES } from "@/services/events/timing";
+import { isReactionTimingEligible, REACTION_ELIGIBLE_TIMING_STATUSES } from "@/services/events/timing";
 import { utcDateOnly } from "@/services/macro/time";
-import { CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
+import {
+  assertMeasurementWriteAllowed,
+  evaluateComputedMeasurementWrite,
+} from "@/services/events/measurementWriteGate";
+import { COMPUTED_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
 
 const APPLY_CONFIRMATION = "WRITE_MEASUREMENTS";
 const CONFIRMATION_ENV = "REACTION_MEASUREMENT_BACKFILL_CONFIRM";
@@ -85,12 +94,15 @@ function parseFlags(argv: string[]): Flags {
     } else if (arg === "-h" || arg === "--help") {
       console.log(`Usage: tsx scripts/backfill/backfill-reaction-measurements.ts [options]
 
-Dry-run by default. Applying requires ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION}.
+Dry-run by default. Applying requires ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION}
+AND a committed cutover authorization for the computed calculation version
+(src/services/events/measurementWriteGate.ts). Until then --apply is refused.
 
 Options:
   --dry-run            Report what would be written; write nothing. (default)
-  --apply              Persist measurements. Requires the confirmation variable
-                       and DIRECT_URL — the pooled fallback is refused.
+  --apply              Persist measurements. Requires the write gate to allow the
+                       computed version, the confirmation variable and
+                       DIRECT_URL — the pooled fallback is refused.
   --event-id <uuid>    Restrict to one event; may be repeated.
   --limit <n>          Process at most n events.
   -h, --help           Show this help.`);
@@ -193,7 +205,7 @@ function toRow(
     priceBasis: m.priceBasis,
     sessionBasis: m.sessionBasis,
     provider: providerId,
-    calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+    calculationVersion: COMPUTED_REACTION_CALCULATION_VERSION,
     fetchedAt,
   };
 }
@@ -275,7 +287,7 @@ async function processSymbol(
       where: {
         eventId,
         symbol,
-        calculationVersion: CURRENT_REACTION_CALCULATION_VERSION,
+        calculationVersion: COMPUTED_REACTION_CALCULATION_VERSION,
         measure: { in: rows.map((r) => r.measure) },
       },
     });
@@ -287,6 +299,8 @@ async function processSymbol(
     return;
   }
 
+  // Defence in depth: main() already refused a frozen version before connecting.
+  assertMeasurementWriteAllowed(COMPUTED_REACTION_CALCULATION_VERSION);
   const result = await prisma.reactionMeasurement.createMany({
     data: rows,
     skipDuplicates: true,
@@ -300,6 +314,13 @@ async function processSymbol(
 
 async function main(): Promise<void> {
   const flags = parseFlags(process.argv.slice(2));
+  const writeGate = evaluateComputedMeasurementWrite();
+  // Checked before the confirmation variable and before any DB client exists,
+  // so a frozen version can never reach the writable client.
+  if (flags.apply && !writeGate.allowed) {
+    console.error(`Refusing to write. ${writeGate.reason}.\nDry-runs remain available.`);
+    process.exit(2);
+  }
   requireDirectUrl(flags.apply);
 
   const prisma = flags.apply
@@ -312,7 +333,8 @@ async function main(): Promise<void> {
     `backfill-reaction-measurements${flags.apply ? " (APPLY — writing)" : " (dry-run — no writes)"}`,
   );
   console.log(`  provider  ${provider.id}`);
-  console.log(`  version   ${CURRENT_REACTION_CALCULATION_VERSION}\n`);
+  console.log(`  version   ${COMPUTED_REACTION_CALCULATION_VERSION}`);
+  console.log(`  apply     ${writeGate.allowed ? `allowed (${writeGate.basis})` : "BLOCKED — write freeze"}\n`);
 
   try {
     const events = await prisma.event.findMany({
@@ -323,10 +345,11 @@ async function main(): Promise<void> {
         ...(flags.eventIds.length > 0 ? { id: { in: flags.eventIds } } : {}),
       },
       orderBy: [{ releaseAt: "asc" }, { id: "asc" }],
-      select: { id: true, headline: true, eventType: true, releaseAt: true },
+      select: { id: true, headline: true, eventType: true, releaseAt: true, timingStatus: true, timingSource: true },
     });
 
-    const selected = flags.limit === null ? events : events.slice(0, flags.limit);
+    const eligible = events.filter(isReactionTimingEligible);
+    const selected = flags.limit === null ? eligible : eligible.slice(0, flags.limit);
     console.log(`Timing-eligible events: ${events.length}   selected: ${selected.length}\n`);
 
     for (const event of selected) {
@@ -390,7 +413,9 @@ async function main(): Promise<void> {
 
     if (!flags.apply) {
       console.log(
-        `\nNothing was written. To apply:\n  ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION} npm run backfill:reaction-measurements -- --apply`,
+        writeGate.allowed
+          ? `\nNothing was written. To apply:\n  ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION} npm run backfill:reaction-measurements -- --apply`
+          : `\nNothing was written. --apply is blocked: ${writeGate.reason}.`,
       );
     }
   } finally {

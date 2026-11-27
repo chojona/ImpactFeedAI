@@ -42,7 +42,11 @@
     "auto-ingest": "tsx scripts/ingest/auto-ingest.ts",
     "auto-ingest:dry-run": "tsx scripts/ingest/auto-ingest.ts --dry-run",
     "auto-ingest:fred": "tsx scripts/ingest/auto-ingest.ts --source fred",
-    "auto-ingest:fomc": "tsx scripts/ingest/auto-ingest.ts --source fomc"
+    "auto-ingest:fomc": "tsx scripts/ingest/auto-ingest.ts --source fomc",
+    "verify:actual-provenance": "tsx scripts/maintenance/verify-actual-provenance.ts",
+    "audit:reaction-calendar": "tsx scripts/maintenance/reaction-calendar-impact.ts",
+    "audit:reaction-recompute": "tsx scripts/maintenance/recompute-reaction-impact.ts",
+    "validate:phase05": "tsx scripts/maintenance/validate-phase05.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
