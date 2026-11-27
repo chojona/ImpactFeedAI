@@ -472,7 +472,9 @@ export const SEED_EVENTS: SeedEvent[] = [
     occurredAt: "2024-08-01T10:00:00-04:00",
   },
   {
-    headline: "Q2 2025 GDP advance reading +2.8%, beats consensus",
+    // BEA advance estimate 30 Jul 2025: real GDP +3.0% SAAR
+    // https://www.bea.gov/news/2025/gross-domestic-product-2nd-quarter-2025-advance-estimate
+    headline: "Q2 2025 GDP advance reading +3.0%, beats consensus",
     eventType: "MACRO_DATA",
     occurredAt: "2025-07-30T08:30:00-04:00",
     referencePeriodStart: "2025-04-01",
