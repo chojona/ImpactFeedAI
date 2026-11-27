@@ -1,10 +1,19 @@
 /**
  * Pure event-window extraction over an injected bar store + manifests.
+ *
+ * Every check that fails adds an explicit reason; any reason refuses the
+ * window. Bars are still returned for inspection, but callers must not
+ * promote a refused window to a qualified reaction.
  */
-import { buildCoverageReport, releaseMinuteOpen } from "./coverage";
+import { selectEndpointAtOrAfter, selectPreReleaseAnchor } from "./anchor";
+import { buildCoverageReport } from "./coverage";
 import type { NqEligibilityIndex } from "./eligibility";
 import { selectContractAsOf } from "./rolls";
-import { tradingDateForReleaseAt } from "./tradingDate";
+import {
+  ceilUtcMinute,
+  createTradingDateResolver,
+  utcMinuteOpen,
+} from "./tradingDate";
 import type {
   NqArchiveProvenance,
   NqBarStore,
@@ -13,6 +22,11 @@ import type {
   NqReactionQualification,
   NqRollBoundary,
 } from "./types";
+import {
+  describeWindowSession,
+  weakestQualification,
+  windowSessionRefusals,
+} from "./windowSessions";
 
 export interface ExtractContext {
   readonly rolls: readonly NqRollBoundary[];
@@ -21,11 +35,7 @@ export interface ExtractContext {
   readonly provenance: NqArchiveProvenance;
 }
 
-export async function extractEventWindow(
-  ctx: ExtractContext,
-  request: NqEventWindowRequest,
-): Promise<NqEventWindowResult> {
-  const { releaseAt, beforeMs, afterMs } = request;
+const validateRequest = ({ releaseAt, beforeMs, afterMs }: NqEventWindowRequest) => {
   if (!(releaseAt instanceof Date) || !Number.isFinite(releaseAt.getTime())) {
     throw new TypeError("releaseAt must be a finite Date");
   }
@@ -35,69 +45,110 @@ export async function extractEventWindow(
   if (!Number.isFinite(afterMs) || afterMs < 0) {
     throw new TypeError("afterMs must be a non-negative finite number");
   }
+};
 
-  const tradingDate = tradingDateForReleaseAt(releaseAt);
-  const eligibility = ctx.eligibility.lookup(tradingDate);
-  const certificationContract =
-    eligibility.selectedContract ??
-    ctx.eligibility.certificationContract(tradingDate);
+export async function extractEventWindow(
+  ctx: ExtractContext,
+  request: NqEventWindowRequest,
+): Promise<NqEventWindowResult> {
+  validateRequest(request);
+  const { releaseAt, beforeMs, afterMs } = request;
+  const index = ctx.eligibility;
+  const resolveTradingDate = createTradingDateResolver(index.tradingCalendar);
 
+  const release = resolveTradingDate(releaseAt);
+  const tradingDate = release.tradingDate;
+  const eligibility = index.lookup(tradingDate);
   const contractSelection = selectContractAsOf(
     ctx.rolls,
     tradingDate,
-    certificationContract,
+    eligibility.selectedContract ?? index.certificationContract(tradingDate),
   );
+  const contract = contractSelection.contract;
 
-  let reactionQualification: NqReactionQualification =
-    eligibility.qualification;
-  let reasonCode = eligibility.reasonCode;
-
-  // A certification conflict means we cannot trust the causal selection for a
-  // qualified measurement — force refusal without inventing a substitute.
-  if (contractSelection.conflictsWithCertification) {
-    reactionQualification = "refused";
-    reasonCode = "CONTRACT_CERTIFICATION_CONFLICT";
-  }
-
-  const windowStart = new Date(releaseAt.getTime() - beforeMs);
-  const windowEnd = new Date(releaseAt.getTime() + afterMs);
-
-  // Align to minute opens so the release minute is included when afterMs >= 0.
-  const queryStart = releaseMinuteOpen(windowStart);
-  const queryEnd = releaseMinuteOpen(windowEnd);
+  // The grid runs to the first minute open at or after the target instant so
+  // the endpoint bar is inside the queried range.
+  const targetAt = new Date(releaseAt.getTime() + afterMs);
+  const gridStart = utcMinuteOpen(new Date(releaseAt.getTime() - beforeMs));
+  const gridEnd = ceilUtcMinute(targetAt);
 
   const bars = await ctx.bars.queryWithinContract({
-    contract: contractSelection.contract,
-    startInclusive: queryStart,
-    endInclusive: queryEnd,
+    contract,
+    startInclusive: gridStart,
+    endInclusive: gridEnd,
   });
-
   const coverage = buildCoverageReport({
-    windowStart: queryStart,
-    windowEnd: queryEnd,
-    selectedContract: contractSelection.contract,
+    windowStart: gridStart,
+    windowEnd: gridEnd,
+    selectedContract: contract,
     bars,
   });
 
-  // Incomplete requested grids cannot enter strict qualification. Exploratory
-  // remains labelled exploratory so callers can still inspect gaps.
-  if (reactionQualification === "strict" && !coverage.complete) {
-    reactionQualification = "refused";
-    reasonCode = "INCOMPLETE_EVENT_WINDOW";
+  const touchedDates = new Set([tradingDate]);
+  const minuteRefusals: string[] = [];
+  for (const open of coverage.expectedOpenAts) {
+    const resolved = resolveTradingDate(open);
+    touchedDates.add(resolved.tradingDate);
+    if (resolved.refusalReason) minuteRefusals.push(resolved.refusalReason);
   }
+  const sessionDates = [...touchedDates].sort().map((date) =>
+    describeWindowSession({
+      tradingDate: date,
+      eligibility: date === tradingDate ? eligibility : index.lookup(date),
+      index,
+      rolls: ctx.rolls,
+    }),
+  );
+
+  const contractBars = bars.filter((bar) => bar.contract === contract);
+  const reasons = [
+    ...(eligibility.qualification === "refused"
+      ? [eligibility.reasonCode ?? "SESSION_NOT_ELIGIBLE"]
+      : []),
+    ...ctx.provenance.artifactRefusalReasons,
+    ...(release.refusalReason ? [release.refusalReason] : []),
+    ...minuteRefusals,
+    ...(contractSelection.conflictsWithCertification
+      ? ["CONTRACT_CERTIFICATION_CONFLICT"]
+      : []),
+    ...windowSessionRefusals({
+      sessions: sessionDates,
+      releaseTradingDate: tradingDate,
+      releaseContract: contract,
+    }),
+    ...(contractBars.some(
+      (bar) => resolveTradingDate(bar.openAt).tradingDate !== bar.tradingDate,
+    )
+      ? ["ARCHIVE_TRADING_DATE_MISMATCH"]
+      : []),
+    ...(coverage.unexpectedOpenAts.length > 0 ? ["BARS_OUTSIDE_SESSION_GRID"] : []),
+    ...(coverage.duplicateOpenAts.length > 0 ? ["DUPLICATE_MINUTE_BARS"] : []),
+    ...(coverage.complete ? [] : ["INCOMPLETE_EVENT_WINDOW"]),
+  ];
+  const refusalReasons = [...new Set(reasons)];
+
+  const reactionQualification: NqReactionQualification =
+    refusalReasons.length > 0
+      ? "refused"
+      : weakestQualification(sessionDates.map((s) => s.qualification));
 
   return {
     releaseAt,
     tradingDate,
+    tradingDateBasis: release.basis,
     contractSelection,
     eligibility: {
       ...eligibility,
-      reasonCode,
+      reasonCode: refusalReasons[0] ?? eligibility.reasonCode,
       qualification: reactionQualification,
     },
+    sessionDates,
     bars,
     coverage,
+    anchor: selectPreReleaseAnchor(contractBars, releaseAt),
+    endpoint: selectEndpointAtOrAfter(contractBars, targetAt),
     provenance: ctx.provenance,
+    refusalReasons,
     reactionQualification,
   };
 }

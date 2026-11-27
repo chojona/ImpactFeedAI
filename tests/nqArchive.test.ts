@@ -44,6 +44,8 @@ const rolls: readonly NqRollBoundary[] = [
 const eligibilityFor = (
   rows: Readonly<Record<string, NqSessionEligibility>>,
 ): NqEligibilityIndex => ({
+  tradingCalendar: null,
+  expectedActiveMinutes: () => null,
   certificationContract: (tradingDate) =>
     rows[tradingDate]?.selectedContract ?? null,
   lookup: (tradingDate) =>
@@ -125,12 +127,12 @@ describe("resolveNqArchivePaths", () => {
 describe("tradingDateForReleaseAt", () => {
   it("maps an 08:30 ET weekday release to that NY calendar date", () => {
     const releaseAt = new Date("2024-06-12T12:30:00.000Z");
-    expect(tradingDateForReleaseAt(releaseAt)).toBe("2024-06-12");
+    expect(tradingDateForReleaseAt(releaseAt).tradingDate).toBe("2024-06-12");
   });
 
   it("rolls Sunday 18:00 ET open to Monday trading date", () => {
     const open = new Date("2024-06-16T22:00:00.000Z");
-    expect(tradingDateForReleaseAt(open)).toBe("2024-06-17");
+    expect(tradingDateForReleaseAt(open).tradingDate).toBe("2024-06-17");
   });
 });
 
