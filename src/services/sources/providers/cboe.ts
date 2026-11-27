@@ -72,13 +72,13 @@ export const CBOE_PROVIDER: DataProviderEntry = {
   auth: { kind: "none", envVars: [], required: false, detail: "Public CSV files. Follow the 307 redirect to cdn-api.cboe.com." },
   freeTier: { costUsd: 0, limits: [], detail: "No published rate limit found. Fetch at most once per day." },
   licensing: {
-    storage: "UNVERIFIED",
+    storage: "RESTRICTED",
     redistribution: "RESTRICTED",
     attributionRequired: true,
     summary:
-      "Index values are Cboe intellectual property. The free history file supports personal research. Do not republish the series wholesale. Full terms not reviewed.",
-    termsUrl: null,
-    basis: "THIRD_PARTY",
+      "https://www.cboe.com/terms (2022-11-16) §2 bars storing in an electronic retrieval system and display/publish/distribute without consent; one personal non-commercial copy allowed. https://www.cboe.com/use-of-content requires prior approval for use of content.",
+    termsUrl: "https://www.cboe.com/terms",
+    basis: "DOCUMENTED",
   },
   implementations: [{ status: "MAIN", path: "src/services/market-context/cboe.ts" }],
   lastSuccessfulValidation: TESTED_ON,

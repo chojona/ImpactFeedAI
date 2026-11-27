@@ -100,7 +100,8 @@ export const ALPHA_VANTAGE_PROVIDER: DataProviderEntry = {
     storage: "UNVERIFIED",
     redistribution: "UNVERIFIED",
     attributionRequired: false,
-    summary: "Terms of service not reviewed. Treat as personal research only.",
+    summary:
+      "Terms could not be verified (PDF at terms_of_service/ was not extractable on 2026-11-27 audit). Do not invent licence permissions; treat storage and redistribution as unknown.",
     termsUrl: "https://www.alphavantage.co/terms_of_service/",
     basis: "UNVERIFIED",
   },
