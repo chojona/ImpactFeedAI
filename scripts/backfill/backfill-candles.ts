@@ -63,7 +63,20 @@ import {
   intervalFromCode,
 } from "@/services/market/candles";
 import { REACTION_ELIGIBLE_TIMING_STATUSES } from "@/services/events/timing";
+import { buildSessionCalendar } from "@/services/market/sessionCalendar";
 import type { CandleInterval } from "@/types/market";
+
+const newYorkDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** YYYY-MM-DD in America/New_York for a bar openTime. */
+function newYorkDateString(date: Date): string {
+  return newYorkDateFormatter.format(date);
+}
 
 const APPLY_CONFIRMATION = "WRITE_CANDLES";
 const CONFIRMATION_ENV = "CANDLE_BACKFILL_CONFIRM";
@@ -192,21 +205,53 @@ const emptyStats = (): Stats => ({
   volumeWithheld: 0,
 });
 
-async function countStoredInWindow(
+async function storedOpenTimesInWindow(
   prisma: PrismaClient,
   symbol: string,
   interval: CandleInterval,
   from: Date,
   to: Date,
-): Promise<number> {
-  return prisma.candle.count({
+): Promise<Date[]> {
+  const rows = await prisma.candle.findMany({
     where: {
       symbol,
       interval,
       ingestionVersion: CURRENT_CANDLE_INGESTION_VERSION,
       openTime: { gte: from, lte: to },
     },
+    select: { openTime: true },
+    orderBy: { openTime: "asc" },
   });
+  return rows.map((row) => row.openTime);
+}
+
+/**
+ * Session days for grid verification come from stored SPY daily bars only —
+ * never from a live provider call. An empty calendar fails closed (no skips).
+ */
+async function loadSpySessionCalendar(
+  prisma: PrismaClient,
+  from: Date,
+  to: Date,
+): Promise<ReturnType<typeof buildSessionCalendar>> {
+  const padMs = 5 * 86_400_000;
+  const rows = await prisma.candle.findMany({
+    where: {
+      symbol: "SPY",
+      interval: "ONE_DAY",
+      ingestionVersion: CURRENT_CANDLE_INGESTION_VERSION,
+      openTime: {
+        gte: new Date(from.getTime() - padMs),
+        lte: new Date(to.getTime() + padMs),
+      },
+    },
+    select: { openTime: true },
+    orderBy: { openTime: "asc" },
+  });
+  const days = [
+    ...new Set(rows.map((row) => newYorkDateString(row.openTime))),
+  ].sort();
+  return buildSessionCalendar(days);
 }
 
 async function processUnit(
@@ -399,22 +444,36 @@ async function main(): Promise<void> {
       }));
 
     const now = new Date();
-    const coverageCache = new Map<string, number>();
+    const coverageCache = new Map<string, Date[]>();
 
-    // First pass with zero coverage discovers ranked windows; second pass uses
-    // real store counts so skip-when-covered is accurate and idempotent.
+    // Skeleton pass discovers ranked windows with an empty calendar (no skips).
+    // Second pass loads SPY daily session days + stored openTimes for grid checks.
     const skeleton = buildPreservationPlan({
       events: timingEvents,
       symbols: flags.symbols,
       interval: flags.interval,
+      calendar: buildSessionCalendar([]),
       now,
       limit: flags.limit,
       coverageFor: ({ symbol, interval }) => ({
         symbol,
         interval,
-        storedCount: 0,
+        storedOpenTimes: [],
       }),
     });
+
+    let planFrom = now;
+    let planTo = now;
+    for (const unit of skeleton.units) {
+      if (unit.from < planFrom) planFrom = unit.from;
+      if (unit.to > planTo) planTo = unit.to;
+    }
+    for (const window of skeleton.windows) {
+      if (window.from < planFrom) planFrom = window.from;
+      if (window.to > planTo) planTo = window.to;
+    }
+
+    const calendar = await loadSpySessionCalendar(prisma, planFrom, planTo);
 
     for (const unit of skeleton.units) {
       const key = coverageKey(
@@ -426,7 +485,7 @@ async function main(): Promise<void> {
       if (!coverageCache.has(key)) {
         coverageCache.set(
           key,
-          await countStoredInWindow(
+          await storedOpenTimesInWindow(
             prisma,
             unit.symbol,
             unit.interval,
@@ -441,13 +500,14 @@ async function main(): Promise<void> {
       events: timingEvents,
       symbols: flags.symbols,
       interval: flags.interval,
+      calendar,
       now,
       limit: flags.limit,
       coverageFor: ({ symbol, interval, from, to }) => ({
         symbol,
         interval,
-        storedCount:
-          coverageCache.get(coverageKey(symbol, interval, from, to)) ?? 0,
+        storedOpenTimes:
+          coverageCache.get(coverageKey(symbol, interval, from, to)) ?? [],
       }),
     });
 
@@ -473,6 +533,11 @@ async function main(): Promise<void> {
         `upper-bound estimate ${plan.estimatedRowsUpperBound.toLocaleString()} rows`,
     );
 
+    console.log(
+      `Session calendar: ${calendar.sessionDays.length} SPY daily day(s) in range ` +
+        `(grid skip requires stored regular-session openTimes; count alone never skips)`,
+    );
+
     for (const unit of plan.units) {
       const days =
         unit.daysRemaining === null
@@ -481,10 +546,12 @@ async function main(): Promise<void> {
       const flag = unit.approachingLoss ? " AT-RISK" : "";
       const skip = unit.skippedFullyCovered
         ? " SKIP covered"
-        : ` need ≤${unit.estimatedRowsUpperBound}`;
+        : unit.unverifiableReason !== null
+          ? ` need ≤${unit.estimatedRowsUpperBound} (unverifiable: ${unit.unverifiableReason})`
+          : ` need ≤${unit.estimatedRowsUpperBound} (missing ${unit.missingCriticalCount})`;
       console.log(
         `  ${unit.releaseAt.toISOString().slice(0, 16)}  ${unit.symbol.padEnd(6)} ` +
-          `stored ${String(unit.storedCount).padStart(3)}/${unit.minExpectedBars}` +
+          `stored ${String(unit.storedCount).padStart(3)}/${String(unit.minExpectedBars).padStart(3)}` +
           `  ${days}${flag}${skip}`,
       );
     }
@@ -525,7 +592,8 @@ async function main(): Promise<void> {
       if (unit.skippedFullyCovered) {
         stats.pairsSkippedCovered += 1;
         console.log(
-          `    ${unit.symbol.padEnd(6)} skip — already covered (${unit.storedCount} ≥ ${unit.minExpectedBars})`,
+          `    ${unit.symbol.padEnd(6)} skip — expected grid complete ` +
+            `(${unit.storedCount} stored, ${unit.minExpectedBars} critical openTimes)`,
         );
         continue;
       }

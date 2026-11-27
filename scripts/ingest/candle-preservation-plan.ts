@@ -1,21 +1,32 @@
 /**
  * Pure planning helpers for durable historical candle preservation.
  *
- * Given timing-eligible events, provider lookback limits, and what the store
- * already holds, this module ranks windows approaching irreversible loss and
- * produces an incremental, idempotent plan of work units. Nothing here fetches
- * from a market-data provider or writes to Postgres — coverage is injected so
- * unit tests need no network.
+ * Given timing-eligible events, provider lookback limits, a session calendar,
+ * and the openTimes the store already holds, this module ranks windows
+ * approaching irreversible loss and produces an incremental, idempotent plan
+ * of work units. Nothing here fetches from a market-data provider or writes to
+ * Postgres — coverage and the calendar are injected so unit tests need no
+ * network.
+ *
+ * Skip-when-covered is grid-based, not count-based: a window is fully covered
+ * only when every expected regular-session openTime for the release window is
+ * present. Equal bar counts with missing critical timestamps do not skip.
  */
 import {
   INTERVAL_LOOKBACK_DAYS,
+  INTERVAL_MINUTES,
   barsPerSession,
   estimateCandleRows,
   intervalReachableAt,
 } from "./candle-semantics";
+import { easternWallClock } from "@/services/macro/time";
+import type { SessionCalendar } from "@/services/market/sessionCalendar";
 import type { CandleInterval } from "@/types/market";
 
 const DAY_MS = 86_400_000;
+
+/** US regular-session open, in minutes past midnight America/New_York. */
+const REGULAR_OPEN_MINUTE = 9 * 60 + 30;
 
 /**
  * Calendar days fetched either side of the release instant. Matches
@@ -47,8 +58,23 @@ export interface EventWindow {
 export interface CoverageSlice {
   symbol: string;
   interval: CandleInterval;
-  /** Bars already stored whose openTime falls inside the event window. */
+  /** Stored bar openTimes inside the event window (identity, not a count). */
+  storedOpenTimes: readonly Date[];
+}
+
+export interface CoverageAssessment {
+  /** Expected regular-session openTimes that fall inside the window. */
+  expectedOpenTimes: readonly Date[];
+  /** Expected openTimes absent from the store. */
+  missingOpenTimes: readonly Date[];
   storedCount: number;
+  /** True only when the expected grid is non-empty and fully present. */
+  fullyCovered: boolean;
+  /**
+   * Why the grid could not be verified. A non-null reason always means
+   * not fully covered (fail closed).
+   */
+  unverifiableReason: string | null;
 }
 
 export interface PreservationWorkUnit {
@@ -61,8 +87,10 @@ export interface PreservationWorkUnit {
   daysRemaining: number | null;
   approachingLoss: boolean;
   storedCount: number;
-  /** Regular-session lower bound used to decide "fully covered". */
+  /** Size of the expected regular-session grid (0 when unverifiable). */
   minExpectedBars: number;
+  missingCriticalCount: number;
+  unverifiableReason: string | null;
   /** Upper-bound rows this unit might still insert. */
   estimatedRowsUpperBound: number;
   skippedFullyCovered: boolean;
@@ -92,6 +120,8 @@ export interface BuildPreservationPlanInput {
   events: TimingEligibleEvent[];
   symbols: string[];
   interval: CandleInterval;
+  /** Reference session calendar (holidays absent; early closes via table). */
+  calendar: SessionCalendar;
   now?: Date;
   /**
    * Days-remaining at or below this value are flagged approaching loss.
@@ -138,9 +168,8 @@ export function sessionsInPreservationWindow(
 }
 
 /**
- * Lower-bound bar count that means "this window is already covered enough to
- * skip". Uses regular session only so a store that withheld extended bars is
- * not forced to re-fetch forever.
+ * Upper-bound regular-session bar count for estimates only. Never used as
+ * proof that a window is fully covered — see {@link assessWindowCoverage}.
  */
 export function minExpectedBarsForWindow(
   interval: CandleInterval,
@@ -151,12 +180,181 @@ export function minExpectedBarsForWindow(
   );
 }
 
-export function isWindowFullyCovered(
-  storedCount: number,
+export type ExpectedGridResult =
+  | { status: "ok"; openTimes: Date[] }
+  | { status: "refused"; reason: string };
+
+/**
+ * Regular-session openTimes for one session day at `interval`.
+ *
+ * Bars open at 09:30 ET and step by {@link INTERVAL_MINUTES} while the open is
+ * strictly before the session close (16:00 ET, or 13:00 ET on a listed early
+ * close). Daily expects the session-open stamp (09:30 ET), matching Yahoo's
+ * US-equity daily convention.
+ *
+ * Fail closed when the curated early-close table does not cover `day`: a
+ * guessed 16:00 close would under-expect bars on a half-day and could skip a
+ * window that is still missing critical stamps.
+ */
+export function expectedRegularOpenTimesForSession(
+  day: string,
   interval: CandleInterval,
-  daysEachSide: number = PRESERVATION_WINDOW_DAYS_EACH_SIDE,
+  calendar: SessionCalendar,
+): ExpectedGridResult {
+  if (calendar.indexOf(day) === null) {
+    return { status: "refused", reason: `day ${day} is not a session on the calendar` };
+  }
+  if (!calendar.earlyCloseKnown(day)) {
+    return { status: "refused", reason: "early_close_unknown" };
+  }
+
+  if (interval === "ONE_DAY") {
+    return {
+      status: "ok",
+      openTimes: [easternWallClock(day, 9, 30)],
+    };
+  }
+
+  const closeMinute = calendar.isEarlyClose(day) ? 13 * 60 : 16 * 60;
+  const step = INTERVAL_MINUTES[interval];
+  const openTimes: Date[] = [];
+  for (let minute = REGULAR_OPEN_MINUTE; minute < closeMinute; minute += step) {
+    openTimes.push(
+      easternWallClock(day, Math.floor(minute / 60), minute % 60),
+    );
+  }
+  return { status: "ok", openTimes };
+}
+
+/**
+ * Critical regular-session openTimes for the preservation window.
+ *
+ * Includes every session day whose regular session overlaps `[from, to]`,
+ * then keeps only opens that themselves fall inside that inclusive window.
+ * Weekends and holidays are absent from the calendar, so they contribute no
+ * expected stamps. Early closes shorten that day's grid.
+ */
+export function expectedCriticalOpenTimes(args: {
+  calendar: SessionCalendar;
+  interval: CandleInterval;
+  from: Date;
+  to: Date;
+}): ExpectedGridResult {
+  const { calendar, interval, from, to } = args;
+  const fromMs = from.getTime();
+  const toMs = to.getTime();
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs < fromMs) {
+    return { status: "refused", reason: "invalid_window_bounds" };
+  }
+
+  const openTimes: Date[] = [];
+
+  for (const day of calendar.sessionDays) {
+    const sessionOpen = easternWallClock(day, 9, 30);
+    if (!Number.isFinite(sessionOpen.getTime())) {
+      return { status: "refused", reason: `invalid_session_day:${day}` };
+    }
+
+    // Without early-close knowledge we cannot know the session's end, so any
+    // day that could overlap the window refuses rather than guessing.
+    if (!calendar.earlyCloseKnown(day)) {
+      const regularClose = easternWallClock(day, 16, 0);
+      if (
+        sessionOpen.getTime() <= toMs &&
+        regularClose.getTime() >= fromMs
+      ) {
+        return { status: "refused", reason: "early_close_unknown" };
+      }
+      continue;
+    }
+
+    const sessionClose = calendar.closeInstant(day, { honourEarlyClose: true });
+    if (sessionOpen.getTime() > toMs || sessionClose.getTime() < fromMs) {
+      continue;
+    }
+
+    const dayGrid = expectedRegularOpenTimesForSession(day, interval, calendar);
+    if (dayGrid.status === "refused") return dayGrid;
+
+    for (const openTime of dayGrid.openTimes) {
+      const t = openTime.getTime();
+      if (t >= fromMs && t <= toMs) openTimes.push(openTime);
+    }
+  }
+
+  return { status: "ok", openTimes };
+}
+
+function openTimeKey(date: Date): number {
+  return date.getTime();
+}
+
+/**
+ * Compare stored openTimes against the expected regular-session grid.
+ *
+ * Count equality is irrelevant: a store with the right number of bars but the
+ * wrong timestamps is not covered. An empty or unverifiable expected grid
+ * never counts as covered (fail closed).
+ */
+export function assessWindowCoverage(args: {
+  calendar: SessionCalendar;
+  interval: CandleInterval;
+  from: Date;
+  to: Date;
+  storedOpenTimes: readonly Date[];
+}): CoverageAssessment {
+  const storedCount = args.storedOpenTimes.length;
+  const grid = expectedCriticalOpenTimes({
+    calendar: args.calendar,
+    interval: args.interval,
+    from: args.from,
+    to: args.to,
+  });
+
+  if (grid.status === "refused") {
+    return {
+      expectedOpenTimes: [],
+      missingOpenTimes: [],
+      storedCount,
+      fullyCovered: false,
+      unverifiableReason: grid.reason,
+    };
+  }
+
+  if (grid.openTimes.length === 0) {
+    return {
+      expectedOpenTimes: [],
+      missingOpenTimes: [],
+      storedCount,
+      fullyCovered: false,
+      unverifiableReason: "empty_expected_grid",
+    };
+  }
+
+  const stored = new Set(args.storedOpenTimes.map(openTimeKey));
+  const missingOpenTimes = grid.openTimes.filter(
+    (openTime) => !stored.has(openTimeKey(openTime)),
+  );
+
+  return {
+    expectedOpenTimes: grid.openTimes,
+    missingOpenTimes,
+    storedCount,
+    fullyCovered: missingOpenTimes.length === 0,
+    unverifiableReason: null,
+  };
+}
+
+/**
+ * @deprecated Count-only coverage. Kept as a named trap so call sites migrate
+ * explicitly to {@link assessWindowCoverage}; always returns false.
+ */
+export function isWindowFullyCovered(
+  _storedCount: number,
+  _interval: CandleInterval,
+  _daysEachSide?: number,
 ): boolean {
-  return storedCount >= minExpectedBarsForWindow(interval, daysEachSide);
+  return false;
 }
 
 /**
@@ -227,7 +425,7 @@ export function coverageKey(
 
 /**
  * Produce an incremental preservation plan. Re-running with the same coverage
- * yields the same remaining work units (idempotent planning).
+ * and calendar yields the same remaining work units (idempotent planning).
  */
 export function buildPreservationPlan(
   input: BuildPreservationPlanInput,
@@ -248,7 +446,6 @@ export function buildPreservationPlan(
       ? ranked
       : ranked.slice(0, input.limit);
 
-  const minExpected = minExpectedBarsForWindow(input.interval);
   const sessions = sessionsInPreservationWindow();
   const units: PreservationWorkUnit[] = [];
 
@@ -261,10 +458,14 @@ export function buildPreservationPlan(
         from: window.from,
         to: window.to,
       });
-      const skippedFullyCovered = isWindowFullyCovered(
-        coverage.storedCount,
-        input.interval,
-      );
+      const assessment = assessWindowCoverage({
+        calendar: input.calendar,
+        interval: input.interval,
+        from: window.from,
+        to: window.to,
+        storedOpenTimes: coverage.storedOpenTimes,
+      });
+      const skippedFullyCovered = assessment.fullyCovered;
 
       units.push({
         eventId: window.eventId,
@@ -275,8 +476,10 @@ export function buildPreservationPlan(
         releaseAt: window.releaseAt,
         daysRemaining: window.daysRemaining,
         approachingLoss: window.approachingLoss,
-        storedCount: coverage.storedCount,
-        minExpectedBars: minExpected,
+        storedCount: assessment.storedCount,
+        minExpectedBars: assessment.expectedOpenTimes.length,
+        missingCriticalCount: assessment.missingOpenTimes.length,
+        unverifiableReason: assessment.unverifiableReason,
         estimatedRowsUpperBound: skippedFullyCovered
           ? 0
           : estimateCandleRows({
