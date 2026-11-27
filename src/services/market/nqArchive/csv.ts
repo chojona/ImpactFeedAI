@@ -1,5 +1,7 @@
 /**
- * Minimal CSV helpers for archive manifests. Deterministic, no schema inventing.
+ * Minimal RFC 4180 CSV reader for archive manifests. Deterministic, no schema
+ * inventing: a ragged row or an unterminated quote fails instead of shifting
+ * values into the wrong column.
  */
 import { readFile } from "node:fs/promises";
 
@@ -13,56 +15,96 @@ export async function readCsvRecords(
 export function parseCsv(
   text: string,
 ): ReadonlyArray<Readonly<Record<string, string>>> {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter((line) => line.length > 0);
-  if (lines.length === 0) return [];
+  const body = text.startsWith("\uFEFF") ? text.slice(1) : text;
+  const records = tokenizeCsv(body)
+    .filter((record) => !record.blank)
+    .map((record) => record.cells);
+  if (records.length === 0) return [];
 
-  const headers = splitCsvLine(lines[0]!);
-  const rows: Record<string, string>[] = [];
-  for (let i = 1; i < lines.length; i += 1) {
-    const cells = splitCsvLine(lines[i]!);
-    const row: Record<string, string> = {};
-    for (let c = 0; c < headers.length; c += 1) {
-      row[headers[c]!] = cells[c] ?? "";
+  const headers = records[0]!;
+  return records.slice(1).map((cells, index) => {
+    if (cells.length !== headers.length) {
+      throw new Error(
+        `CSV row ${index + 2} has ${cells.length} cells; header has ${headers.length}`,
+      );
     }
-    rows.push(row);
-  }
-  return rows;
+    const row: Record<string, string> = {};
+    headers.forEach((header, c) => {
+      row[header] = cells[c]!;
+    });
+    return row;
+  });
 }
 
-/** Split one CSV line; supports quoted fields with commas. */
-function splitCsvLine(line: string): string[] {
-  const cells: string[] = [];
-  let current = "";
+interface CsvRecord {
+  readonly cells: string[];
+  /** An empty line, as opposed to a record holding one quoted empty field. */
+  readonly blank: boolean;
+}
+
+/**
+ * Split text into records of cells; quoted fields may span lines. A quote
+ * may only open a field, and only a delimiter or line end may follow the
+ * closing quote — anything else makes the whole input unparseable.
+ */
+function tokenizeCsv(text: string): CsvRecord[] {
+  const records: CsvRecord[] = [];
+  let record: string[] = [];
+  let cell = "";
   let inQuotes = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i]!;
+  let closedQuote = false;
+  let recordQuoted = false;
+  let line = 1;
+
+  const endRecord = () => {
+    record.push(cell);
+    records.push({
+      cells: record,
+      blank: record.length === 1 && cell === "" && !recordQuoted,
+    });
+    record = [];
+    cell = "";
+    closedQuote = false;
+    recordQuoted = false;
+  };
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i]!;
     if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          current += '"';
-          i += 1;
-        } else {
-          inQuotes = false;
-        }
+      if (ch === "\n") line += 1;
+      if (ch !== '"') {
+        cell += ch;
+      } else if (text[i + 1] === '"') {
+        cell += '"';
+        i += 1;
       } else {
-        current += ch;
+        inQuotes = false;
+        closedQuote = true;
       }
       continue;
     }
-    if (ch === '"') {
-      inQuotes = true;
-      continue;
-    }
     if (ch === ",") {
-      cells.push(current);
-      current = "";
-      continue;
+      record.push(cell);
+      cell = "";
+      closedQuote = false;
+    } else if (ch === "\r" || ch === "\n") {
+      if (ch === "\r" && text[i + 1] === "\n") i += 1;
+      endRecord();
+      line += 1;
+    } else if (closedQuote) {
+      throw new Error(`CSV line ${line}: unexpected character after closing quote`);
+    } else if (ch === '"') {
+      if (cell.length > 0) {
+        throw new Error(`CSV line ${line}: stray quote inside an unquoted field`);
+      }
+      inQuotes = true;
+      recordQuoted = true;
+    } else {
+      cell += ch;
     }
-    current += ch;
   }
-  cells.push(current);
-  return cells;
+
+  if (inQuotes) throw new Error("CSV has an unterminated quoted field");
+  if (cell.length > 0 || record.length > 0 || closedQuote) endRecord();
+  return records;
 }

@@ -1,14 +1,39 @@
 /**
- * Map a verified release instant to the CME Globex trading date used by the
- * local NQ outright archive.
+ * Map an instant to the CME Globex trading date used by the local NQ outright
+ * archive.
  *
- * For standard 08:30 ET macro releases this is the America/New_York calendar
- * date of the instant. Evening Globex hours (after the daily maintenance break)
- * belong to the *next* weekday trading date under post-2012 regimes; that case
- * is handled explicitly so weekend/Sunday opens do not silently mis-label.
+ * Every instant belongs to the first session in which it is observable: its
+ * "session day" is the America/New_York date, advanced by one from 17:00 ET
+ * onward (the daily break and the 18:00 ET evening open belong to the next
+ * session). Weekend instants therefore land on Monday.
+ *
+ * The archive's own evidence is preferred. When the certification calendar
+ * (certification-by-session.csv) covers the session day, the trading date is
+ * the first certified session on or after it, so holidays absent from the
+ * calendar are skipped — Sunday evening before MLK Monday → Tuesday.
+ *
+ * Without calendar coverage a weekday heuristic remains as a fail-closed
+ * fallback: it still labels the date for inspection but refuses any session
+ * adjacent to a US market holiday. Dates before the post-2012 Globex equity
+ * schedule are refused on either basis.
  *
  * This helper does not invent a release time and does not certify the session.
  */
+import { addIsoDays, isIsoDate, isoWeekday } from "./isoDate";
+import { isUsMarketHoliday } from "./usHolidays";
+import type { NqTradingCalendar, NqTradingDateResolution } from "./types";
+
+/**
+ * First trading date of the session schedule the grid models. Earlier
+ * trade-date assignment needs the CME pause correction, which is not
+ * implemented.
+ */
+export const SESSION_RULES_START_DATE = "2012-11-19";
+
+/** Longest run of calendar days the certification calendar may skip. */
+const MAX_CALENDAR_GAP_DAYS = 10;
+const HOUR_MS = 3_600_000;
+const WALL_CLOCK_CACHE_LIMIT = 50_000;
 
 const newYorkParts = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
@@ -16,60 +41,142 @@ const newYorkParts = new Intl.DateTimeFormat("en-US", {
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",
-  minute: "2-digit",
   hourCycle: "h23",
-  weekday: "short",
 });
 
-const isoDate = (year: number, month: number, day: number): string =>
-  `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+export interface NewYorkWallClock {
+  readonly date: string;
+  readonly hour: number;
+  /** 0 = Sunday … 6 = Saturday. */
+  readonly weekday: number;
+}
 
-const addCalendarDays = (year: number, month: number, day: number, delta: number): string => {
-  const utc = new Date(Date.UTC(year, month - 1, day + delta));
-  return isoDate(utc.getUTCFullYear(), utc.getUTCMonth() + 1, utc.getUTCDate());
+// US Eastern offsets are whole hours and change on UTC hour boundaries, so
+// every minute in one UTC hour shares a New York date and hour.
+const wallClockByUtcHour = new Map<number, NewYorkWallClock>();
+
+export function newYorkWallClock(instant: Date): NewYorkWallClock {
+  const ms = instant.getTime();
+  if (!Number.isFinite(ms)) {
+    throw new TypeError("instant must be a finite Date");
+  }
+  const hourKey = Math.floor(ms / HOUR_MS);
+  const cached = wallClockByUtcHour.get(hourKey);
+  if (cached) return cached;
+
+  const parts = newYorkParts.formatToParts(new Date(hourKey * HOUR_MS));
+  const read = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  const date = `${read("year")}-${read("month")}-${read("day")}`;
+  const clock: NewYorkWallClock = {
+    date,
+    hour: Number(read("hour")) % 24,
+    weekday: isoWeekday(date),
+  };
+  if (wallClockByUtcHour.size >= WALL_CLOCK_CACHE_LIMIT) wallClockByUtcHour.clear();
+  wallClockByUtcHour.set(hourKey, clock);
+  return clock;
+}
+
+export function createTradingCalendar(
+  dates: Iterable<string>,
+): NqTradingCalendar | null {
+  const set = new Set([...dates].filter(isIsoDate));
+  if (set.size === 0) return null;
+  const sorted = [...set].sort();
+  return {
+    firstDate: sorted[0]!,
+    lastDate: sorted[sorted.length - 1]!,
+    isTradingDate: (date) => set.has(date),
+  };
+}
+
+const sessionDayOf = (instant: Date): string => {
+  const clock = newYorkWallClock(instant);
+  return clock.hour >= 17 ? addIsoDays(clock.date, 1) : clock.date;
 };
 
-/**
- * Trading date YYYY-MM-DD for an exact release instant.
- *
- * Minutes past midnight America/New_York at or after 18:00 on Sun–Thu roll to
- * the next calendar day (Globex evening open). Friday after 17:00 / weekend
- * closures are not invented here — Friday 18:00+ is treated as the next
- * session's date only when it is Sunday evening or weekday evening open.
- */
-export function tradingDateForReleaseAt(releaseAt: Date): string {
+const previousWeekday = (date: string): string => {
+  let day = addIsoDays(date, -1);
+  while (isoWeekday(day) === 0 || isoWeekday(day) === 6) day = addIsoDays(day, -1);
+  return day;
+};
+
+const nextWeekday = (date: string): string => {
+  let day = date;
+  while (isoWeekday(day) === 0 || isoWeekday(day) === 6) day = addIsoDays(day, 1);
+  return day;
+};
+
+const isHolidayAdjacent = (date: string): boolean =>
+  isUsMarketHoliday(date) ||
+  isUsMarketHoliday(previousWeekday(date)) ||
+  isUsMarketHoliday(nextWeekday(addIsoDays(date, 1)));
+
+const fromCalendar = (
+  sessionDay: string,
+  calendar: NqTradingCalendar,
+): string | null => {
+  if (sessionDay < calendar.firstDate) return null;
+  let day = sessionDay;
+  for (let step = 0; step <= MAX_CALENDAR_GAP_DAYS; step += 1) {
+    if (day > calendar.lastDate) return null;
+    if (calendar.isTradingDate(day)) return day;
+    day = addIsoDays(day, 1);
+  }
+  return null;
+};
+
+function resolveSessionDay(
+  sessionDay: string,
+  calendar: NqTradingCalendar | null,
+): NqTradingDateResolution {
+  const certified = calendar ? fromCalendar(sessionDay, calendar) : null;
+  if (certified !== null) {
+    return {
+      tradingDate: certified,
+      basis: "certification_calendar",
+      refusalReason:
+        certified < SESSION_RULES_START_DATE
+          ? "PRE_2012_TRADING_DATE_UNSUPPORTED"
+          : null,
+    };
+  }
+
+  const tradingDate = nextWeekday(sessionDay);
+  let refusalReason: string | null = null;
+  if (tradingDate < SESSION_RULES_START_DATE) {
+    refusalReason = "PRE_2012_TRADING_DATE_UNSUPPORTED";
+  } else if (isHolidayAdjacent(tradingDate)) {
+    refusalReason = "HOLIDAY_ADJACENT_TRADING_DATE";
+  }
+  return { tradingDate, basis: "heuristic_fallback", refusalReason };
+}
+
+/** Trading date for an exact release instant. */
+export function tradingDateForReleaseAt(
+  releaseAt: Date,
+  calendar: NqTradingCalendar | null = null,
+): NqTradingDateResolution {
   if (!(releaseAt instanceof Date) || !Number.isFinite(releaseAt.getTime())) {
     throw new TypeError("releaseAt must be a finite Date");
   }
+  return resolveSessionDay(sessionDayOf(releaseAt), calendar);
+}
 
-  const parts = newYorkParts.formatToParts(releaseAt);
-  const read = (type: Intl.DateTimeFormatPartTypes): string =>
-    parts.find((part) => part.type === type)?.value ?? "";
-
-  const year = Number(read("year"));
-  const month = Number(read("month"));
-  const day = Number(read("day"));
-  const hour = Number(read("hour")) % 24;
-  const weekday = read("weekday"); // Sun, Mon, ...
-  const calendar = isoDate(year, month, day);
-
-  // Post-2012 Globex evening session (18:00 ET) belongs to the next trade date.
-  // Sunday evening open → Monday trading date; Mon–Thu evening → next day.
-  if (hour >= 18) {
-    if (weekday === "Sun") {
-      return addCalendarDays(year, month, day, 1);
-    }
-    if (
-      weekday === "Mon" ||
-      weekday === "Tue" ||
-      weekday === "Wed" ||
-      weekday === "Thu"
-    ) {
-      return addCalendarDays(year, month, day, 1);
-    }
-  }
-
-  return calendar;
+/** Memoised per-minute resolver for scanning a window or a whole session. */
+export function createTradingDateResolver(
+  calendar: NqTradingCalendar | null,
+): (instant: Date) => NqTradingDateResolution {
+  const bySessionDay = new Map<string, NqTradingDateResolution>();
+  return (instant) => {
+    const sessionDay = sessionDayOf(instant);
+    const cached = bySessionDay.get(sessionDay);
+    if (cached) return cached;
+    const resolved = resolveSessionDay(sessionDay, calendar);
+    bySessionDay.set(sessionDay, resolved);
+    return resolved;
+  };
 }
 
 /** Truncate an instant to its UTC minute open (seconds/ms cleared). */
@@ -79,6 +186,15 @@ export function utcMinuteOpen(instant: Date): Date {
     throw new TypeError("instant must be a finite Date");
   }
   return new Date(Math.floor(ms / 60_000) * 60_000);
+}
+
+/** First UTC minute open at or after an instant. */
+export function ceilUtcMinute(instant: Date): Date {
+  const ms = instant.getTime();
+  if (!Number.isFinite(ms)) {
+    throw new TypeError("instant must be a finite Date");
+  }
+  return new Date(Math.ceil(ms / 60_000) * 60_000);
 }
 
 /** Contiguous UTC minute opens from `first` through `last` inclusive. */

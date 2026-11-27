@@ -2,11 +2,15 @@
  * Factory for the read-only local Databento NQ outright archive adapter.
  */
 import {
-  loadEligibilityIndex,
+  DEFAULT_QUALIFYING_STATUSES,
+  gateArchiveStatus,
+  readArchiveStatus,
   readCertificationVersion,
-  readJsonStatus,
-  type NqEligibilityIndex,
-} from "./eligibility";
+  type NqArchiveArtifact,
+  type NqArchiveStatusRead,
+  type NqQualifyingStatuses,
+} from "./artifacts";
+import { loadEligibilityIndex, type NqEligibilityIndex } from "./eligibility";
 import { extractEventWindow } from "./extract";
 import { createMemoryNqBarStore } from "./memoryStore";
 import { createParquetNqBarStore } from "./parquetStore";
@@ -43,13 +47,46 @@ export interface CreateNqArchiveAdapterOptions {
   readonly rolls?: readonly NqRollBoundary[];
   /** Injected eligibility index (tests). */
   readonly eligibility?: NqEligibilityIndex;
-  /** Optional provenance overrides for fixtures. */
-  readonly provenanceExtras?: Partial<NqArchiveProvenance>;
+  /**
+   * Optional provenance overrides for fixtures. A non-empty acceptance /
+   * certification status here stands in for the corresponding report file.
+   */
+  readonly provenanceExtras?: Partial<
+    Pick<
+      NqArchiveProvenance,
+      "acceptanceStatus" | "certificationStatus" | "certificationVersion"
+    >
+  >;
+  /**
+   * Report statuses that clear the artifact gate. Defaults to the shipped,
+   * empty allowlists, so every status refuses until the owner names some.
+   */
+  readonly qualifyingStatuses?: NqQualifyingStatuses;
 }
+
+const statusFrom = async (
+  override: string | null | undefined,
+  filePath: string | undefined,
+  artifact: NqArchiveArtifact,
+  qualifying: ReadonlySet<string>,
+): Promise<NqArchiveStatusRead> =>
+  gateArchiveStatus(
+    override
+      ? { status: override, refusalReason: null }
+      : await readArchiveStatus(filePath, artifact),
+    artifact,
+    qualifying,
+  );
 
 const buildProvenance = (
   paths: NqArchivePaths,
-  extras: Partial<NqArchiveProvenance>,
+  extras: Pick<
+    NqArchiveProvenance,
+    | "acceptanceStatus"
+    | "certificationStatus"
+    | "certificationVersion"
+    | "artifactRefusalReasons"
+  >,
 ): NqArchiveProvenance => ({
   provider: "databento",
   dataset: "GLBX.MDP3",
@@ -63,9 +100,10 @@ const buildProvenance = (
   strictAllowlistPath: paths.strictAllowlistCsv ?? null,
   exploratoryAllowlistPath: paths.exploratoryAllowlistCsv ?? null,
   certificationBySessionPath: paths.certificationBySessionCsv ?? null,
-  acceptanceStatus: extras.acceptanceStatus ?? null,
-  certificationStatus: extras.certificationStatus ?? null,
-  certificationVersion: extras.certificationVersion ?? null,
+  acceptanceStatus: extras.acceptanceStatus,
+  certificationStatus: extras.certificationStatus,
+  certificationVersion: extras.certificationVersion,
+  artifactRefusalReasons: extras.artifactRefusalReasons,
 });
 
 export async function createNqArchiveAdapter(
@@ -87,21 +125,32 @@ export async function createNqArchiveAdapter(
   const barStore =
     options.barStore ?? createParquetNqBarStore(paths.outrightParquet);
 
-  const acceptanceStatus =
-    options.provenanceExtras?.acceptanceStatus ??
-    (await readJsonStatus(paths.acceptanceReportJson, "status"));
-  const certificationStatus =
-    options.provenanceExtras?.certificationStatus ??
-    (await readJsonStatus(paths.certificationReportJson, "status"));
+  const extras = options.provenanceExtras ?? {};
+  const qualifying = options.qualifyingStatuses ?? DEFAULT_QUALIFYING_STATUSES;
+  const acceptance = await statusFrom(
+    extras.acceptanceStatus,
+    paths.acceptanceReportJson,
+    "ACCEPTANCE_REPORT",
+    qualifying.acceptance,
+  );
+  const certification = await statusFrom(
+    extras.certificationStatus,
+    paths.certificationReportJson,
+    "CERTIFICATION_REPORT",
+    qualifying.certification,
+  );
   const certificationVersion =
-    options.provenanceExtras?.certificationVersion ??
+    extras.certificationVersion ??
     (await readCertificationVersion(paths.strictAllowlistCsv));
 
   const provenance = buildProvenance(paths, {
-    ...options.provenanceExtras,
-    acceptanceStatus,
-    certificationStatus,
+    acceptanceStatus: acceptance.status,
+    certificationStatus: certification.status,
     certificationVersion,
+    artifactRefusalReasons: [
+      acceptance.refusalReason,
+      certification.refusalReason,
+    ].filter((reason): reason is string => reason !== null),
   });
 
   return {
@@ -143,6 +192,10 @@ export async function createFixtureNqArchiveAdapter(args: {
       acceptanceStatus: "FIXTURE",
       certificationStatus: "FIXTURE",
       certificationVersion: "fixture-v1",
+    },
+    qualifyingStatuses: {
+      acceptance: new Set(["FIXTURE"]),
+      certification: new Set(["FIXTURE"]),
     },
   });
 }
