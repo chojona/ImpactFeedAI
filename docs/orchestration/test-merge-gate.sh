@@ -13,7 +13,6 @@ set -eu
 [[ "$1 $2 $3" == "api --hostname github.com" ]]
 head=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 old=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-date=2026-11-27T18:00:00Z
 attest="<!-- impactfeed-review -->\nHead: $head\nVerdict: APPROVE"
 case "$4" in
   repos/chojona/ImpactFeedAI/pulls/36)
@@ -32,32 +31,11 @@ case "$4" in
     ;;
   "repos/chojona/ImpactFeedAI/issues/36/comments?per_page=100")
     [[ "$CASE" != timeout ]] || exit 124
-    author=chojona
-    pr=36
-    sha="$head"
-    case "$CASE" in
-      other-comment) author=collaborator ;;
-      wrong-pr) pr=35 ;;
-      old-comment) sha="$old" ;;
-    esac
-    case "$CASE" in
-      owner-comment|other-comment|wrong-pr|old-comment)
-        extra="{\"user\":{\"login\":\"$author\",\"type\":\"User\"},\"created_at\":\"$date\",\"body\":\"Authorize merge of PR #$pr at $sha\"}"
-        ;;
-      *) extra= ;;
-    esac
-    printf '[[{"user":{"login":"reviewer","type":"User"},"body":"%s"}]]\n' "$attest" | jq --argjson extra "[$extra]" '.[0] += $extra'
-    ;;
-  "repos/chojona/ImpactFeedAI/pulls/36/reviews?per_page=100")
-    author=chojona
-    type=User
-    case "$CASE" in
-      *-comment|wrong-pr) printf '[[]]\n'; exit 0 ;;
-      other-review) author=collaborator ;;
-      bot-review) type=Bot ;;
-      old-review) head="$old" ;;
-    esac
-    printf '[[{"user":{"login":"%s","type":"%s"},"state":"APPROVED","submitted_at":"%s","commit_id":"%s"}]]\n' "$author" "$type" "$date" "$head"
+    extra=
+    if [[ "$CASE" == shared-account ]]; then
+      extra=',{"user":{"login":"chojona","type":"User"},"body":"Authorize merge of PR #36 at aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
+    fi
+    printf '[[{"user":{"login":"reviewer","type":"User"},"body":"%s"}%s]]\n' "$attest" "$extra"
     ;;
   graphql)
     nodes='[]'
@@ -80,10 +58,29 @@ esac
 MOCK
 chmod +x "$mock_dir/gh"
 
+# Real signatures from disposable test keys. Production keys are owner-held.
+ssh-keygen -q -t ed25519 -N '' -f "$mock_dir/owner"
+ssh-keygen -q -t ed25519 -N '' -f "$mock_dir/agent"
+export MERGE_GATE_ALLOWED_SIGNERS="$mock_dir/allowed_signers"
+export MERGE_GATE_SIGNATURE="$mock_dir/authorization.sig"
+printf 'chojona %s\n' "$(cat "$mock_dir/owner.pub")" > "$MERGE_GATE_ALLOWED_SIGNERS"
+
 check() {
   local name="$1" expected="$2" output status=0 verdict=FAIL
   shift 2
-  rm -f "$mock_dir/ref-read"
+  local pr=36 sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa signer=owner
+  rm -f "$mock_dir/ref-read" "$MERGE_GATE_SIGNATURE"
+  case "$name" in
+    wrong-pr) pr=35 ;;
+    old-head) sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ;;
+    agent-signature) signer=agent ;;
+  esac
+  if [[ "$name" != shared-account && "$name" != missing-signature ]]; then
+    printf 'Repository: chojona/ImpactFeedAI\nPR: %s\nHead: %s\nLast head force-push: none\n' \
+      "$pr" "$sha" > "$mock_dir/authorization"
+    ssh-keygen -Y sign -f "$mock_dir/$signer" -n impactfeed-merge-authorization \
+      "$mock_dir/authorization" >/dev/null 2>&1
+  fi
   output="$(CASE="$name" bash "$gate" 36 "$@" 2>&1)" || status=$?
   [[ "$expected" != PASS ]] || verdict=PASS
   if [[ "$expected" == PASS && "$status" == 0 && "$output" == GATE\ PASS* ]] ||
@@ -95,10 +92,11 @@ check() {
   fi
 }
 
-check owner-review PASS
-check owner-comment PASS
-for name in other-review bot-review old-review restored-head other-comment wrong-pr old-comment; do
-  check "$name" "missing explicit authorization"
+check owner-signature PASS
+check shared-account "missing out-of-band authorization"
+check missing-signature "missing out-of-band authorization"
+for name in agent-signature wrong-pr old-head restored-head; do
+  check "$name" "invalid owner signature"
 done
 check new-push "head changed"
 check api-error "API, JSON, or command error"

@@ -92,17 +92,30 @@ the start:
 6. Neither side of a renamed path, nor any other changed path, touches
    `.github/`, `prisma/`, `docs/orchestration/`, `.agents/`, `vercel.json`,
    `package.json`, or `CLAUDE.md`. These changes go to Jonathan directly.
-7. Jonathan's GitHub account (`chojona`) submitted an approving review on the
-   current head or posted this exact standalone PR comment:
+7. Jonathan signed the authorization payload for this repository, PR number,
+   current head SHA, and latest recorded head force-push. GitHub reviews and
+   comments provide no merge authorization. A new head or recorded force-push
+   requires a new signature.
 
-   ```
-   Authorize merge of PR #<number> at <full lowercase head SHA>
-   ```
+Set up the verifier in an environment Jonathan controls. Install the reviewed
+gate and an OpenSSH allowed-signers file there, with a line containing the
+principal `chojona` followed by Jonathan's dedicated public signing key.
+Keep the verifier, its configuration, and the corresponding private key
+outside agent access. The existing shared GitHub SSH credential is unsuitable.
+Set `MERGE_GATE_ALLOWED_SIGNERS` to the trusted file's absolute path.
 
-   A new head requires fresh authorization. A recorded force-push also
-   invalidates authorization issued at or before that event, including when
-   the push restores an earlier SHA. Accounts that share Jonathan's
-   credentials can act under the same GitHub identity.
+Run the gate to obtain the exact payload it prints when authorization is
+missing. Jonathan saves those four lines, ending with a newline, to
+`authorization.txt` and signs it with his private key:
+
+```sh
+ssh-keygen -Y sign -f /path/to/owner-signing-key -n impactfeed-merge-authorization authorization.txt
+```
+
+Set `MERGE_GATE_SIGNATURE` to the resulting `authorization.txt.sig` and rerun
+the gate in the trusted environment. Both verification inputs are required.
+An agent-run verdict provides no authorization if agents can replace the
+verifier or its allowed-signers file.
 
 The gate prints a verdict and exits zero only when every check passes.
 It checks the branch ref again before reporting a pass and rejects GitHub API,

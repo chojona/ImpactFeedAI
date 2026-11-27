@@ -8,7 +8,6 @@ trap 'reject "API, JSON, or command error at line $LINENO"' ERR
 [[ $# == 1 && $1 =~ ^[1-9][0-9]*$ ]] || reject "usage: merge-gate.sh <pr-number>"
 pr="$1"
 repo="repos/chojona/ImpactFeedAI"
-owner="chojona"
 
 api() { gh api --hostname github.com "$@"; }
 json() {
@@ -46,13 +45,8 @@ api "$repo/commits/$head/check-runs?per_page=100" --paginate --slurp | json '
   || reject "Quality checks did not succeed on the current head"
 
 comments="$(pages "$repo/issues/$pr/comments?per_page=100")"
-reviews="$(pages "$repo/pulls/$pr/reviews?per_page=100")"
 json 'all(.[]; (.body | type) == "string" and (.user.login | type) == "string" and (.user.type | type) == "string")' \
   <<<"$comments" >/dev/null || reject "invalid comments response"
-json 'all(.[]; (.state | type) == "string" and (.commit_id | type) == "string"
-  and (.user.login | type) == "string" and (.user.type | type) == "string")' \
-  <<<"$reviews" >/dev/null || reject "invalid reviews response"
-
 last_force_push="$(api graphql --paginate --slurp -F n="$pr" -f query='
   query($n:Int!, $endCursor:String) {
     repository(owner:"chojona",name:"ImpactFeedAI") {
@@ -76,25 +70,23 @@ last_force_push="$(api graphql --paginate --slurp -F n="$pr" -f query='
     | [.[].timelineItems.nodes[].createdAt] | max // ""')" \
   || reject "review threads or head force-push history could not be verified"
 
-# A standalone, exact command avoids treating quoted text or a general approval as authorization.
-authorization="Authorize merge of PR #$pr at $head"
-if ! json 'any(.[]; .user.login == $owner and .user.type == "User" and .body == $authorization
-        and (.created_at | type == "string" and . > $last_force_push))' \
-      --arg owner "$owner" --arg authorization "$authorization" --arg last_force_push "$last_force_push" <<<"$comments" >/dev/null \
-   && ! json '[.[] | select(.user.login == $owner and .user.type == "User"
-            and (.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED"))]
-            | last | .state == "APPROVED" and .commit_id == $head
-            and (.submitted_at | type == "string" and . > $last_force_push)' \
-      --arg owner "$owner" --arg head "$head" --arg last_force_push "$last_force_push" <<<"$reviews" >/dev/null; then
-  reject "missing explicit authorization from $owner for PR #$pr at $head"
-fi
+# The verifier must supply a trusted allowed-signers file outside the checkout.
+# The signature can travel through an untrusted channel.
+authorization="$(printf 'Repository: chojona/ImpactFeedAI\nPR: %s\nHead: %s\nLast head force-push: %s\n' \
+  "$pr" "$head" "${last_force_push:-none}")"
+[[ -f "${MERGE_GATE_ALLOWED_SIGNERS:-}" && -f "${MERGE_GATE_SIGNATURE:-}" ]] \
+  || reject "missing out-of-band authorization; expected signed payload:
+$authorization"
+printf '%s\n' "$authorization" | ssh-keygen -Y verify -f "$MERGE_GATE_ALLOWED_SIGNERS" \
+  -I chojona -n impactfeed-merge-authorization -s "$MERGE_GATE_SIGNATURE" >/dev/null \
+  || reject "invalid owner signature; expected signed payload:
+$authorization"
 
 json '[.[] | select(.body | contains("<!-- impactfeed-review -->"))] | last
   | (.body // "" | split("\n")) as $lines
   | [$lines[] | select(startswith("Head:"))] == ["Head: " + $head]
     and [$lines[] | select(startswith("Verdict:"))] == ["Verdict: APPROVE"]' \
   --arg head "$head" <<<"$comments" >/dev/null || reject "missing current approving review attestation"
-
 
 files="$(pages "$repo/pulls/$pr/files?per_page=100")"
 changed_files="$(json '.changed_files | numbers' <<<"$pr_json")"
