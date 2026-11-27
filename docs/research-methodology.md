@@ -108,9 +108,10 @@ Details that decide whether the numbers mean anything:
   equivalent paths.
 - **Native market semantics.** Session-basis labels distinguish regular US
   equities, extended futures and continuous UTC-day crypto. Common canonical
-  dates do not imply identical tradeable hours. The audit identified false
-  early-close entries and a verifier completeness gap; broader computation
-  is gated on their correction and versioned verification.
+  dates do not imply identical tradeable hours. Phase 0.5 corrected the
+  false early-close entries (calculation version 4) and made verifier
+  completeness strict. Broader computation stays gated: v4 is not qualified
+  for cutover, production reads remain on v3, and Phase 1 is NO-GO.
 - **Overlapping events.** CPI at 08:30 and a Fed speaker at 10:00 contaminate
   each other's windows. Contamination should be flagged, not silently averaged
   away.
@@ -149,8 +150,11 @@ The same event in two regimes is two different events. Regime tags are what
 make an analog more than an event-type match.
 
 Academic methods, point-in-time rules, proposed continuous features, and
-validation tests (no implementation yet):
+validation tests:
 [regime-classification-research.md](regime-classification-research.md).
+
+Pure Tier-A feature contracts (VIX level/percentile, 2s10s, equity RV20) live in
+`src/services/context/` with shared types in `src/types/context.ts`.
 
 Candidate classifications. Deterministic regimes are V2 Phase 1 work (P1.3 in
 the [Phase 1 plan](phase-1-market-context-plan.md)):

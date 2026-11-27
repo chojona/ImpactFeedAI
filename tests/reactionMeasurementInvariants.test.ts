@@ -105,13 +105,13 @@ describe("checkInvariants", () => {
     };
     expect(
       checkInvariants(
-        { ...sessionRow, measure: "SESSION_PLUS_1", endpointSessionDay: "2025-07-07" },
+        { ...sessionRow, measure: "SESSION_PLUS_1", endpointSessionDay: "2025-07-07", endpointBarAt: new Date("2025-07-07T13:30:00Z") },
         wideCtx,
       ),
     ).toEqual([]);
     expect(
       checkInvariants(
-        { ...sessionRow, measure: "SESSION_PLUS_5", endpointSessionDay: "2025-07-11" },
+        { ...sessionRow, measure: "SESSION_PLUS_5", endpointSessionDay: "2025-07-11", endpointBarAt: new Date("2025-07-11T13:30:00Z") },
         wideCtx,
       ),
     ).toEqual([]);

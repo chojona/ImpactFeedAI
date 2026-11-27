@@ -12,28 +12,30 @@
  * so no caller can consult a raw date list or bypass the supported-range
  * check — see spec §4.4.
  *
- * Source: NYSE holiday and hours calendar,
- * https://www.nyse.com/markets/hours-calendars (retrieved 2026-09-12).
+ * Sources: official NYSE/ICE 2022–2024, 2025–2027 and 2026–2028
+ * announcements, rechecked 2026-11-05. Exact citations and independently
+ * transcribed fixtures: tests/fixtures/nyse-hours.json. Calendar revision 4.
+ * The three false half-days removed here MUST NOT be written as v3.
  */
 import { easternWallClock } from "@/services/macro/time";
-import { newYorkMinuteOfDay } from "@/services/market/sessionCalendar.internal";
+
 
 /** Inclusive bounds of the curated early-close table. Extend together. */
 export const EARLY_CLOSE_RANGE_START = "2022-01-01";
 export const EARLY_CLOSE_RANGE_END = "2026-12-31";
 
 /**
- * 13:00 ET closes (day after Thanksgiving, Christmas/Independence Day eves
- * when they fall on a trading day). Extend together with
+ * Source-listed 13:00 ET closes. Do not infer half-days from holiday eves
+ * or observed holidays. Extend together with
  * EARLY_CLOSE_RANGE_END — see spec §4.4 for the fail-closed rule that governs
  * dates outside this table.
  */
 const EARLY_CLOSE_DAYS: ReadonlySet<string> = new Set([
-  "2022-07-01", "2022-11-25", "2022-12-23",
+  "2022-11-25",
   "2023-07-03", "2023-11-24",
   "2024-07-03", "2024-11-29", "2024-12-24",
   "2025-07-03", "2025-11-28", "2025-12-24",
-  "2026-07-02", "2026-11-27", "2026-12-24",
+  "2026-11-27", "2026-12-24",
 ]);
 
 const REGULAR_CLOSE_HOUR = 16;
@@ -82,10 +84,6 @@ export function buildSessionCalendar(
   };
 }
 
-/** Minutes past ET midnight bounding the window where an early close matters. */
-const AMBIGUITY_START_MINUTE = 13 * 60;
-const AMBIGUITY_END_MINUTE = 16 * 60;
-
 export type ReleaseSessionRefusal =
   | "no_session_after_release"
   | "early_close_unknown";
@@ -115,13 +113,16 @@ export function resolveReleaseSession(
     return { status: "refused", reason: "no_session_after_release" };
   }
 
-  const minute = newYorkMinuteOfDay(releaseAt);
-  const inAmbiguityWindow =
-    minute >= AMBIGUITY_START_MINUTE && minute < AMBIGUITY_END_MINUTE;
-
   for (let index = 0; index < calendar.sessionDays.length; index += 1) {
     const day = calendar.sessionDays[index];
-    if (inAmbiguityWindow && !calendar.earlyCloseKnown(day)) {
+    // Only this day's [13:00,16:00) can be ambiguous. An old, already
+    // completed session outside the table must not poison a later release.
+    const regularClose = calendar.closeInstant(day);
+    if (regularClose.getTime() <= releaseAt.getTime()) continue;
+    if (
+      !calendar.earlyCloseKnown(day) &&
+      easternWallClock(day, 13, 0).getTime() <= releaseAt.getTime()
+    ) {
       return { status: "refused", reason: "early_close_unknown" };
     }
     const close = calendar.closeInstant(day, { honourEarlyClose: true });

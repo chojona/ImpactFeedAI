@@ -47,12 +47,16 @@ const WRITE_OPERATIONS: ReadonlySet<string> = new Set([
 /**
  * Build a client that can read Neon but cannot write to it.
  *
+ * This factory also sets PostgreSQL default_transaction_read_only=on on every
+ * connection. Raw writes are refused by the server. guardPrismaClient alone
+ * does not provide that connection guarantee for an externally supplied client.
+ *
  * Note on raw queries: `$executeRaw` / `$executeRawUnsafe` are client-level
  * operations, not model operations, so they are not intercepted here. No
  * ingestion code uses them; if that changes, they must be blocked too.
  */
 export function createDryRunPrismaClient(): PrismaClient {
-  const base = createScriptPrismaClient();
+  const base = createScriptPrismaClient({ readOnly: true });
 
   return guardPrismaClient(base);
 }

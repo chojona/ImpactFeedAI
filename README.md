@@ -375,9 +375,11 @@ npm run backfill:prices -- --event-id <uuid>
 ```
 
 > `backfill:prices` writes only the frozen v2 `asset_reactions` archive. The
-> live site reads v3 `reaction_measurements`; dry-run with
-> `npm run backfill:reaction-measurements:dry-run -- --event-id <uuid>`, then
-> `REACTION_MEASUREMENT_BACKFILL_CONFIRM=WRITE_MEASUREMENTS npm run backfill:reaction-measurements -- --apply --event-id <uuid>`.
+> live site reads v3 `reaction_measurements`. The measurement backfill now
+> computes v4 and its `--apply` is **frozen** until a qualified, explicitly
+> authorized v4 cutover is committed (`src/services/events/measurementWriteGate.ts`);
+> newly ingested events get no live reactions until then. Dry-runs still work:
+> `npm run backfill:reaction-measurements:dry-run -- --event-id <uuid>`.
 
 The 20 CPI / PPI / Employment Situation / FOMC seed entries are `SCHEDULED`:
 those releases have an official published schedule (BLS at 8:30 a.m. ET, FOMC
@@ -658,7 +660,7 @@ REACTION_REPAIR_CONFIRM=DELETE_UNTRUSTED_OR_LEGACY_REACTIONS \
 After review, use the event-scoped command printed for each eligible event,
 `npm run backfill:prices -- --event-id <uuid>`. Rows on untrusted events stay
 absent until authoritative timing is added. Both operations are idempotent.
-Live v3 reactions need the `backfill:reaction-measurements` step noted above.
+Live reactions for new events wait on the v4 cutover noted above.
 
 ---
 
