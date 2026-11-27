@@ -12,12 +12,22 @@ export {
   type CreateNqArchiveAdapterOptions,
   type NqArchiveAdapter,
 } from "./adapter";
-export { selectEndpointAtOrAfter, selectPreReleaseAnchor } from "./anchor";
 export {
+  ANCHOR_MAX_AGE_MS,
+  ENDPOINT_MAX_SLIP_MS,
+  selectEndpointAtOrAfter,
+  selectPreReleaseAnchor,
+} from "./anchor";
+export {
+  DEFAULT_QUALIFYING_STATUSES,
+  QUALIFYING_ACCEPTANCE_STATUSES,
+  QUALIFYING_CERTIFICATION_STATUSES,
+  gateArchiveStatus,
   readArchiveStatus,
   readCertificationVersion,
   type NqArchiveArtifact,
   type NqArchiveStatusRead,
+  type NqQualifyingStatuses,
 } from "./artifacts";
 export { buildCoverageReport, releaseMinuteOpen } from "./coverage";
 export { parseCsv, readCsvRecords } from "./csv";
@@ -35,9 +45,11 @@ export {
   syntheticMinuteBars,
 } from "./memoryStore";
 export {
+  EXACT_TIMESTAMP_PARSERS,
+  ParquetExactTimestamp,
   createParquetNqBarStore,
   parquetRowsToBars,
-  parquetTimestampToDate,
+  parquetTimestampToNs,
   type NqBarQuery,
   type NqParquetRow,
   type NqParquetRowReader,

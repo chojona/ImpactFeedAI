@@ -7,12 +7,24 @@
  * the first bar at or after the target instant, matching the intraday
  * convention in `src/services/events/reactionMeasurement.ts`.
  *
+ * Freshness is deliberately the most conservative rule available: the anchor
+ * must be the last fully elapsed minute before the release (its close less
+ * than {@link ANCHOR_MAX_AGE_MS} old), and the endpoint must open less than
+ * {@link ENDPOINT_MAX_SLIP_MS} after the target. A gap, the daily break or a
+ * weekend between the bar and the instant therefore yields null rather than a
+ * stale price. Extraction additionally requires the anchor to carry the
+ * release session's trading date.
+ *
  * Callers pass bars of a single contract. Missing evidence returns null; the
  * helpers never reach past an unusable or ambiguous bar to a staler one.
  */
 import type { NqMinuteBar, NqPricePoint } from "./types";
 
 const BAR_MS = 60_000;
+/** Exclusive bound on `releaseAt - (anchor.openAt + 60s)`. */
+export const ANCHOR_MAX_AGE_MS = 60_000;
+/** Exclusive bound on `endpoint.openAt - targetAt`. */
+export const ENDPOINT_MAX_SLIP_MS = 60_000;
 
 const usablePrice = (value: number): boolean =>
   Number.isFinite(value) && value > 0;
@@ -60,6 +72,9 @@ export function selectPreReleaseAnchor(
     (candidate, best) => candidate > best,
   );
   if (bar === null || !usablePrice(bar.close)) return null;
+  if (releaseMs - (bar.openAt.getTime() + BAR_MS) >= ANCHOR_MAX_AGE_MS) {
+    return null;
+  }
   return { role: "anchor", bar, price: bar.close, priceField: "close" };
 }
 
@@ -74,5 +89,6 @@ export function selectEndpointAtOrAfter(
     (candidate, best) => candidate < best,
   );
   if (bar === null || !usablePrice(bar.open)) return null;
+  if (bar.openAt.getTime() - targetMs >= ENDPOINT_MAX_SLIP_MS) return null;
   return { role: "endpoint", bar, price: bar.open, priceField: "open" };
 }

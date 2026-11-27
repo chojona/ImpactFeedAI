@@ -2,10 +2,13 @@
  * Factory for the read-only local Databento NQ outright archive adapter.
  */
 import {
+  DEFAULT_QUALIFYING_STATUSES,
+  gateArchiveStatus,
   readArchiveStatus,
   readCertificationVersion,
   type NqArchiveArtifact,
   type NqArchiveStatusRead,
+  type NqQualifyingStatuses,
 } from "./artifacts";
 import { loadEligibilityIndex, type NqEligibilityIndex } from "./eligibility";
 import { extractEventWindow } from "./extract";
@@ -54,16 +57,26 @@ export interface CreateNqArchiveAdapterOptions {
       "acceptanceStatus" | "certificationStatus" | "certificationVersion"
     >
   >;
+  /**
+   * Report statuses that clear the artifact gate. Defaults to the shipped,
+   * empty allowlists, so every status refuses until the owner names some.
+   */
+  readonly qualifyingStatuses?: NqQualifyingStatuses;
 }
 
 const statusFrom = async (
   override: string | null | undefined,
   filePath: string | undefined,
   artifact: NqArchiveArtifact,
+  qualifying: ReadonlySet<string>,
 ): Promise<NqArchiveStatusRead> =>
-  override
-    ? { status: override, refusalReason: null }
-    : readArchiveStatus(filePath, artifact);
+  gateArchiveStatus(
+    override
+      ? { status: override, refusalReason: null }
+      : await readArchiveStatus(filePath, artifact),
+    artifact,
+    qualifying,
+  );
 
 const buildProvenance = (
   paths: NqArchivePaths,
@@ -113,15 +126,18 @@ export async function createNqArchiveAdapter(
     options.barStore ?? createParquetNqBarStore(paths.outrightParquet);
 
   const extras = options.provenanceExtras ?? {};
+  const qualifying = options.qualifyingStatuses ?? DEFAULT_QUALIFYING_STATUSES;
   const acceptance = await statusFrom(
     extras.acceptanceStatus,
     paths.acceptanceReportJson,
     "ACCEPTANCE_REPORT",
+    qualifying.acceptance,
   );
   const certification = await statusFrom(
     extras.certificationStatus,
     paths.certificationReportJson,
     "CERTIFICATION_REPORT",
+    qualifying.certification,
   );
   const certificationVersion =
     extras.certificationVersion ??
@@ -176,6 +192,10 @@ export async function createFixtureNqArchiveAdapter(args: {
       acceptanceStatus: "FIXTURE",
       certificationStatus: "FIXTURE",
       certificationVersion: "fixture-v1",
+    },
+    qualifyingStatuses: {
+      acceptance: new Set(["FIXTURE"]),
+      certification: new Set(["FIXTURE"]),
     },
   });
 }

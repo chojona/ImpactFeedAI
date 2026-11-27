@@ -16,9 +16,9 @@ export function parseCsv(
   text: string,
 ): ReadonlyArray<Readonly<Record<string, string>>> {
   const body = text.startsWith("\uFEFF") ? text.slice(1) : text;
-  const records = tokenizeCsv(body).filter(
-    (cells) => !(cells.length === 1 && cells[0] === ""),
-  );
+  const records = tokenizeCsv(body)
+    .filter((record) => !record.blank)
+    .map((record) => record.cells);
   if (records.length === 0) return [];
 
   const headers = records[0]!;
@@ -36,16 +36,42 @@ export function parseCsv(
   });
 }
 
-/** Split text into records of cells; quoted fields may span lines. */
-function tokenizeCsv(text: string): string[][] {
-  const records: string[][] = [];
+interface CsvRecord {
+  readonly cells: string[];
+  /** An empty line, as opposed to a record holding one quoted empty field. */
+  readonly blank: boolean;
+}
+
+/**
+ * Split text into records of cells; quoted fields may span lines. A quote
+ * may only open a field, and only a delimiter or line end may follow the
+ * closing quote — anything else makes the whole input unparseable.
+ */
+function tokenizeCsv(text: string): CsvRecord[] {
+  const records: CsvRecord[] = [];
   let record: string[] = [];
   let cell = "";
   let inQuotes = false;
+  let closedQuote = false;
+  let recordQuoted = false;
+  let line = 1;
+
+  const endRecord = () => {
+    record.push(cell);
+    records.push({
+      cells: record,
+      blank: record.length === 1 && cell === "" && !recordQuoted,
+    });
+    record = [];
+    cell = "";
+    closedQuote = false;
+    recordQuoted = false;
+  };
 
   for (let i = 0; i < text.length; i += 1) {
     const ch = text[i]!;
     if (inQuotes) {
+      if (ch === "\n") line += 1;
       if (ch !== '"') {
         cell += ch;
       } else if (text[i + 1] === '"') {
@@ -53,29 +79,32 @@ function tokenizeCsv(text: string): string[][] {
         i += 1;
       } else {
         inQuotes = false;
+        closedQuote = true;
       }
       continue;
     }
-    if (ch === '"') {
-      inQuotes = true;
-    } else if (ch === ",") {
+    if (ch === ",") {
       record.push(cell);
       cell = "";
+      closedQuote = false;
     } else if (ch === "\r" || ch === "\n") {
       if (ch === "\r" && text[i + 1] === "\n") i += 1;
-      record.push(cell);
-      records.push(record);
-      record = [];
-      cell = "";
+      endRecord();
+      line += 1;
+    } else if (closedQuote) {
+      throw new Error(`CSV line ${line}: unexpected character after closing quote`);
+    } else if (ch === '"') {
+      if (cell.length > 0) {
+        throw new Error(`CSV line ${line}: stray quote inside an unquoted field`);
+      }
+      inQuotes = true;
+      recordQuoted = true;
     } else {
       cell += ch;
     }
   }
 
   if (inQuotes) throw new Error("CSV has an unterminated quoted field");
-  if (cell.length > 0 || record.length > 0) {
-    record.push(cell);
-    records.push(record);
-  }
+  if (cell.length > 0 || record.length > 0 || closedQuote) endRecord();
   return records;
 }

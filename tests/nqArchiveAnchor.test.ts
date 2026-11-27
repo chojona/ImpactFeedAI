@@ -71,6 +71,32 @@ describe("selectPreReleaseAnchor (F5)", () => {
     ).toBeNull();
   });
 
+  it("returns null when the newest closed bar is older than the last minute", () => {
+    // 12:30 release with 12:21–12:29 absent: the 12:20 bar is 9 minutes stale.
+    expect(
+      selectPreReleaseAnchor(
+        [bar("2024-06-12T12:20:00.000Z")],
+        new Date("2024-06-12T12:30:00.000Z"),
+      ),
+    ).toBeNull();
+    const only1229 = [bar("2024-06-12T12:29:00.000Z")];
+    expect(
+      selectPreReleaseAnchor(only1229, new Date("2024-06-12T12:30:59.999Z")),
+    ).not.toBeNull();
+    expect(
+      selectPreReleaseAnchor(only1229, new Date("2024-06-12T12:31:00.000Z")),
+    ).toBeNull();
+  });
+
+  it("returns null for a weekend-old anchor at the Sunday open", () => {
+    expect(
+      selectPreReleaseAnchor(
+        [bar("2024-06-07T20:59:00.000Z")],
+        new Date("2024-06-09T22:00:00.000Z"),
+      ),
+    ).toBeNull();
+  });
+
   it("returns null when two bars claim the anchor minute", () => {
     const duplicated = [
       ...bars,
@@ -103,6 +129,17 @@ describe("selectEndpointAtOrAfter (F5)", () => {
       new Date("2024-06-12T12:30:20.000Z"),
     );
     expect(between?.bar.openAt.toISOString()).toBe("2024-06-12T12:31:00.000Z");
+  });
+
+  it("returns null when the first bar at or after the target opens a minute or more late", () => {
+    const gapped = [bar("2024-06-12T12:42:00.000Z", { open: 142 })];
+    expect(
+      selectEndpointAtOrAfter(gapped, new Date("2024-06-12T12:41:00.000Z")),
+    ).toBeNull();
+    expect(
+      selectEndpointAtOrAfter(gapped, new Date("2024-06-12T12:41:00.001Z"))
+        ?.price,
+    ).toBe(142);
   });
 
   it("returns null when nothing is at or after the target", () => {

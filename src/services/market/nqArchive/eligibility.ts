@@ -20,7 +20,10 @@ import type {
 export interface NqEligibilityIndex {
   lookup(tradingDate: string): NqSessionEligibility;
   certificationContract(tradingDate: string): string | null;
-  /** Certified active-minute count for the session, when published. */
+  /**
+   * Allowlist `expected_active_minutes` for the session; null when absent or
+   * when the two allowlists disagree.
+   */
   expectedActiveMinutes(tradingDate: string): number | null;
   /** Session dates from certification-by-session.csv, when loaded. */
   readonly tradingCalendar: NqTradingCalendar | null;
@@ -37,6 +40,8 @@ export interface AllowlistRow {
   observedCoverage: string;
   selectedContract: string;
   sourceIds: string[];
+  /** Certified active minutes for the session; null when not published. */
+  expectedActiveMinutes: number | null;
 }
 
 const asTier = (value: string): NqResearchTier => {
@@ -67,7 +72,24 @@ export function qualificationFromEvidence(
 }
 
 const rowsAgree = (a: AllowlistRow, b: AllowlistRow): boolean =>
-  a.tier === b.tier && a.researchEligibility === b.researchEligibility;
+  a.tier === b.tier &&
+  a.researchEligibility === b.researchEligibility &&
+  (a.expectedActiveMinutes === null ||
+    b.expectedActiveMinutes === null ||
+    a.expectedActiveMinutes === b.expectedActiveMinutes);
+
+const parseExpectedMinutes = (raw: string, tradingDate: string): number | null => {
+  if (raw === "") return null;
+  const value = Number(raw);
+  // Integer-valued floats ("1380.0") appear when a writer widens a column
+  // that has gaps; fractional minutes do not exist.
+  if (!/^\d+(\.0+)?$/.test(raw) || !Number.isSafeInteger(value) || value <= 0) {
+    throw new NqArchiveDataError(
+      `allowlist: invalid expected_active_minutes "${raw}" for ${tradingDate}`,
+    );
+  }
+  return value;
+};
 
 const parseAllowlist = (
   rows: ReadonlyArray<Readonly<Record<string, string>>>,
@@ -77,6 +99,10 @@ const parseAllowlist = (
     const tradingDate = row.trading_date ?? "";
     if (!tradingDate) continue;
     map.set(tradingDate, {
+      expectedActiveMinutes: parseExpectedMinutes(
+        (row.expected_active_minutes ?? "").trim(),
+        tradingDate,
+      ),
       tradingDate,
       tier: asTier(row.tier ?? ""),
       researchEligibility: row.research_eligibility ?? "",
@@ -138,7 +164,6 @@ export function createEligibilityIndex(args: {
   strictRows?: readonly AllowlistRow[];
   exploratoryRows?: readonly AllowlistRow[];
   certificationContracts?: ReadonlyMap<string, string>;
-  expectedActiveMinutes?: ReadonlyMap<string, number>;
   /** Certification calendar dates; omit when no calendar was loaded. */
   tradingDates?: Iterable<string>;
 }): NqEligibilityIndex {
@@ -149,7 +174,6 @@ export function createEligibilityIndex(args: {
     (args.exploratoryRows ?? []).map((row) => [row.tradingDate, row]),
   );
   const certificationContracts = new Map(args.certificationContracts ?? []);
-  const expectedMinutes = new Map(args.expectedActiveMinutes ?? []);
 
   return {
     tradingCalendar: createTradingCalendar(args.tradingDates ?? []),
@@ -157,7 +181,16 @@ export function createEligibilityIndex(args: {
       return certificationContracts.get(tradingDate) ?? null;
     },
     expectedActiveMinutes(tradingDate: string): number | null {
-      return expectedMinutes.get(tradingDate) ?? null;
+      const strictRow = strict.get(tradingDate);
+      const exploratoryRow = exploratory.get(tradingDate);
+      if (strictRow && exploratoryRow && !rowsAgree(strictRow, exploratoryRow)) {
+        return null;
+      }
+      return (
+        strictRow?.expectedActiveMinutes ??
+        exploratoryRow?.expectedActiveMinutes ??
+        null
+      );
     },
     lookup(tradingDate: string): NqSessionEligibility {
       const strictRow = strict.get(tradingDate);
@@ -205,18 +238,6 @@ export function createEligibilityIndex(args: {
   };
 }
 
-const parseExpectedMinutes = (raw: string, tradingDate: string): number => {
-  const value = Number(raw);
-  // Integer-valued floats ("1380.0") appear when a writer widens a column
-  // that has gaps; fractional minutes do not exist.
-  if (!/^\d+(\.0+)?$/.test(raw) || !Number.isSafeInteger(value) || value <= 0) {
-    throw new NqArchiveDataError(
-      `certification-by-session: invalid expected_active_minutes "${raw}" for ${tradingDate}`,
-    );
-  }
-  return value;
-};
-
 export async function loadEligibilityIndex(args: {
   strictAllowlistCsv?: string;
   exploratoryAllowlistCsv?: string;
@@ -229,8 +250,9 @@ export async function loadEligibilityIndex(args: {
     ? parseAllowlist(await readCsvRecords(args.exploratoryAllowlistCsv))
     : new Map<string, AllowlistRow>();
 
+  // expected_active_minutes lives in the allowlists; certification-by-session
+  // supplies only the session calendar and certified contracts.
   const certificationContracts = new Map<string, string>();
-  const expectedActiveMinutes = new Map<string, number>();
   const tradingDates: string[] = [];
   if (args.certificationBySessionCsv) {
     const rows = await readCsvRecords(args.certificationBySessionCsv);
@@ -240,10 +262,6 @@ export async function loadEligibilityIndex(args: {
       tradingDates.push(date);
       const contract = row.selected_contract ?? "";
       if (contract) certificationContracts.set(date, contract);
-      const minutes = (row.expected_active_minutes ?? "").trim();
-      if (minutes) {
-        expectedActiveMinutes.set(date, parseExpectedMinutes(minutes, date));
-      }
     }
   }
 
@@ -251,7 +269,6 @@ export async function loadEligibilityIndex(args: {
     strictRows: [...strict.values()],
     exploratoryRows: [...exploratory.values()],
     certificationContracts,
-    expectedActiveMinutes,
     tradingDates,
   });
 }

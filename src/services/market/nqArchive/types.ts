@@ -147,8 +147,13 @@ export interface NqWindowSession {
   readonly reasonCode: string | null;
   /** Contract the causal roll registry selects for this date. */
   readonly contract: string;
+  /** Allowlist contract for this date, when listed. */
+  readonly allowlistContract: string | null;
+  /** certification-by-session contract for this date, when listed. */
+  readonly certificationContract: string | null;
+  /** True when either manifest names a contract other than `contract`. */
   readonly conflictsWithCertification: boolean;
-  /** From certification-by-session.csv when present. */
+  /** Allowlist `expected_active_minutes`; null refuses the window. */
   readonly expectedActiveMinutes: number | null;
   /** Session-model minute count; computed only when a certified count exists. */
   readonly modelledActiveMinutes: number | null;
@@ -204,9 +209,15 @@ export interface NqEventWindowResult {
   readonly sessionDates: readonly NqWindowSession[];
   readonly bars: readonly NqMinuteBar[];
   readonly coverage: NqCoverageReport;
-  /** Close of the last bar that ended at or before `releaseAt`. */
+  /**
+   * Close of the last bar that ended at or before `releaseAt`, only when that
+   * bar is the last fully elapsed minute; otherwise null and refused.
+   */
   readonly anchor: NqPricePoint | null;
-  /** Open of the first bar at or after `releaseAt + afterMs`. */
+  /**
+   * Open of the first bar at or after `releaseAt + afterMs`, only when it
+   * opens within one minute of the target; otherwise null and refused.
+   */
   readonly endpoint: NqPricePoint | null;
   readonly provenance: NqArchiveProvenance;
   /** Every reason the window was refused, most fundamental first. */

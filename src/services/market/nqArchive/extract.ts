@@ -101,6 +101,8 @@ export async function extractEventWindow(
   );
 
   const contractBars = bars.filter((bar) => bar.contract === contract);
+  const anchor = selectPreReleaseAnchor(contractBars, releaseAt);
+  const endpoint = selectEndpointAtOrAfter(contractBars, targetAt);
   const reasons = [
     ...(eligibility.qualification === "refused"
       ? [eligibility.reasonCode ?? "SESSION_NOT_ELIGIBLE"]
@@ -124,6 +126,11 @@ export async function extractEventWindow(
     ...(coverage.unexpectedOpenAts.length > 0 ? ["BARS_OUTSIDE_SESSION_GRID"] : []),
     ...(coverage.duplicateOpenAts.length > 0 ? ["DUPLICATE_MINUTE_BARS"] : []),
     ...(coverage.complete ? [] : ["INCOMPLETE_EVENT_WINDOW"]),
+    ...(anchor === null ? ["ANCHOR_UNAVAILABLE"] : []),
+    ...(anchor !== null && anchor.bar.tradingDate !== tradingDate
+      ? ["ANCHOR_OUTSIDE_RELEASE_SESSION"]
+      : []),
+    ...(endpoint === null ? ["ENDPOINT_UNAVAILABLE"] : []),
   ];
   const refusalReasons = [...new Set(reasons)];
 
@@ -145,8 +152,8 @@ export async function extractEventWindow(
     sessionDates,
     bars,
     coverage,
-    anchor: selectPreReleaseAnchor(contractBars, releaseAt),
-    endpoint: selectEndpointAtOrAfter(contractBars, targetAt),
+    anchor,
+    endpoint,
     provenance: ctx.provenance,
     refusalReasons,
     reactionQualification,

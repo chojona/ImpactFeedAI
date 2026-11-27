@@ -10,6 +10,8 @@ import {
   createNqArchiveAdapter,
   loadEligibilityIndex,
   loadRollBoundaries,
+  QUALIFYING_ACCEPTANCE_STATUSES,
+  QUALIFYING_CERTIFICATION_STATUSES,
   parseCsv,
   readArchiveStatus,
   readCertificationVersion,
@@ -31,7 +33,7 @@ afterAll(async () => {
 const ALLOWLIST_HEADER =
   "trading_date,tier,research_eligibility,reason_code,calendar_validity," +
   "provider_integrity,contract_selection,observed_coverage,selected_contract," +
-  "source_ids,certification_version";
+  "source_ids,certification_version,expected_active_minutes";
 
 describe("parseCsv", () => {
   it("handles CRLF line endings and a trailing newline", () => {
@@ -70,6 +72,22 @@ describe("parseCsv", () => {
     expect(() => parseCsv("a,b\n1,2,3\n")).toThrow(/3 cells/);
     expect(() => parseCsv("a,b\n1\n")).toThrow(/1 cells/);
     expect(() => parseCsv('a\n"open\n')).toThrow(/unterminated/i);
+  });
+
+  it("refuses a quote that does not open the field", () => {
+    expect(() =>
+      parseCsv('research_eligibility\nSTRICT_AND_"EXPLORATORY"\n'),
+    ).toThrow(/stray quote/i);
+    expect(() => parseCsv('a,b\n1,x"\n')).toThrow(/stray quote/i);
+  });
+
+  it("refuses characters after a closing quote", () => {
+    expect(() => parseCsv('a,b\n"STRICT"_X,1\n')).toThrow(/after closing quote/i);
+    expect(() => parseCsv('a\n"x" \n')).toThrow(/after closing quote/i);
+  });
+
+  it("keeps a quoted empty single-column record distinct from a blank line", () => {
+    expect(parseCsv('a\n""\n\n1\n')).toEqual([{ a: "" }, { a: "1" }]);
   });
 });
 
@@ -116,30 +134,43 @@ describe("F4: strict qualification only from the strict allowlist", () => {
       exploratoryRows: [tierA("2024-06-12")],
     });
     expect(index.lookup("2024-06-12").qualification).toBe("strict");
+    expect(index.expectedActiveMinutes("2024-06-12")).toBe(1380);
+  });
+
+  it("refuses when the allowlists disagree on expected_active_minutes", () => {
+    const index = createEligibilityIndex({
+      strictRows: [tierA("2024-06-12")],
+      exploratoryRows: [{ ...tierA("2024-06-12"), expectedActiveMinutes: 1365 }],
+    });
+    expect(index.lookup("2024-06-12").reasonCode).toBe(
+      "CONFLICTING_ALLOWLIST_EVIDENCE",
+    );
+    expect(index.expectedActiveMinutes("2024-06-12")).toBeNull();
   });
 });
 
 describe("loadEligibilityIndex", () => {
-  it("loads allowlists, certification contracts, calendar and expected minutes", async () => {
+  it("reads expected_active_minutes from the allowlists, not certification-by-session", async () => {
     await writeFile(
       file("strict.csv"),
       `${ALLOWLIST_HEADER}\n` +
         "2024-06-12,A,STRICT_AND_EXPLORATORY,A_OK,REVIEWED_REGULAR,AVAILABLE," +
-        'PRIOR_VOLUME_PRESENT,FULL_ACTIVE_GRID,NQM24,"S1; S2",fixture-v9\n',
+        'PRIOR_VOLUME_PRESENT,FULL_ACTIVE_GRID,NQM24,"S1; S2",fixture-v9,1380\n',
     );
     await writeFile(
       file("exploratory.csv"),
       `${ALLOWLIST_HEADER}\n` +
-        "2024-06-12,A,STRICT_AND_EXPLORATORY,A_OK,,,,,NQM24,S1,fixture-v9\n" +
-        "2024-06-13,B,EXPLORATORY_ONLY,B_OK,,,,,NQM24,,fixture-v9\n" +
-        ",B,EXPLORATORY_ONLY,NO_DATE,,,,,NQM24,,fixture-v9\n",
+        "2024-06-12,A,STRICT_AND_EXPLORATORY,A_OK,,,,,NQM24,S1,fixture-v9,1380.0\n" +
+        "2024-06-13,B,EXPLORATORY_ONLY,B_OK,,,,,NQM24,,fixture-v9,1365\n" +
+        "2024-06-14,B,EXPLORATORY_ONLY,B_OK,,,,,NQM24,,fixture-v9,\n" +
+        ",B,EXPLORATORY_ONLY,NO_DATE,,,,,NQM24,,fixture-v9,1380\n",
     );
     await writeFile(
       file("cert.csv"),
-      "trading_date,selected_contract,expected_active_minutes\n" +
-        "2024-06-11,NQM24,1380\n" +
-        "2024-06-12,NQM24,1380\n" +
-        "2024-06-13,,\n",
+      "trading_date,selected_contract,certification_status\n" +
+        "2024-06-11,NQM24,ACCEPT\n" +
+        "2024-06-12,NQM24,ACCEPT\n" +
+        "2024-06-13,,UNRESOLVED\n",
     );
 
     const index = await loadEligibilityIndex({
@@ -153,11 +184,13 @@ describe("loadEligibilityIndex", () => {
     expect(strict.sourceIds).toEqual(["S1", "S2"]);
     expect(strict.calendarValidity).toBe("REVIEWED_REGULAR");
     expect(index.lookup("2024-06-13").qualification).toBe("exploratory");
-    expect(index.lookup("2024-06-14").reasonCode).toBe("NOT_ON_ALLOWLIST");
+    expect(index.lookup("2024-06-15").reasonCode).toBe("NOT_ON_ALLOWLIST");
     expect(index.certificationContract("2024-06-12")).toBe("NQM24");
     expect(index.certificationContract("2024-06-13")).toBeNull();
     expect(index.expectedActiveMinutes("2024-06-12")).toBe(1380);
-    expect(index.expectedActiveMinutes("2024-06-13")).toBeNull();
+    expect(index.expectedActiveMinutes("2024-06-13")).toBe(1365);
+    expect(index.expectedActiveMinutes("2024-06-14")).toBeNull();
+    expect(index.expectedActiveMinutes("2024-06-11")).toBeNull();
     expect(index.tradingCalendar?.isTradingDate("2024-06-13")).toBe(true);
     expect(index.tradingCalendar?.isTradingDate("2024-06-14")).toBe(false);
   });
@@ -165,7 +198,7 @@ describe("loadEligibilityIndex", () => {
   it("reads the certification version without letting it gate anything", async () => {
     await writeFile(
       file("strict-version.csv"),
-      `${ALLOWLIST_HEADER}\n2024-06-12,A,STRICT_AND_EXPLORATORY,,,,,,NQM24,,fixture-v9\n`,
+      `${ALLOWLIST_HEADER}\n2024-06-12,A,STRICT_AND_EXPLORATORY,,,,,,NQM24,,fixture-v9,1380\n`,
     );
     expect(await readCertificationVersion(file("strict-version.csv"))).toBe(
       "fixture-v9",
@@ -178,7 +211,7 @@ describe("loadEligibilityIndex", () => {
     await writeFile(
       file("exploratory-only.csv"),
       `${ALLOWLIST_HEADER}\n` +
-        "2024-06-12,A,STRICT_AND_EXPLORATORY,A_OK,,,,,NQM24,S1,fixture-v9\n",
+        "2024-06-12,A,STRICT_AND_EXPLORATORY,A_OK,,,,,NQM24,S1,fixture-v9,1380\n",
     );
     const index = await loadEligibilityIndex({
       exploratoryAllowlistCsv: file("exploratory-only.csv"),
@@ -189,13 +222,25 @@ describe("loadEligibilityIndex", () => {
 
   it("fails loudly on a malformed expected_active_minutes value", async () => {
     await writeFile(
-      file("cert-bad.csv"),
-      "trading_date,selected_contract,expected_active_minutes\n" +
-        "2024-06-12,NQM24,lots\n",
+      file("strict-bad-minutes.csv"),
+      `${ALLOWLIST_HEADER}\n` +
+        "2024-06-12,A,STRICT_AND_EXPLORATORY,A_OK,,,,,NQM24,S1,fixture-v9,lots\n",
     );
     await expect(
-      loadEligibilityIndex({ certificationBySessionCsv: file("cert-bad.csv") }),
+      loadEligibilityIndex({ strictAllowlistCsv: file("strict-bad-minutes.csv") }),
     ).rejects.toThrow(/expected_active_minutes/);
+  });
+
+  it("refuses the whole allowlist when a cell has malformed quoting", async () => {
+    await writeFile(
+      file("strict-bad-quote.csv"),
+      `${ALLOWLIST_HEADER}\n` +
+        "2024-06-11,A,STRICT_AND_EXPLORATORY,A_OK,,,,,NQM24,S1,fixture-v9,1380\n" +
+        '2024-06-12,A,STRICT_AND_"EXPLORATORY",A_OK,,,,,NQM24,S1,fixture-v9,1380\n',
+    );
+    await expect(
+      loadEligibilityIndex({ strictAllowlistCsv: file("strict-bad-quote.csv") }),
+    ).rejects.toThrow(/stray quote/i);
   });
 });
 
@@ -234,10 +279,27 @@ describe("F4: archive acceptance/certification artifacts gate qualification", ()
     ).toEqual({ status: "FIXTURE_STATUS", refusalReason: null });
   });
 
-  const adapterWith = (reports: {
-    acceptanceReportJson?: string;
-    certificationReportJson?: string;
-  }) =>
+  const FIXTURE_QUALIFYING = {
+    acceptance: new Set(["FIXTURE_ACCEPT"]),
+    certification: new Set(["FIXTURE_CERT"]),
+  };
+
+  const writeReports = async (acceptance: string, certification: string) => {
+    await writeFile(file("acceptance.json"), acceptance);
+    await writeFile(file("certification.json"), certification);
+    return {
+      acceptanceReportJson: file("acceptance.json"),
+      certificationReportJson: file("certification.json"),
+    };
+  };
+
+  const adapterWith = (
+    reports: { acceptanceReportJson?: string; certificationReportJson?: string },
+    qualifyingStatuses?: {
+      acceptance: ReadonlySet<string>;
+      certification: ReadonlySet<string>;
+    },
+  ) =>
     createNqArchiveAdapter({
       env: {},
       paths: {
@@ -254,6 +316,7 @@ describe("F4: archive acceptance/certification artifacts gate qualification", ()
           endIso: "2024-06-12T12:31:00.000Z",
         }),
       ),
+      qualifyingStatuses,
     });
 
   const request = {
@@ -263,10 +326,7 @@ describe("F4: archive acceptance/certification artifacts gate qualification", ()
   };
 
   it("refuses a strict session when the reports are missing or broken", async () => {
-    await writeFile(file("acceptance.json"), '{"status":"FIXTURE_ACCEPT"}');
-    await writeFile(file("certification.json"), "{");
-
-    const missing = await adapterWith({});
+    const missing = await adapterWith({}, FIXTURE_QUALIFYING);
     expect(missing.provenance.artifactRefusalReasons).toEqual([
       "ACCEPTANCE_REPORT_NOT_CONFIGURED",
       "CERTIFICATION_REPORT_NOT_CONFIGURED",
@@ -277,10 +337,10 @@ describe("F4: archive acceptance/certification artifacts gate qualification", ()
       "ACCEPTANCE_REPORT_NOT_CONFIGURED",
     );
 
-    const broken = await adapterWith({
-      acceptanceReportJson: file("acceptance.json"),
-      certificationReportJson: file("certification.json"),
-    });
+    const broken = await adapterWith(
+      await writeReports('{"status":"FIXTURE_ACCEPT"}', "{"),
+      FIXTURE_QUALIFYING,
+    );
     expect(broken.provenance.acceptanceStatus).toBe("FIXTURE_ACCEPT");
     const brokenResult = await broken.extractEventWindow(request);
     expect(brokenResult.reactionQualification).toBe("refused");
@@ -289,16 +349,52 @@ describe("F4: archive acceptance/certification artifacts gate qualification", ()
     ]);
   });
 
-  it("allows strict once both reports carry a status", async () => {
-    await writeFile(file("acceptance.json"), '{"status":"FIXTURE_ACCEPT"}');
-    await writeFile(file("certification-ok.json"), '{"status":"FIXTURE_CERT"}');
-    const adapter = await adapterWith({
-      acceptanceReportJson: file("acceptance.json"),
-      certificationReportJson: file("certification-ok.json"),
+  it("ships with no qualifying statuses, so every status refuses by default", async () => {
+    expect(QUALIFYING_ACCEPTANCE_STATUSES.size).toBe(0);
+    expect(QUALIFYING_CERTIFICATION_STATUSES.size).toBe(0);
+
+    const adapter = await adapterWith(
+      await writeReports('{"status":"ACCEPT"}', '{"status":"CERTIFIED"}'),
+    );
+    expect(adapter.provenance.acceptanceStatus).toBe("ACCEPT");
+    expect(adapter.provenance.artifactRefusalReasons).toEqual([
+      "ACCEPTANCE_STATUS_NOT_QUALIFYING",
+      "CERTIFICATION_STATUS_NOT_QUALIFYING",
+    ]);
+    const result = await adapter.extractEventWindow(request);
+    expect(result.reactionQualification).toBe("refused");
+  });
+
+  it("never lets a FAIL or REJECTED status qualify, even if allowlisted", async () => {
+    const reports = await writeReports(
+      '{"status":"FAIL_ACCEPTANCE_CALENDAR_AND_SOURCE_LIMITATIONS"}',
+      '{"status":"REJECTED"}',
+    );
+    const adapter = await adapterWith(reports, {
+      acceptance: new Set(["FAIL_ACCEPTANCE_CALENDAR_AND_SOURCE_LIMITATIONS"]),
+      certification: new Set(["REJECTED"]),
     });
+    expect(adapter.provenance.artifactRefusalReasons).toEqual([
+      "ACCEPTANCE_STATUS_NOT_QUALIFYING",
+      "CERTIFICATION_STATUS_NOT_QUALIFYING",
+    ]);
+    const result = await adapter.extractEventWindow(request);
+    expect(result.reactionQualification).toBe("refused");
+    expect(result.refusalReasons).toEqual([
+      "ACCEPTANCE_STATUS_NOT_QUALIFYING",
+      "CERTIFICATION_STATUS_NOT_QUALIFYING",
+    ]);
+  });
+
+  it("allows strict only for statuses the owner names as qualifying", async () => {
+    const adapter = await adapterWith(
+      await writeReports('{"status":"FIXTURE_ACCEPT"}', '{"status":"FIXTURE_CERT"}'),
+      FIXTURE_QUALIFYING,
+    );
     expect(adapter.provenance.artifactRefusalReasons).toEqual([]);
     expect(adapter.provenance.certificationStatus).toBe("FIXTURE_CERT");
     const result = await adapter.extractEventWindow(request);
     expect(result.reactionQualification).toBe("strict");
   });
 });
+

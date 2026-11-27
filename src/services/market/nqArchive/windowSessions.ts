@@ -1,10 +1,11 @@
 /**
  * Per-trading-date checks for every session an event window touches.
  *
- * Eligibility, causal contract selection and the certified session grid are
- * required for EVERY touched date, not only the release date. A window whose
- * dates resolve to different contracts crosses a roll and is refused — the
- * adapter never stitches two contracts together.
+ * Eligibility, causal contract selection, agreement of both manifests with
+ * that selection, and the certified session grid are required for EVERY
+ * touched date, not only the release date. A window whose dates resolve to
+ * different contracts crosses a roll and is refused — the adapter never
+ * stitches two contracts together.
  */
 import type { NqEligibilityIndex } from "./eligibility";
 import { selectContractAsOf } from "./rolls";
@@ -37,18 +38,21 @@ export function describeWindowSession(args: {
   rolls: readonly NqRollBoundary[];
 }): NqWindowSession {
   const { tradingDate, eligibility, index, rolls } = args;
-  const selection = selectContractAsOf(
-    rolls,
-    tradingDate,
-    eligibility.selectedContract ?? index.certificationContract(tradingDate),
-  );
+  const allowlistContract = eligibility.selectedContract;
+  const certificationContract = index.certificationContract(tradingDate);
+  const { contract } = selectContractAsOf(rolls, tradingDate);
   const expectedActiveMinutes = index.expectedActiveMinutes(tradingDate);
   return {
     tradingDate,
     qualification: eligibility.qualification,
     reasonCode: eligibility.reasonCode,
-    contract: selection.contract,
-    conflictsWithCertification: selection.conflictsWithCertification,
+    contract,
+    allowlistContract,
+    certificationContract,
+    // Each manifest is checked independently so one cannot mask the other.
+    conflictsWithCertification:
+      (allowlistContract !== null && allowlistContract !== contract) ||
+      (certificationContract !== null && certificationContract !== contract),
     expectedActiveMinutes,
     modelledActiveMinutes:
       expectedActiveMinutes === null
@@ -65,21 +69,22 @@ export function windowSessionRefusals(args: {
 }): string[] {
   const reasons: string[] = [];
   for (const session of args.sessions) {
+    if (session.conflictsWithCertification) {
+      reasons.push("CONTRACT_CERTIFICATION_CONFLICT");
+    }
     if (session.tradingDate !== args.releaseTradingDate) {
       if (session.qualification === "refused") {
         reasons.push("WINDOW_SESSION_NOT_ELIGIBLE");
-      }
-      if (session.conflictsWithCertification) {
-        reasons.push("CONTRACT_CERTIFICATION_CONFLICT");
       }
       if (session.contract !== args.releaseContract) {
         reasons.push("WINDOW_CROSSES_CONTRACT_ROLL");
       }
     }
-    if (
-      session.expectedActiveMinutes !== null &&
-      session.expectedActiveMinutes !== session.modelledActiveMinutes
-    ) {
+    // Without certified minute counts the regular grid cannot be trusted for
+    // holidays, early closes or halts, so missing evidence refuses.
+    if (session.expectedActiveMinutes === null) {
+      reasons.push("SESSION_GRID_EVIDENCE_MISSING");
+    } else if (session.expectedActiveMinutes !== session.modelledActiveMinutes) {
       reasons.push("SESSION_GRID_MISMATCH_CERTIFICATION");
     }
   }

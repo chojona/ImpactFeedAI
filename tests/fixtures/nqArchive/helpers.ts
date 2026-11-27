@@ -42,6 +42,8 @@ export const allowlistRow = (
   observedCoverage: "FULL_ACTIVE_GRID",
   selectedContract: "NQM24",
   sourceIds: ["FIXTURE"],
+  // A regular 23-hour Globex session (18:00 → 17:00 ET).
+  expectedActiveMinutes: 1380,
   ...partial,
 });
 

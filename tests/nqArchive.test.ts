@@ -45,7 +45,7 @@ const eligibilityFor = (
   rows: Readonly<Record<string, NqSessionEligibility>>,
 ): NqEligibilityIndex => ({
   tradingCalendar: null,
-  expectedActiveMinutes: () => null,
+  expectedActiveMinutes: () => 1380,
   certificationContract: (tradingDate) =>
     rows[tradingDate]?.selectedContract ?? null,
   lookup: (tradingDate) =>
@@ -75,6 +75,7 @@ const allowlistRow = (
   observedCoverage: partial.observedCoverage ?? "FULL_ACTIVE_GRID",
   selectedContract: partial.selectedContract ?? "NQM24",
   sourceIds: partial.sourceIds ?? ["FIXTURE"],
+  expectedActiveMinutes: partial.expectedActiveMinutes ?? 1380,
   tradingDate: partial.tradingDate,
   tier: partial.tier,
   researchEligibility: partial.researchEligibility,

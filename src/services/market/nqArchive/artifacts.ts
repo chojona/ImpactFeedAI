@@ -4,6 +4,12 @@
  * A report that is not configured, missing, unreadable, unparseable or has no
  * `status` yields an explicit refusal reason instead of a silent null, so the
  * adapter refuses every qualified measurement (fail closed).
+ *
+ * A readable status qualifies only when it is listed in the qualifying-status
+ * allowlist. Which statuses qualify is an owner decision that has not been
+ * made, so both allowlists ship EMPTY and every status refuses with
+ * `<ARTIFACT>_STATUS_NOT_QUALIFYING`. Statuses containing FAIL or REJECT never
+ * qualify, even when listed.
  */
 import { readFile } from "node:fs/promises";
 
@@ -14,6 +20,41 @@ export type NqArchiveArtifact = "ACCEPTANCE_REPORT" | "CERTIFICATION_REPORT";
 export interface NqArchiveStatusRead {
   readonly status: string | null;
   readonly refusalReason: string | null;
+}
+
+export interface NqQualifyingStatuses {
+  readonly acceptance: ReadonlySet<string>;
+  readonly certification: ReadonlySet<string>;
+}
+
+/** Owner-approved acceptance-report statuses. Intentionally empty. */
+export const QUALIFYING_ACCEPTANCE_STATUSES: ReadonlySet<string> = new Set();
+/** Owner-approved certification-report statuses. Intentionally empty. */
+export const QUALIFYING_CERTIFICATION_STATUSES: ReadonlySet<string> = new Set();
+
+export const DEFAULT_QUALIFYING_STATUSES: NqQualifyingStatuses = {
+  acceptance: QUALIFYING_ACCEPTANCE_STATUSES,
+  certification: QUALIFYING_CERTIFICATION_STATUSES,
+};
+
+const NEVER_QUALIFYING = /FAIL|REJECT/i;
+
+const NOT_QUALIFYING: Readonly<Record<NqArchiveArtifact, string>> = {
+  ACCEPTANCE_REPORT: "ACCEPTANCE_STATUS_NOT_QUALIFYING",
+  CERTIFICATION_REPORT: "CERTIFICATION_STATUS_NOT_QUALIFYING",
+};
+
+/** Apply the qualifying-status allowlist to a successfully read status. */
+export function gateArchiveStatus(
+  read: NqArchiveStatusRead,
+  artifact: NqArchiveArtifact,
+  qualifying: ReadonlySet<string>,
+): NqArchiveStatusRead {
+  if (read.refusalReason !== null || read.status === null) return read;
+  if (NEVER_QUALIFYING.test(read.status) || !qualifying.has(read.status)) {
+    return { status: read.status, refusalReason: NOT_QUALIFYING[artifact] };
+  }
+  return read;
 }
 
 const refuse = (
