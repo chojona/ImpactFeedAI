@@ -16,15 +16,20 @@
  * supported-range check — see spec §4.4.
  *
  * Sources: official NYSE/ICE 2022–2024, 2025–2027 and 2026–2028
- * announcements, rechecked 2026-11-05. Exact citations and independently
- * transcribed fixtures: tests/fixtures/nyse-hours.json. Calendar revision 5.
+ * announcements, plus the 2025-01-09 National Day of Mourning close;
+ * rechecked 2026-11-27. Exact citations and independently transcribed
+ * fixtures: tests/fixtures/nyse-hours.json. Calendar revision 6.
  * The three false half-days removed here MUST NOT be written as v3.
+ *
+ * 2027 holidays and early closes: https://www.nyse.com/markets/hours-calendars
+ * (NYSE Holidays & Trading Hours, 2026–2028 table). 2025-01-09:
+ * https://ir.theice.com/press/news-details/2024/The-New-York-Stock-Exchange-Will-Close-Markets-on-January-9-to-Honor-the-Passing-of-Former-President-Jimmy-Carter-on-National-Day-of-Mourning/default.aspx
  */
 import { easternWallClock } from "@/services/macro/time";
 
 /** Inclusive bounds of the curated early-close / full-close tables. Extend together. */
 export const EARLY_CLOSE_RANGE_START = "2022-01-01";
-export const EARLY_CLOSE_RANGE_END = "2026-12-31";
+export const EARLY_CLOSE_RANGE_END = "2027-12-31";
 export const NYSE_SCHEDULE_RANGE_START = EARLY_CLOSE_RANGE_START;
 export const NYSE_SCHEDULE_RANGE_END = EARLY_CLOSE_RANGE_END;
 
@@ -40,6 +45,9 @@ const EARLY_CLOSE_DAYS: ReadonlySet<string> = new Set([
   "2024-07-03", "2024-11-29", "2024-12-24",
   "2025-07-03", "2025-11-28", "2025-12-24",
   "2026-11-27", "2026-12-24",
+  // 2027 — day after Thanksgiving only; Christmas observed is a full close.
+  // https://www.nyse.com/markets/hours-calendars
+  "2027-11-26",
 ]);
 
 /**
@@ -88,6 +96,9 @@ const NYSE_FULL_CLOSE_DAYS: ReadonlySet<string> = new Set([
 
   // 2025
   "2025-01-01",
+  // National Day of Mourning for former President Jimmy Carter.
+  // https://ir.theice.com/press/news-details/2024/The-New-York-Stock-Exchange-Will-Close-Markets-on-January-9-to-Honor-the-Passing-of-Former-President-Jimmy-Carter-on-National-Day-of-Mourning/default.aspx
+  "2025-01-09",
   "2025-01-20",
   "2025-02-17",
   "2025-04-18",
@@ -109,6 +120,18 @@ const NYSE_FULL_CLOSE_DAYS: ReadonlySet<string> = new Set([
   "2026-09-07",
   "2026-11-26",
   "2026-12-25",
+
+  // 2027 — https://www.nyse.com/markets/hours-calendars
+  "2027-01-01", // New Year's Day
+  "2027-01-18", // Martin Luther King, Jr. Day
+  "2027-02-15", // Washington's Birthday
+  "2027-03-26", // Good Friday
+  "2027-05-31", // Memorial Day
+  "2027-06-18", // Juneteenth National Independence Day (observed)
+  "2027-07-05", // Independence Day (observed)
+  "2027-09-06", // Labor Day
+  "2027-11-25", // Thanksgiving Day
+  "2027-12-24", // Christmas Day (observed)
 ]);
 
 const REGULAR_CLOSE_HOUR = 16;

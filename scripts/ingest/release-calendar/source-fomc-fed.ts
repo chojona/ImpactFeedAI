@@ -106,7 +106,7 @@ export function parseStatementPage(
 
   const relCell = /class="releaseTime"[^>]*>([\s\S]*?)<\//i.exec(html)?.[1];
   const text = relCell ? htmlToText(relCell) : htmlToText(html);
-  const relMatch = /For (?:immediate )?release(?: at [^.]*?[ap]\.?\s*m\.?\s*\(?(?:EST|EDT|ET)?\)?)?/i.exec(text);
+  const relMatch = /For (?:immediate )?release(?: at [^.]*?[ap]\.?\s*m\.?\s*\(?(?:EST|EDT|ET|(?:(?:UTC|GMT)\s*)?[+-]\d{2}:?\d{2}|UTC|GMT)?\)?)?/i.exec(text);
   const releaseLine = relMatch ? relMatch[0].trim() : null;
 
   const flags: RecordFlag[] = [];
@@ -150,6 +150,7 @@ export function parseStatementPage(
         retrievedAt: meta.retrievedAt,
         releaseDate,
         releaseAt,
+        ...(/release at/i.test(releaseLine ?? "") ? { clockKind: "INTENDED_EMBARGO" as const } : {}),
         statedZone,
         evidenceText,
         contentSha256: meta.contentSha256,

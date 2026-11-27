@@ -6,7 +6,9 @@ import {
   detectRevisionConflicts,
   selectLatestEconomicObservation,
   selectRevisionForPeriod,
+  selectVintageConsistentPanel,
 } from "@/services/context/revisionSelect";
+import { vintageConsistentMom } from "@/services/context/transforms";
 import type { ContextObservation, PointInTimePolicy } from "@/types/context";
 
 const seriesKey = CONTEXT_SERIES.PAYEMS.seriesKey;
@@ -218,6 +220,45 @@ describe("point-in-time selection", () => {
       cutoff: new Date("2023-02-10T13:30:00.000Z"),
     });
     expect(result.status).toBe("missing");
+  });
+
+  it("ignores conflicting rows recorded after the freeze for both selectors", () => {
+    const afterFreeze = {
+      ...first,
+      id: "late-conflict",
+      payloadHash: "d".repeat(64),
+      recordedAt: new Date(basePolicy.recordedThrough.getTime() + 1),
+    };
+    const observations = [first, afterFreeze];
+    expect(selectRevisionForPeriod(observations, seriesKey, first.observationPeriodStart, basePolicy))
+      .toMatchObject({ status: "selected", observation: first });
+    expect(selectLatestEconomicObservation(observations, seriesKey, basePolicy))
+      .toMatchObject({ status: "selected", observation: first });
+    expect(selectRevisionForPeriod(observations, seriesKey, first.observationPeriodStart, {
+      ...basePolicy,
+      recordedThrough: afterFreeze.recordedAt,
+    })).toMatchObject({ status: "missing", reason: "conflict_quarantined" });
+  });
+
+  it("rejects an unresolved release stage despite an initial value kind", () => {
+    const unresolved = { ...first, releaseStage: "UNKNOWN" } as const;
+    expect(selectRevisionForPeriod([unresolved], seriesKey, first.observationPeriodStart, {
+      ...basePolicy,
+      requireInitial: true,
+    })).toMatchObject({ status: "missing" });
+  });
+
+  it("transforms revisions selected at one cutoff and rejects spliced selections", () => {
+    const observations = [first, revised, newerPeriod];
+    const periods = [first.observationPeriodStart, newerPeriod.observationPeriodStart];
+    const latePolicy = { ...basePolicy, cutoff: new Date("2023-03-20T13:30:00Z") };
+    const early = selectVintageConsistentPanel(observations, seriesKey, periods, basePolicy);
+    const late = selectVintageConsistentPanel(observations, seriesKey, periods, latePolicy);
+    expect(vintageConsistentMom(late.panel, 1)).toMatchObject({ status: "ok", value: 161 });
+    expect(vintageConsistentMom([early.panel[0], late.panel[1]], 1)).toMatchObject({
+      status: "missing",
+      reason: "mixed_vintage_panel",
+    });
   });
 
   it("B7b: reconstruction allows later fetch when availability precedes cutoff", () => {

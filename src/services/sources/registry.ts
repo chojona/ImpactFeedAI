@@ -21,11 +21,15 @@ import type { DataProviderEntry, DataSourceRegistry } from "@/types/dataSources"
 
 import { ALFRED_PROVIDER } from "./providers/alfred";
 import { ALPHA_VANTAGE_PROVIDER } from "./providers/alphaVantage";
+import { ATLANTA_FED_PROVIDER } from "./providers/atlantaFed";
+import { BEA_PROVIDER } from "./providers/bea";
 import { BLS_PROVIDER } from "./providers/bls";
 import { CBOE_PROVIDER } from "./providers/cboe";
 import { CLEVELAND_FED_PROVIDER } from "./providers/clevelandFed";
+import { FEDERAL_RESERVE_BOARD_PROVIDER } from "./providers/federalReserveBoard";
 import { FRED_PROVIDER } from "./providers/fred";
 import { NQ_ARCHIVE_PROVIDER } from "./providers/nqArchive";
+import { PHILADELPHIA_FED_PROVIDER } from "./providers/philadelphiaFed";
 import { SF_FED_PROVIDER } from "./providers/sfFed";
 import { TREASURY_PROVIDER } from "./providers/treasury";
 import { YAHOO_PROVIDER } from "./providers/yahoo";
@@ -35,13 +39,17 @@ export const DATA_SOURCE_REGISTRY: DataSourceRegistry = {
   asOf: "2026-11-27",
   providers: [
     BLS_PROVIDER,
+    BEA_PROVIDER,
     FRED_PROVIDER,
     ALFRED_PROVIDER,
+    FEDERAL_RESERVE_BOARD_PROVIDER,
     ALPHA_VANTAGE_PROVIDER,
     YAHOO_PROVIDER,
     CBOE_PROVIDER,
     TREASURY_PROVIDER,
     CLEVELAND_FED_PROVIDER,
+    ATLANTA_FED_PROVIDER,
+    PHILADELPHIA_FED_PROVIDER,
     SF_FED_PROVIDER,
     NQ_ARCHIVE_PROVIDER,
   ],

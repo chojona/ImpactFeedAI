@@ -45,14 +45,14 @@ export const BLS_PROVIDER: DataProviderEntry = {
     redistribution: "PERMITTED",
     attributionRequired: true,
     summary:
-      "U.S. federal government work, public domain. BLS asks for source citation and that derived values not be presented as BLS figures.",
+      "U.S. federal government work, public domain (https://www.bls.gov/opub/copyright-information.htm). Required statement (termsOfService.htm): \"BLS.gov cannot vouch for the data or analyses derived from these data after the data have been retrieved from BLS.gov.\" Cite BLS; do not present derived values as BLS figures.",
     termsUrl: "https://www.bls.gov/developers/termsOfService.htm",
     basis: "DOCUMENTED",
   },
   implementations: [
     { status: "MAIN", path: "scripts/ingest/sources-bls.ts" },
     // Release timing from operator-saved archive documents; bls.gov is never fetched.
-    { status: "OPEN_PR", path: "scripts/ingest/release-calendar/source-bls-local.ts", pullRequest: 31 },
+    { status: "MAIN", path: "scripts/ingest/release-calendar/source-bls-local.ts" },
   ],
   lastSuccessfulValidation: TESTED_ON,
   series: [

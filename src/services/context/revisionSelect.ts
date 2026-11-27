@@ -13,6 +13,10 @@ import type {
   SelectionResult,
 } from "@/types/context";
 
+export interface PanelObservation extends ContextObservation {
+  readonly selectionPolicy: PointInTimePolicy;
+}
+
 function byPeriodThenRealtime(
   a: ContextObservation,
   b: ContextObservation,
@@ -83,6 +87,17 @@ function eligibleForSeries(
     .sort(byPeriodThenRealtime);
 }
 
+function revisionsAtFreeze(
+  observations: readonly ContextObservation[],
+  seriesKey: string,
+  recordedThrough: Date,
+) {
+  return detectRevisionConflicts(
+    observations.filter((o) =>
+      o.seriesKey === seriesKey && o.recordedAt.getTime() <= recordedThrough.getTime()),
+  );
+}
+
 /**
  * Latest eligible revision within one observation period.
  */
@@ -92,7 +107,7 @@ export function selectRevisionForPeriod(
   observationPeriodStart: string,
   policy: PointInTimePolicy,
 ): SelectionResult {
-  const { clean, quarantined } = detectRevisionConflicts(observations);
+  const { clean, quarantined } = revisionsAtFreeze(observations, seriesKey, policy.recordedThrough);
   const conflicted = quarantined.filter(
     (o) =>
       o.seriesKey === seriesKey &&
@@ -152,7 +167,7 @@ export function selectLatestEconomicObservation(
   seriesKey: string,
   policy: PointInTimePolicy,
 ): SelectionResult {
-  const { clean } = detectRevisionConflicts(observations);
+  const { clean } = revisionsAtFreeze(observations, seriesKey, policy.recordedThrough);
   const eligible = eligibleForSeries(clean, seriesKey, policy);
   if (eligible.length === 0) {
     return {
@@ -185,20 +200,25 @@ export function selectVintageConsistentPanel(
   periods: readonly string[],
   policy: PointInTimePolicy,
 ): {
-  readonly panel: Array<ContextObservation | null>;
+  readonly panel: Array<PanelObservation | null>;
   readonly failures: SelectionResult[];
 } {
-  const panel: Array<ContextObservation | null> = [];
+  const panel: Array<PanelObservation | null> = [];
   const failures: SelectionResult[] = [];
+  const selectionPolicy = {
+    ...policy,
+    cutoff: new Date(policy.cutoff),
+    recordedThrough: new Date(policy.recordedThrough),
+  };
   for (const period of periods) {
     const result = selectRevisionForPeriod(
       observations,
       seriesKey,
       period,
-      policy,
+      selectionPolicy,
     );
     if (result.status === "selected") {
-      panel.push(result.observation);
+      panel.push({ ...result.observation, selectionPolicy });
     } else {
       panel.push(null);
       failures.push(result);
