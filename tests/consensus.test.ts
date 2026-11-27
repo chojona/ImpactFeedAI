@@ -24,7 +24,16 @@ describe("validateConsensusEstimate", () => {
         { ...estimate, asOf: new Date("2025-02-12T13:31:00Z") },
         releaseAt,
       ),
-    ).toThrow(/after the release/i);
+    ).toThrow(/strictly before the release/i);
+  });
+
+  it("rejects consensus asOf equal to the release instant", () => {
+    expect(() =>
+      validateConsensusEstimate(
+        { ...estimate, asOf: new Date(releaseAt) },
+        releaseAt,
+      ),
+    ).toThrow(/strictly before the release/i);
   });
 
   it("rejects an unsourced or non-finite value", () => {

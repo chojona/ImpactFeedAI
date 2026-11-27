@@ -72,10 +72,17 @@ category as one statistical indicator. `src/lib/assets.ts` supplies the
 
 Server-side reads belong in `src/services/`. Current event queries and mapping
 live in `services/events/`, persisted candle access in `services/market/`,
-canonical macro transforms/provenance in `services/macro/`, and descriptive
-statistics in `services/analytics/`. Components render prepared values rather
-than calculate research results. There are no application write routes or
-Server Actions today, and no model calls.
+canonical macro transforms/provenance in `services/macro/`, descriptive
+statistics in `services/analytics/`, and Phase 1 point-in-time context in
+`services/context/`: Tier-A regime feature contracts (`featureDefinitions`,
+`rates`, `volatility`, market `pointInTime` eligibility) and the Phase 1.1
+macro foundation (ALFRED adapter, `revisionSelect`, vintage `transforms`),
+sharing `KnowledgeMode` / `MarketContextObservation` in `src/types/context.ts`
+and the historical-actual gate in `services/macro/actualProvenance.ts`. These
+are pure TypeScript with no persistence; Phase 1 remains NO-GO, so nothing
+reads them in the product yet. Components render prepared values rather than
+calculate research results. There are no application write routes or Server
+Actions today, and no model calls.
 
 `GET /api/events` parses/clamps parameters through `queryParams.ts`. Newest
 sort uses display/occurrence order; biggest-move sort uses parameterized SQL
