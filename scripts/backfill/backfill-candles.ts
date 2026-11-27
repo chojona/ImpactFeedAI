@@ -2,11 +2,15 @@
 /**
  * Backfill historical OHLCV candles around timing-eligible events.
  *
- * Default mode is dry-run. Applying is deliberately cumbersome:
+ * Default mode is plan-only dry-run (Postgres inventory + lookback math; no
+ * provider calls). Live provider fetches and writes are gated:
  *
- *   npm run backfill:candles                              # dry-run, writes nothing
- *   npm run backfill:candles -- --symbol SPY --limit 3    # narrow dry-run
- *   CANDLE_BACKFILL_CONFIRM=WRITE_CANDLES \
+ *   npm run backfill:candles                              # plan only
+ *   npm run backfill:candles -- --symbol SPY --limit 3
+ *   CANDLE_SOURCE_PERMISSIONS_CONFIRMED=yahoo-finance2-terms-verified \
+ *     npm run backfill:candles -- --execute                # live dry-run fetch
+ *   CANDLE_SOURCE_PERMISSIONS_CONFIRMED=yahoo-finance2-terms-verified \
+ *     CANDLE_BACKFILL_CONFIRM=WRITE_CANDLES \
  *     npm run backfill:candles -- --apply
  *
  * Properties:
@@ -21,6 +25,8 @@
  *                 incoherent bar produces zero rows and a counted reason. It
  *                 never falls back to a coarser interval, never rescales prices
  *                 and never fabricates a bar.
+ *   permissions — bulk live fetches and apply writes require an explicit
+ *                 source-permissions confirmation; Yahoo terms are unverified.
  *
  * Oldest reachable events are processed first on purpose. The provider's
  * intraday history is a *rolling* window, so the oldest events are the ones
@@ -33,8 +39,19 @@ import {
   createYahooCandleProvider,
   type CandleProvider,
 } from "../ingest/candle-provider";
+import { fetchCandlesWithRetry } from "../ingest/candle-fetch-retry";
+import {
+  PRESERVATION_WINDOW_DAYS_EACH_SIDE,
+  buildPreservationPlan,
+  coverageKey,
+  type PreservationWorkUnit,
+} from "../ingest/candle-preservation-plan";
 import { rowsFromOutcome } from "../ingest/candle-rows";
-import { estimateCandleRows } from "../ingest/candle-semantics";
+import {
+  assertApplyWritesAllowed,
+  assertLiveBulkFetchAllowed,
+  resolveCandleSourcePermissions,
+} from "../ingest/candle-source-permissions";
 import { sleep } from "../ingest/fetch-prices";
 import { createScriptPrismaClient } from "../lib/prisma";
 import { createDryRunPrismaClient } from "../lib/readonly-prisma";
@@ -51,7 +68,6 @@ import type { CandleInterval } from "@/types/market";
 const APPLY_CONFIRMATION = "WRITE_CANDLES";
 const CONFIRMATION_ENV = "CANDLE_BACKFILL_CONFIRM";
 
-const DAY_MS = 86_400_000;
 const PER_REQUEST_DELAY_MS = 600;
 const PER_EVENT_DELAY_MS = 1_000;
 
@@ -59,15 +75,14 @@ const PER_EVENT_DELAY_MS = 1_000;
 const DEFAULT_SYMBOLS = ["SPY", "QQQ"] as const;
 const DEFAULT_INTERVAL: CandleInterval = "ONE_HOUR";
 
-/**
- * Calendar days fetched either side of the release instant. Wider than the
- * "±1 trading day" target so a weekend or holiday cannot leave the event
- * session at the very edge of the window.
- */
-const WINDOW_DAYS_EACH_SIDE = 2;
-
 interface Flags {
+  /** Persist candles. Requires write confirm + permissions. */
   apply: boolean;
+  /**
+   * Call the live provider for remaining plan units without writing.
+   * Requires permissions. Default false — plan-only.
+   */
+  execute: boolean;
   symbols: string[];
   interval: CandleInterval;
   limit: number | null;
@@ -77,6 +92,7 @@ interface Flags {
 function parseFlags(argv: string[]): Flags {
   const flags: Flags = {
     apply: false,
+    execute: false,
     symbols: [],
     interval: DEFAULT_INTERVAL,
     limit: null,
@@ -85,9 +101,15 @@ function parseFlags(argv: string[]): Flags {
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === "--dry-run") flags.apply = false;
-    else if (arg === "--apply") flags.apply = true;
-    else if (arg === "--symbol") {
+    if (arg === "--dry-run") {
+      flags.apply = false;
+      flags.execute = false;
+    } else if (arg === "--apply") {
+      flags.apply = true;
+      flags.execute = true;
+    } else if (arg === "--execute") {
+      flags.execute = true;
+    } else if (arg === "--symbol") {
       const value = argv[++i];
       if (!value) throw new Error("--symbol requires a value");
       flags.symbols.push(value.toUpperCase());
@@ -114,11 +136,14 @@ function parseFlags(argv: string[]): Flags {
     } else if (arg === "-h" || arg === "--help") {
       console.log(`Usage: tsx scripts/backfill/backfill-candles.ts [options]
 
-Dry-run by default. Applying requires ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION}.
+Plan-only by default (no provider calls, no writes).
+Live bulk fetches require ${resolveCandleSourcePermissions().confirmationEnv}=${resolveCandleSourcePermissions().confirmationValue}.
+Applying also requires ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION}.
 
 Options:
-  --dry-run            Report what would be written; write nothing. (default)
-  --apply              Persist candles. Requires the confirmation variable.
+  --dry-run            Plan only; write nothing; call no provider. (default)
+  --execute            Fetch remaining units from the provider without writing.
+  --apply              Persist candles (implies --execute).
   --symbol <TICKER>    Symbol to backfill; may be repeated.
                        Default: ${DEFAULT_SYMBOLS.join(", ")}.
   --interval <CODE>    One of ${ALL_INTERVAL_CODES.join(", ")}. Default: ${INTERVAL_CODE[DEFAULT_INTERVAL]}.
@@ -138,10 +163,12 @@ Options:
 interface Stats {
   eventsConsidered: number;
   pairsAttempted: number;
+  pairsSkippedCovered: number;
   pairsUnreachable: number;
   pairsBasisRejected: number;
   pairsProviderError: number;
   pairsEmpty: number;
+  providerRetries: number;
   candlesFetched: number;
   candlesMalformed: number;
   candlesInserted: number;
@@ -152,10 +179,12 @@ interface Stats {
 const emptyStats = (): Stats => ({
   eventsConsidered: 0,
   pairsAttempted: 0,
+  pairsSkippedCovered: 0,
   pairsUnreachable: 0,
   pairsBasisRejected: 0,
   pairsProviderError: 0,
   pairsEmpty: 0,
+  providerRetries: 0,
   candlesFetched: 0,
   candlesMalformed: 0,
   candlesInserted: 0,
@@ -163,43 +192,80 @@ const emptyStats = (): Stats => ({
   volumeWithheld: 0,
 });
 
-async function processPair(
+async function countStoredInWindow(
   prisma: PrismaClient,
-  provider: CandleProvider,
   symbol: string,
   interval: CandleInterval,
-  releaseAt: Date,
+  from: Date,
+  to: Date,
+): Promise<number> {
+  return prisma.candle.count({
+    where: {
+      symbol,
+      interval,
+      ingestionVersion: CURRENT_CANDLE_INGESTION_VERSION,
+      openTime: { gte: from, lte: to },
+    },
+  });
+}
+
+async function processUnit(
+  prisma: PrismaClient,
+  provider: CandleProvider,
+  unit: PreservationWorkUnit,
   apply: boolean,
   stats: Stats,
 ): Promise<void> {
   stats.pairsAttempted += 1;
 
-  const from = new Date(releaseAt.getTime() - WINDOW_DAYS_EACH_SIDE * DAY_MS);
-  const to = new Date(releaseAt.getTime() + WINDOW_DAYS_EACH_SIDE * DAY_MS);
+  const { outcome, attempts } = await fetchCandlesWithRetry(
+    () =>
+      provider.fetchCandles({
+        symbol: unit.symbol,
+        interval: unit.interval,
+        from: unit.from,
+        to: unit.to,
+      }),
+    {
+      sleep,
+      onRetry: ({ attempt, delayMs, reason }) => {
+        stats.providerRetries += 1;
+        console.log(
+          `    ${unit.symbol.padEnd(6)} retry ${attempt} after provider error — ${reason} (sleep ${delayMs}ms)`,
+        );
+      },
+    },
+  );
 
-  const outcome = await provider.fetchCandles({ symbol, interval, from, to });
+  if (attempts > 1 && outcome.status !== "provider_error") {
+    console.log(
+      `    ${unit.symbol.padEnd(6)} recovered after ${attempts} attempt(s)`,
+    );
+  }
 
   if (outcome.status === "unreachable") {
     stats.pairsUnreachable += 1;
-    console.log(`    ${symbol.padEnd(6)} unreachable — ${outcome.reason}`);
+    console.log(`    ${unit.symbol.padEnd(6)} unreachable — ${outcome.reason}`);
     return;
   }
   if (outcome.status === "basis_rejected") {
     stats.pairsBasisRejected += 1;
     console.log(
-      `    ${symbol.padEnd(6)} BASIS-REJECTED — ${outcome.reason}\n` +
+      `    ${unit.symbol.padEnd(6)} BASIS-REJECTED — ${outcome.reason}\n` +
         `    ${" ".repeat(6)} zero candles written for this pair; prices are NOT rescaled`,
     );
     return;
   }
   if (outcome.status === "provider_error") {
     stats.pairsProviderError += 1;
-    console.log(`    ${symbol.padEnd(6)} provider error — ${outcome.reason}`);
+    console.log(
+      `    ${unit.symbol.padEnd(6)} provider error after ${attempts} attempt(s) — ${outcome.reason}`,
+    );
     return;
   }
   if (outcome.status === "empty") {
     stats.pairsEmpty += 1;
-    console.log(`    ${symbol.padEnd(6)} no bars — ${outcome.reason}`);
+    console.log(`    ${unit.symbol.padEnd(6)} no bars — ${outcome.reason}`);
     return;
   }
 
@@ -208,26 +274,23 @@ async function processPair(
 
   const { rows, malformed } = rowsFromOutcome(
     outcome,
-    symbol,
-    interval,
+    unit.symbol,
+    unit.interval,
     provider.id,
     new Date(),
   );
   stats.candlesMalformed += malformed;
 
   if (rows.length === 0) {
-    console.log(`    ${symbol.padEnd(6)} nothing coherent to write`);
+    console.log(`    ${unit.symbol.padEnd(6)} nothing coherent to write`);
     return;
   }
 
   if (!apply) {
-    // Count what a real run would insert, without writing. The unique index is
-    // the authority on duplicates, so a dry-run asks the database rather than
-    // guessing.
     const existing = await prisma.candle.count({
       where: {
-        symbol,
-        interval,
+        symbol: unit.symbol,
+        interval: unit.interval,
         priceBasis: outcome.priceBasis,
         openTime: { in: rows.map((r) => r.openTime) },
       },
@@ -235,7 +298,7 @@ async function processPair(
     stats.candlesAlreadyPresent += existing;
     stats.candlesInserted += rows.length - existing;
     console.log(
-      `    ${symbol.padEnd(6)} would insert ${String(rows.length - existing).padStart(3)}` +
+      `    ${unit.symbol.padEnd(6)} would insert ${String(rows.length - existing).padStart(3)}` +
         ` · already present ${String(existing).padStart(3)}` +
         ` · basis ${outcome.priceBasis}` +
         ` · volume withheld ${outcome.volumeWithheld}` +
@@ -252,7 +315,7 @@ async function processPair(
   stats.candlesAlreadyPresent += rows.length - result.count;
 
   console.log(
-    `    ${symbol.padEnd(6)} inserted ${String(result.count).padStart(3)}` +
+    `    ${unit.symbol.padEnd(6)} inserted ${String(result.count).padStart(3)}` +
       ` · already present ${String(rows.length - result.count).padStart(3)}` +
       ` · basis ${outcome.priceBasis}` +
       ` · volume withheld ${outcome.volumeWithheld}` +
@@ -260,46 +323,59 @@ async function processPair(
   );
 }
 
+function modeLabel(flags: Flags): string {
+  if (flags.apply) return "APPLY — writing";
+  if (flags.execute) return "EXECUTE — live fetch, no writes";
+  return "PLAN — no provider calls, no writes";
+}
+
 async function main(): Promise<void> {
   const flags = parseFlags(process.argv.slice(2));
+  const permissions = resolveCandleSourcePermissions();
 
-  if (flags.apply && process.env[CONFIRMATION_ENV] !== APPLY_CONFIRMATION) {
-    console.error(
-      `Refusing to write. --apply requires ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION} ` +
-        `in the environment.`,
-    );
-    process.exit(2);
+  if (flags.apply) {
+    if (process.env[CONFIRMATION_ENV] !== APPLY_CONFIRMATION) {
+      console.error(
+        `Refusing to write. --apply requires ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION} ` +
+          `in the environment.`,
+      );
+      process.exit(2);
+    }
+    try {
+      assertApplyWritesAllowed();
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : error);
+      process.exit(2);
+    }
+  } else if (flags.execute) {
+    try {
+      assertLiveBulkFetchAllowed();
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : error);
+      process.exit(2);
+    }
   }
 
   const prisma = flags.apply
     ? createScriptPrismaClient()
     : createDryRunPrismaClient();
-  const provider = createYahooCandleProvider();
-
-  if (!provider.supports(flags.interval)) {
-    console.error(`Provider ${provider.id} cannot serve ${flags.interval}.`);
-    process.exit(2);
-  }
 
   const stats = emptyStats();
 
+  console.log(`backfill-candles (${modeLabel(flags)})`);
   console.log(
-    `backfill-candles${flags.apply ? " (APPLY — writing)" : " (dry-run — no writes)"}`,
+    `  permissions  ${permissions.status} (${permissions.source})`,
   );
-  console.log(`  provider  ${provider.id}`);
   console.log(
     `  interval  ${flags.interval} (${INTERVAL_CODE[flags.interval]})   ` +
       `symbols  ${flags.symbols.join(", ")}`,
   );
   console.log(`  version   ${CURRENT_CANDLE_INGESTION_VERSION}`);
   console.log(
-    `  window    ±${WINDOW_DAYS_EACH_SIDE} calendar days around each release instant\n`,
+    `  window    ±${PRESERVATION_WINDOW_DAYS_EACH_SIDE} calendar days around each release instant\n`,
   );
 
   try {
-    // Only timing-eligible events: an event whose release instant is not
-    // defensible has no market-facing moment for candles to be centred on, and
-    // the rest of the product already refuses to anchor anything to it.
     const events = await prisma.event.findMany({
       where: {
         timingStatus: { in: [...REACTION_ELIGIBLE_TIMING_STATUSES] },
@@ -307,75 +383,165 @@ async function main(): Promise<void> {
         timingSource: { not: null },
         ...(flags.eventIds.length > 0 ? { id: { in: flags.eventIds } } : {}),
       },
-      // Oldest first: the rolling provider window drops these first.
       orderBy: [{ releaseAt: "asc" }, { id: "asc" }],
       select: { id: true, headline: true, eventType: true, releaseAt: true },
     });
 
-    const reachable = events.filter(
-      (event) =>
-        event.releaseAt !== null &&
-        provider.reachable(flags.interval, event.releaseAt),
-    );
-    const unreachable = events.length - reachable.length;
+    const timingEvents = events
+      .filter((event): event is typeof event & { releaseAt: Date } =>
+        event.releaseAt !== null,
+      )
+      .map((event) => ({
+        id: event.id,
+        releaseAt: event.releaseAt,
+        headline: event.headline,
+        eventType: event.eventType,
+      }));
 
+    const now = new Date();
+    const coverageCache = new Map<string, number>();
+
+    // First pass with zero coverage discovers ranked windows; second pass uses
+    // real store counts so skip-when-covered is accurate and idempotent.
+    const skeleton = buildPreservationPlan({
+      events: timingEvents,
+      symbols: flags.symbols,
+      interval: flags.interval,
+      now,
+      limit: flags.limit,
+      coverageFor: ({ symbol, interval }) => ({
+        symbol,
+        interval,
+        storedCount: 0,
+      }),
+    });
+
+    for (const unit of skeleton.units) {
+      const key = coverageKey(
+        unit.symbol,
+        unit.interval,
+        unit.from,
+        unit.to,
+      );
+      if (!coverageCache.has(key)) {
+        coverageCache.set(
+          key,
+          await countStoredInWindow(
+            prisma,
+            unit.symbol,
+            unit.interval,
+            unit.from,
+            unit.to,
+          ),
+        );
+      }
+    }
+
+    const plan = buildPreservationPlan({
+      events: timingEvents,
+      symbols: flags.symbols,
+      interval: flags.interval,
+      now,
+      limit: flags.limit,
+      coverageFor: ({ symbol, interval, from, to }) => ({
+        symbol,
+        interval,
+        storedCount:
+          coverageCache.get(coverageKey(symbol, interval, from, to)) ?? 0,
+      }),
+    });
+
+    const unreachable = plan.windows.filter((w) => !w.reachable).length;
     console.log(
-      `Timing-eligible events: ${events.length}   ` +
-        `reachable at ${INTERVAL_CODE[flags.interval]}: ${reachable.length}   ` +
+      `Timing-eligible events: ${timingEvents.length}   ` +
+        `reachable at ${INTERVAL_CODE[flags.interval]}: ${plan.windows.length - unreachable}   ` +
         `outside the provider window: ${unreachable}`,
     );
 
-    for (const event of events) {
-      if (event.releaseAt === null) continue;
-      if (provider.reachable(flags.interval, event.releaseAt)) continue;
+    for (const window of plan.windows) {
+      if (window.reachable) continue;
+      const event = timingEvents.find((e) => e.id === window.eventId);
       console.log(
-        `  SKIP ${event.releaseAt.toISOString().slice(0, 10)} ${event.eventType.padEnd(13)} ` +
-          `${event.headline.slice(0, 44)} — outside the ${INTERVAL_CODE[flags.interval]} window`,
+        `  SKIP ${window.releaseAt.toISOString().slice(0, 10)} ${(event?.eventType ?? "").padEnd(13)} ` +
+          `${(event?.headline ?? "").slice(0, 44)} — outside the ${INTERVAL_CODE[flags.interval]} window`,
       );
     }
-
-    const selected =
-      flags.limit === null ? reachable : reachable.slice(0, flags.limit);
 
     console.log(
-      `\nUpper-bound estimate: ${estimateCandleRows({
-        interval: flags.interval,
-        sessionsPerEvent: 2 * WINDOW_DAYS_EACH_SIDE + 1,
-        events: selected.length,
-        symbols: flags.symbols.length,
-        includeExtended: true,
-      }).toLocaleString()} rows ` +
-        `(${selected.length} events × ${flags.symbols.length} symbols)\n`,
+      `\nPlan: ${plan.remaining.length} remaining unit(s), ` +
+        `${plan.skippedFullyCovered} skipped (fully covered), ` +
+        `upper-bound estimate ${plan.estimatedRowsUpperBound.toLocaleString()} rows`,
     );
 
-    for (const event of selected) {
-      stats.eventsConsidered += 1;
+    for (const unit of plan.units) {
+      const days =
+        unit.daysRemaining === null
+          ? "n/a"
+          : `${unit.daysRemaining.toFixed(1)}d left`;
+      const flag = unit.approachingLoss ? " AT-RISK" : "";
+      const skip = unit.skippedFullyCovered
+        ? " SKIP covered"
+        : ` need ≤${unit.estimatedRowsUpperBound}`;
       console.log(
-        `  ${event.releaseAt!.toISOString().slice(0, 16)}  ${event.eventType.padEnd(13)} ` +
-          `${event.headline.slice(0, 44)}`,
+        `  ${unit.releaseAt.toISOString().slice(0, 16)}  ${unit.symbol.padEnd(6)} ` +
+          `stored ${String(unit.storedCount).padStart(3)}/${unit.minExpectedBars}` +
+          `  ${days}${flag}${skip}`,
       );
-
-      for (const symbol of flags.symbols) {
-        await processPair(
-          prisma,
-          provider,
-          symbol,
-          flags.interval,
-          event.releaseAt!,
-          flags.apply,
-          stats,
-        );
-        await sleep(PER_REQUEST_DELAY_MS);
-      }
-      await sleep(PER_EVENT_DELAY_MS);
     }
 
-    console.log(`\n${flags.apply ? "Applied" : "Dry run"} summary`);
+    if (!flags.execute) {
+      console.log(
+        `\nNothing was fetched or written. Source permissions: ${permissions.status}.`,
+      );
+      console.log(
+        `To live-fetch without writing:\n  ${permissions.confirmationEnv}=${permissions.confirmationValue} npm run backfill:candles -- --execute`,
+      );
+      console.log(
+        `To apply:\n  ${permissions.confirmationEnv}=${permissions.confirmationValue} ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION} npm run backfill:candles -- --apply`,
+      );
+      return;
+    }
+
+    const provider = createYahooCandleProvider();
+    if (!provider.supports(flags.interval)) {
+      console.error(`Provider ${provider.id} cannot serve ${flags.interval}.`);
+      process.exit(2);
+    }
+    console.log(`\n  provider  ${provider.id}\n`);
+
+    let lastEventId: string | null = null;
+    for (const unit of plan.units) {
+      if (unit.eventId !== lastEventId) {
+        if (lastEventId !== null) await sleep(PER_EVENT_DELAY_MS);
+        stats.eventsConsidered += 1;
+        const event = timingEvents.find((e) => e.id === unit.eventId);
+        console.log(
+          `  ${unit.releaseAt.toISOString().slice(0, 16)}  ${(event?.eventType ?? "").padEnd(13)} ` +
+            `${(event?.headline ?? "").slice(0, 44)}`,
+        );
+        lastEventId = unit.eventId;
+      }
+
+      if (unit.skippedFullyCovered) {
+        stats.pairsSkippedCovered += 1;
+        console.log(
+          `    ${unit.symbol.padEnd(6)} skip — already covered (${unit.storedCount} ≥ ${unit.minExpectedBars})`,
+        );
+        continue;
+      }
+
+      await processUnit(prisma, provider, unit, flags.apply, stats);
+      await sleep(PER_REQUEST_DELAY_MS);
+    }
+
+    console.log(`\n${flags.apply ? "Applied" : "Execute dry-run"} summary`);
     console.log(`  events considered      ${stats.eventsConsidered}`);
     console.log(`  event·symbol attempted ${stats.pairsAttempted}`);
+    console.log(`  skipped (covered)      ${stats.pairsSkippedCovered}`);
     console.log(`  unreachable            ${stats.pairsUnreachable}`);
     console.log(`  basis-rejected         ${stats.pairsBasisRejected}`);
     console.log(`  provider errors        ${stats.pairsProviderError}`);
+    console.log(`  provider retries       ${stats.providerRetries}`);
     console.log(`  empty responses        ${stats.pairsEmpty}`);
     console.log(`  candles fetched        ${stats.candlesFetched}`);
     console.log(`  malformed (dropped)    ${stats.candlesMalformed}`);
@@ -387,7 +553,7 @@ async function main(): Promise<void> {
 
     if (!flags.apply) {
       console.log(
-        `\nNothing was written. To apply:\n  ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION} npm run backfill:candles -- --apply`,
+        `\nNothing was written. To apply:\n  ${permissions.confirmationEnv}=${permissions.confirmationValue} ${CONFIRMATION_ENV}=${APPLY_CONFIRMATION} npm run backfill:candles -- --apply`,
       );
     }
   } finally {
