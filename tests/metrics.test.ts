@@ -96,6 +96,51 @@ describe("deriveMetric", () => {
     expect(deriveMetric("yoy_pct", 1, obs)).toBeNull();
   });
 
+  it("matches YoY on calendar month across leap-day vs Feb 28 (review #3)", () => {
+    const obs: Observation[] = [
+      { iso: "2023-02-28", value: 100 },
+      { iso: "2024-02-29", value: 110 },
+    ];
+    const derived = deriveMetric("yoy_pct", 1, obs);
+    expect(derived).not.toBeNull();
+    expect(derived!.value).toBeCloseTo(10.0, 1);
+  });
+
+  it("matches QoQ on calendar quarter across month-end dates (review #3)", () => {
+    const obs: Observation[] = [
+      { iso: "2024-12-31", value: 100 },
+      { iso: "2025-03-31", value: 101 },
+    ];
+    const derived = deriveMetric("qoq_pct_annualized", 1, obs);
+    expect(derived).not.toBeNull();
+    // (101/100)^4 − 1 ≈ 4.06% → round1 = 4.1
+    expect(derived!.value).toBeCloseTo(4.1, 1);
+  });
+
+  it("matches QoQ when one side is quarter-start and the other quarter-end (review #3)", () => {
+    const obs: Observation[] = [
+      { iso: "2024-01-01", value: 100 },
+      { iso: "2024-06-30", value: 101 },
+    ];
+    const derived = deriveMetric("qoq_pct_annualized", 1, obs);
+    expect(derived).not.toBeNull();
+    expect(derived!.value).toBeCloseTo(4.1, 1);
+  });
+
+  it("skips a malformed observation date without throwing (review #4)", () => {
+    const obs: Observation[] = [
+      { iso: "2023-01-01", value: 100 },
+      { iso: "not-a-date", value: 105 },
+      { iso: "2024-01-01", value: 110 },
+    ];
+    expect(() => deriveMetric("yoy_pct", 1, obs)).not.toThrow();
+    expect(deriveMetric("yoy_pct", 1, obs)).toBeNull();
+    // Neighbouring good rows still derive.
+    const good = deriveMetric("yoy_pct", 2, obs);
+    expect(good).not.toBeNull();
+    expect(good!.value).toBeCloseTo(10.0, 1);
+  });
+
   it("annualises a quarter-over-quarter change", () => {
     const obs: Observation[] = [
       { iso: "2024-01-01", value: 100 },

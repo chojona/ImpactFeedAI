@@ -327,16 +327,69 @@ export interface DerivedMetric {
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Shift a reference-period ISO date by a whole number of calendar months. */
-export function shiftReferencePeriod(iso: string, deltaMonths: number): string {
+export type CalendarPeriodGranularity = "month" | "quarter";
+
+/**
+ * Shift a reference-period ISO date by a whole number of calendar months.
+ *
+ * Returns null when `iso` is not a usable calendar date so callers can skip
+ * the row instead of aborting a bulk ingest with RangeError.
+ */
+export function shiftReferencePeriod(
+  iso: string,
+  deltaMonths: number,
+): string | null {
   const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
   d.setUTCDate(1);
   d.setUTCMonth(d.getUTCMonth() + deltaMonths);
   return d.toISOString().slice(0, 10);
 }
 
 /**
- * Look up an observation by its exact reference-period date.
+ * Period identity for calendar lookups: year+month, or year+quarter.
+ *
+ * Day-of-month is ignored so Feb 29 matches Feb 28 of the prior year and a
+ * quarter-end observation matches a quarter-start one in the same quarter.
+ * Malformed dates return null (unusable), never throw.
+ */
+export function calendarPeriodKey(
+  iso: string,
+  granularity: CalendarPeriodGranularity,
+): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+  // Reject impossible civil dates (e.g. 2023-02-29) via UTC round-trip.
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    Number.isNaN(probe.getTime()) ||
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  if (granularity === "month") return `${year}-${String(month).padStart(2, "0")}`;
+  const quarter = Math.floor((month - 1) / 3) + 1;
+  return `${year}-Q${quarter}`;
+}
+
+/**
+ * Look up an observation by calendar period identity (not exact day-of-month).
  *
  * Absent period → null (unknown). A present row with a null value is also
  * unknown. Never fall back to the nearest neighbour: a missing October must
@@ -344,18 +397,24 @@ export function shiftReferencePeriod(iso: string, deltaMonths: number): string {
  */
 function valueAtPeriod(
   obs: readonly Observation[],
-  iso: string,
+  targetIso: string | null,
+  granularity: CalendarPeriodGranularity,
 ): number | null {
-  const row = obs.find((o) => o.iso === iso);
+  if (targetIso === null) return null;
+  const targetKey = calendarPeriodKey(targetIso, granularity);
+  if (targetKey === null) return null;
+  const row = obs.find(
+    (o) => calendarPeriodKey(o.iso, granularity) === targetKey,
+  );
   return row?.value ?? null;
 }
 
 /**
  * Convert the observation at `index` into its canonical headline value.
  *
- * Period comparisons use calendar dates (previous month / same month prior
- * year / previous quarter), not array offsets. A missing period yields null
- * rather than the nearest neighbour.
+ * Period comparisons use calendar identity (previous month / same month prior
+ * year / previous quarter), not array offsets or exact day-of-month. A missing
+ * or malformed period yields null rather than the nearest neighbour or a throw.
  */
 export function deriveMetric(
   transform: MetricTransform,
@@ -367,9 +426,17 @@ export function deriveMetric(
   const here = current.value;
   if (here === null) return null;
 
+  const granularity: CalendarPeriodGranularity =
+    transform === "qoq_pct_annualized" ? "quarter" : "month";
+  if (calendarPeriodKey(current.iso, granularity) === null) return null;
+
   switch (transform) {
     case "yoy_pct": {
-      const ya = valueAtPeriod(obs, shiftReferencePeriod(current.iso, -12));
+      const ya = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -12),
+        "month",
+      );
       if (ya === null || ya === 0) return null;
       const yoy = ((here - ya) / ya) * 100;
 
@@ -377,10 +444,12 @@ export function deriveMetric(
       const priorLevel = valueAtPeriod(
         obs,
         shiftReferencePeriod(current.iso, -1),
+        "month",
       );
       const priorYearAgo = valueAtPeriod(
         obs,
         shiftReferencePeriod(current.iso, -13),
+        "month",
       );
       if (
         priorLevel !== null &&
@@ -393,7 +462,11 @@ export function deriveMetric(
     }
 
     case "qoq_pct_annualized": {
-      const last = valueAtPeriod(obs, shiftReferencePeriod(current.iso, -3));
+      const last = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -3),
+        "quarter",
+      );
       if (last === null || last === 0) return null;
       const ann = (Math.pow(here / last, 4) - 1) * 100;
 
@@ -401,6 +474,7 @@ export function deriveMetric(
       const beforeLast = valueAtPeriod(
         obs,
         shiftReferencePeriod(current.iso, -6),
+        "quarter",
       );
       if (beforeLast !== null && beforeLast !== 0) {
         prior = (Math.pow(last / beforeLast, 4) - 1) * 100;
@@ -409,13 +483,18 @@ export function deriveMetric(
     }
 
     case "mom_diff_thousands": {
-      const last = valueAtPeriod(obs, shiftReferencePeriod(current.iso, -1));
+      const last = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -1),
+        "month",
+      );
       if (last === null) return null;
 
       let prior: number | null = null;
       const beforeLast = valueAtPeriod(
         obs,
         shiftReferencePeriod(current.iso, -2),
+        "month",
       );
       if (beforeLast !== null) prior = Math.round(last - beforeLast);
       return { value: Math.round(here - last), prior };
@@ -423,7 +502,11 @@ export function deriveMetric(
 
     case "level_pct":
     case "level": {
-      const p = valueAtPeriod(obs, shiftReferencePeriod(current.iso, -1));
+      const p = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -1),
+        "month",
+      );
       return { value: round2(here), prior: p === null ? null : round2(p) };
     }
   }

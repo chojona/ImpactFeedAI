@@ -73,6 +73,43 @@ export interface SeedEvent {
   metricName?: string;
 }
 
+/**
+ * Stable curated event identity — independent of headline text so a later
+ * wording/value correction does not insert a duplicate.
+ */
+export function curatedEventKey(seed: SeedEvent): string {
+  const ref = seed.referencePeriodStart ?? "none";
+  return `curated:${seed.eventType}:${seed.occurredAt}:${ref}`;
+}
+
+/** Pre-correction key that included the headline (kept for dedup lookups). */
+export function legacyCuratedEventKey(
+  seed: Pick<SeedEvent, "eventType" | "headline">,
+): string {
+  return `curated:${seed.eventType}:${seed.headline.trim().replace(/\s+/g, " ")}`;
+}
+
+/** Pure form of the ingest dedup check — unit-testable without a DB. */
+export function curatedSeedMatchesExisting(
+  seed: SeedEvent,
+  existing: {
+    eventKey: string | null;
+    headline: string;
+    eventType: string;
+    occurredAt: string | Date;
+  },
+): boolean {
+  const seedOccurred = new Date(seed.occurredAt).getTime();
+  const existingOccurred = new Date(existing.occurredAt).getTime();
+  return (
+    existing.eventKey === curatedEventKey(seed) ||
+    existing.eventKey === legacyCuratedEventKey(seed) ||
+    existing.headline === seed.headline ||
+    (existing.eventType === seed.eventType &&
+      existingOccurred === seedOccurred)
+  );
+}
+
 export const SEED_EVENTS: SeedEvent[] = [
   /* ──────────────────────────── TARIFF (11) ──────────────────────────── */
   {
