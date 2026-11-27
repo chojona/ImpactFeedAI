@@ -45,6 +45,15 @@ export type MetricUnit =
   | "pct_level"
   | "index_points";
 
+/**
+ * Seasonal-adjustment basis of the series that produces this headline.
+ *
+ * Declared explicitly so an SA actual is never paired with an NSA expectation
+ * (or the reverse). `na` covers levels that are not seasonally adjusted in the
+ * BLS/FRED sense (policy rates, sentiment indexes).
+ */
+export type SeasonalAdjustment = "SA" | "NSA" | "na";
+
 export interface CanonicalMetric {
   /** Stable identity across every source. Never persisted; used for dedup keys. */
   key: string;
@@ -57,6 +66,8 @@ export interface CanonicalMetric {
   unitLabel: string;
   /** Subject noun used when generating headlines. */
   headlineNoun: string;
+  /** Adjustment basis of the bound source series for this headline. */
+  seasonalAdjustment: SeasonalAdjustment;
 }
 
 const define = <T extends Record<string, CanonicalMetric>>(m: T): T => m;
@@ -70,6 +81,7 @@ export const METRICS = define({
     unit: "pct_yoy",
     unitLabel: "% YoY",
     headlineNoun: "CPI",
+    seasonalAdjustment: "NSA",
   },
   CPI_CORE: {
     key: "CPI_CORE",
@@ -79,6 +91,7 @@ export const METRICS = define({
     unit: "pct_yoy",
     unitLabel: "% YoY",
     headlineNoun: "Core CPI",
+    seasonalAdjustment: "NSA",
   },
   PPI_HEADLINE: {
     key: "PPI_HEADLINE",
@@ -88,6 +101,8 @@ export const METRICS = define({
     unit: "pct_yoy",
     unitLabel: "% YoY",
     headlineNoun: "PPI",
+    // BLS Table A: "Change in final demand from 12 months ago (unadj.)".
+    seasonalAdjustment: "NSA",
   },
   PCE_HEADLINE: {
     key: "PCE_HEADLINE",
@@ -97,6 +112,7 @@ export const METRICS = define({
     unit: "pct_yoy",
     unitLabel: "% YoY",
     headlineNoun: "PCE",
+    seasonalAdjustment: "SA",
   },
   PCE_CORE: {
     key: "PCE_CORE",
@@ -106,6 +122,7 @@ export const METRICS = define({
     unit: "pct_yoy",
     unitLabel: "% YoY",
     headlineNoun: "Core PCE",
+    seasonalAdjustment: "SA",
   },
   PAYROLLS: {
     key: "PAYROLLS",
@@ -115,6 +132,7 @@ export const METRICS = define({
     unit: "thousands_mom",
     unitLabel: "k jobs (MoM)",
     headlineNoun: "Nonfarm payrolls",
+    seasonalAdjustment: "SA",
   },
   UNEMPLOYMENT_RATE: {
     key: "UNEMPLOYMENT_RATE",
@@ -124,6 +142,7 @@ export const METRICS = define({
     unit: "pct_level",
     unitLabel: "%",
     headlineNoun: "Unemployment rate",
+    seasonalAdjustment: "SA",
   },
   JOLTS_OPENINGS: {
     key: "JOLTS_OPENINGS",
@@ -133,6 +152,7 @@ export const METRICS = define({
     unit: "thousands_mom",
     unitLabel: "k openings (MoM)",
     headlineNoun: "Job openings",
+    seasonalAdjustment: "SA",
   },
   FED_TARGET_UPPER: {
     key: "FED_TARGET_UPPER",
@@ -142,6 +162,7 @@ export const METRICS = define({
     unit: "pct_level",
     unitLabel: "%",
     headlineNoun: "Fed funds target (upper bound)",
+    seasonalAdjustment: "na",
   },
   FED_FUNDS_EFFECTIVE: {
     key: "FED_FUNDS_EFFECTIVE",
@@ -151,6 +172,7 @@ export const METRICS = define({
     unit: "pct_level",
     unitLabel: "%",
     headlineNoun: "Effective Fed funds rate",
+    seasonalAdjustment: "na",
   },
   GDP_REAL: {
     key: "GDP_REAL",
@@ -160,6 +182,7 @@ export const METRICS = define({
     unit: "pct_saar",
     unitLabel: "% QoQ SAAR",
     headlineNoun: "Real GDP",
+    seasonalAdjustment: "SA",
   },
   UMICH_SENTIMENT: {
     key: "UMICH_SENTIMENT",
@@ -169,6 +192,7 @@ export const METRICS = define({
     unit: "index_points",
     unitLabel: "index",
     headlineNoun: "UMich Consumer Sentiment",
+    seasonalAdjustment: "na",
   },
 });
 
@@ -184,10 +208,12 @@ export const FRED_SERIES_BINDINGS: readonly SeriesBinding[] = [
   // bias, material when surprises are routinely 0.1–0.3pp.
   { seriesId: "CPIAUCNS", metric: METRICS.CPI_HEADLINE },
   { seriesId: "CPILFENS", metric: METRICS.CPI_CORE },
-  // Final Demand is the headline PPI the market trades. PPIACO (all
+  // Final Demand NSA (PPIFID): BLS Table A quotes the 12-month change
+  // unadjusted. PPIFIS is the SA index and must not back a headline YoY —
+  // an SA actual vs an NSA consensus is a unit mismatch. PPIACO (all
   // commodities) is a different, far more volatile index: -0.8% vs the
   // 2.1% actually printed for Mar-2024.
-  { seriesId: "PPIFIS", metric: METRICS.PPI_HEADLINE },
+  { seriesId: "PPIFID", metric: METRICS.PPI_HEADLINE },
   { seriesId: "PAYEMS", metric: METRICS.PAYROLLS },
   { seriesId: "UNRATE", metric: METRICS.UNEMPLOYMENT_RATE },
   { seriesId: "FEDFUNDS", metric: METRICS.FED_FUNDS_EFFECTIVE },
@@ -228,7 +254,7 @@ export const CURATED_SERIES_BY_EVENT_TYPE: Partial<
   Record<EventTypeName, SeriesBinding>
 > = {
   CPI: { seriesId: "CPIAUCNS", metric: METRICS.CPI_HEADLINE },
-  PPI: { seriesId: "PPIFIS", metric: METRICS.PPI_HEADLINE },
+  PPI: { seriesId: "PPIFID", metric: METRICS.PPI_HEADLINE },
   NFP: { seriesId: "PAYEMS", metric: METRICS.PAYROLLS },
   FED_DECISION: { seriesId: "DFEDTARU", metric: METRICS.FED_TARGET_UPPER },
 };
@@ -301,71 +327,186 @@ export interface DerivedMetric {
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+export type CalendarPeriodGranularity = "month" | "quarter";
+
+/**
+ * Shift a reference-period ISO date by a whole number of calendar months.
+ *
+ * Returns null when `iso` is not a usable calendar date so callers can skip
+ * the row instead of aborting a bulk ingest with RangeError.
+ */
+export function shiftReferencePeriod(
+  iso: string,
+  deltaMonths: number,
+): string | null {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + deltaMonths);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Period identity for calendar lookups: year+month, or year+quarter.
+ *
+ * Day-of-month is ignored so Feb 29 matches Feb 28 of the prior year and a
+ * quarter-end observation matches a quarter-start one in the same quarter.
+ * Malformed dates return null (unusable), never throw.
+ */
+export function calendarPeriodKey(
+  iso: string,
+  granularity: CalendarPeriodGranularity,
+): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+  // Reject impossible civil dates (e.g. 2023-02-29) via UTC round-trip.
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (
+    Number.isNaN(probe.getTime()) ||
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  if (granularity === "month") return `${year}-${String(month).padStart(2, "0")}`;
+  const quarter = Math.floor((month - 1) / 3) + 1;
+  return `${year}-Q${quarter}`;
+}
+
+/**
+ * Look up an observation by calendar period identity (not exact day-of-month).
+ *
+ * Absent period → null (unknown). A present row with a null value is also
+ * unknown. Never fall back to the nearest neighbour: a missing October must
+ * not make September look like November's prior.
+ */
+function valueAtPeriod(
+  obs: readonly Observation[],
+  targetIso: string | null,
+  granularity: CalendarPeriodGranularity,
+): number | null {
+  if (targetIso === null) return null;
+  const targetKey = calendarPeriodKey(targetIso, granularity);
+  if (targetKey === null) return null;
+  const row = obs.find(
+    (o) => calendarPeriodKey(o.iso, granularity) === targetKey,
+  );
+  return row?.value ?? null;
+}
+
 /**
  * Convert the observation at `index` into its canonical headline value.
  *
- * Returns null when there is not enough history (e.g. a YoY calculation needs
- * 13 prior observations) or the source value is missing.
+ * Period comparisons use calendar identity (previous month / same month prior
+ * year / previous quarter), not array offsets or exact day-of-month. A missing
+ * or malformed period yields null rather than the nearest neighbour or a throw.
  */
 export function deriveMetric(
   transform: MetricTransform,
   index: number,
   obs: readonly Observation[],
 ): DerivedMetric | null {
-  const here = obs[index]?.value ?? null;
+  const current = obs[index];
+  if (!current) return null;
+  const here = current.value;
   if (here === null) return null;
+
+  const granularity: CalendarPeriodGranularity =
+    transform === "qoq_pct_annualized" ? "quarter" : "month";
+  if (calendarPeriodKey(current.iso, granularity) === null) return null;
 
   switch (transform) {
     case "yoy_pct": {
-      const yearAgo = index - 12;
-      if (yearAgo < 0) return null;
-      const ya = obs[yearAgo].value;
+      const ya = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -12),
+        "month",
+      );
       if (ya === null || ya === 0) return null;
       const yoy = ((here - ya) / ya) * 100;
 
       let prior: number | null = null;
-      const pi = index - 1;
-      const pya = index - 13;
-      if (pi >= 0 && pya >= 0) {
-        const a = obs[pi].value;
-        const b = obs[pya].value;
-        if (a !== null && b !== null && b !== 0) prior = ((a - b) / b) * 100;
+      const priorLevel = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -1),
+        "month",
+      );
+      const priorYearAgo = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -13),
+        "month",
+      );
+      if (
+        priorLevel !== null &&
+        priorYearAgo !== null &&
+        priorYearAgo !== 0
+      ) {
+        prior = ((priorLevel - priorYearAgo) / priorYearAgo) * 100;
       }
       return { value: round1(yoy), prior: prior === null ? null : round1(prior) };
     }
 
     case "qoq_pct_annualized": {
-      if (index < 1) return null;
-      const last = obs[index - 1].value;
+      const last = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -3),
+        "quarter",
+      );
       if (last === null || last === 0) return null;
       const ann = (Math.pow(here / last, 4) - 1) * 100;
 
       let prior: number | null = null;
-      if (index >= 2) {
-        const beforeLast = obs[index - 2].value;
-        if (beforeLast !== null && beforeLast !== 0) {
-          prior = (Math.pow(last / beforeLast, 4) - 1) * 100;
-        }
+      const beforeLast = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -6),
+        "quarter",
+      );
+      if (beforeLast !== null && beforeLast !== 0) {
+        prior = (Math.pow(last / beforeLast, 4) - 1) * 100;
       }
       return { value: round1(ann), prior: prior === null ? null : round1(prior) };
     }
 
     case "mom_diff_thousands": {
-      if (index < 1) return null;
-      const last = obs[index - 1].value;
+      const last = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -1),
+        "month",
+      );
       if (last === null) return null;
 
       let prior: number | null = null;
-      if (index >= 2) {
-        const beforeLast = obs[index - 2].value;
-        if (beforeLast !== null) prior = Math.round(last - beforeLast);
-      }
+      const beforeLast = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -2),
+        "month",
+      );
+      if (beforeLast !== null) prior = Math.round(last - beforeLast);
       return { value: Math.round(here - last), prior };
     }
 
     case "level_pct":
     case "level": {
-      const p = index >= 1 ? obs[index - 1].value : null;
+      const p = valueAtPeriod(
+        obs,
+        shiftReferencePeriod(current.iso, -1),
+        "month",
+      );
       return { value: round2(here), prior: p === null ? null : round2(p) };
     }
   }

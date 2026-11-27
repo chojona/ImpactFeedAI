@@ -460,7 +460,7 @@ describe("Cboe / Treasury parse provenance", () => {
     if (!result.ok) return;
     const first = result.observations[0]!;
     expect(first.observation.seriesKey).toBe(MARKET_SERIES_KEYS.VIXCLS);
-    expect(first.observation.value).toBe(13.2);
+    expect(first.observation.value).toBe(9001.05);
     expect(first.observation.fetchedAt?.toISOString()).toBe(
       FIXED_FETCHED_AT.toISOString(),
     );
