@@ -12,7 +12,7 @@ import type { ContextUnit } from "@/types/context";
 import { isKnowledgeMode as isSharedKnowledgeMode } from "@/services/context/knowledgeMode";
 
 /** Feature-math contract version for this milestone. */
-export const REGIME_FEATURE_DEFINITION_VERSION = "phase-1-regime-features-1";
+export const REGIME_FEATURE_DEFINITION_VERSION = "phase-1-regime-features-2";
 
 export const SERIES_KEYS = {
   VIXCLS: "market:VIXCLS:level",

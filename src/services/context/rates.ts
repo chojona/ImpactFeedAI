@@ -8,7 +8,10 @@ import {
   SERIES_KEYS,
 } from "@/services/context/featureDefinitions";
 import { featureResult } from "@/services/context/featureResult";
-import { selectEligibleMarketObservations } from "@/services/context/pointInTime";
+import {
+  indexSeriesByObservationDate,
+  selectEligibleMarketObservations,
+} from "@/services/context/pointInTime";
 import type {
   FeatureComputeRequest,
   FeatureInputRef,
@@ -30,6 +33,7 @@ function ref(
 
 /**
  * 100 * (DGS10 − DGS2) on the latest shared eligible observation date.
+ * Duplicate dates on either leg are quarantined (no last-ID-wins).
  */
 export function computeSpread2s10s(
   request: FeatureComputeRequest,
@@ -55,9 +59,10 @@ export function computeSpread2s10s(
       request,
       value: null,
       status: "invalid_input",
-      reasonCode: wrong2 && wrong10 && wrong2.unit !== wrong10.unit
-        ? "mismatched_units"
-        : "invalid_unit",
+      reasonCode:
+        wrong2 && wrong10 && wrong2.unit !== wrong10.unit
+          ? "mismatched_units"
+          : "invalid_unit",
       inputRefs: [ref(wrong, "level")],
       detail: `yield inputs must use unit pct_level`,
     });
@@ -75,15 +80,38 @@ export function computeSpread2s10s(
     });
   }
 
+  const dgs2Index = indexSeriesByObservationDate(
+    request.observations,
+    SERIES_KEYS.DGS2,
+  );
+  const dgs10Index = indexSeriesByObservationDate(
+    request.observations,
+    SERIES_KEYS.DGS10,
+  );
+  if (dgs2Index.conflicts.length > 0 || dgs10Index.conflicts.length > 0) {
+    return featureResult({
+      featureKey: def.featureKey,
+      definitionVersion: def.definitionVersion,
+      unit: def.unit,
+      request,
+      value: null,
+      status: "unavailable",
+      reasonCode: "conflict_quarantined",
+      detail: "duplicate yield observationDate quarantined",
+    });
+  }
+
   const dgs2 = selectEligibleMarketObservations(
     request.observations,
     SERIES_KEYS.DGS2,
     request.cutoff,
+    request.knowledgeMode,
   );
   const dgs10 = selectEligibleMarketObservations(
     request.observations,
     SERIES_KEYS.DGS10,
     request.cutoff,
+    request.knowledgeMode,
   );
 
   if (dgs2.length === 0 || dgs10.length === 0) {

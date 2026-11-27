@@ -12,10 +12,15 @@ import {
   VIX_PERCENTILE_LOOKBACK,
 } from "@/services/context/featureDefinitions";
 import { featureResult } from "@/services/context/featureResult";
-import { selectEligibleMarketObservations } from "@/services/context/pointInTime";
+import {
+  indexSeriesByObservationDate,
+  isValidObservationDate,
+  selectEligibleMarketObservations,
+} from "@/services/context/pointInTime";
 import type {
   FeatureComputeRequest,
   FeatureInputRef,
+  FeatureReasonCode,
   FeatureResult,
   MarketContextObservation,
 } from "@/types/context";
@@ -57,6 +62,31 @@ function rejectUnitMismatch(
   });
 }
 
+function conflictResult(
+  request: FeatureComputeRequest,
+  featureKey: keyof typeof FEATURE_DEFINITIONS,
+  seriesKey: string,
+): FeatureResult | null {
+  const { conflicts } = indexSeriesByObservationDate(
+    request.observations,
+    seriesKey,
+  );
+  if (conflicts.length === 0) return null;
+  const def = FEATURE_DEFINITIONS[featureKey];
+  return featureResult({
+    featureKey: def.featureKey,
+    definitionVersion: def.definitionVersion,
+    unit: def.unit,
+    request,
+    value: null,
+    status: "unavailable",
+    reasonCode: "conflict_quarantined",
+    detail: `duplicate observationDate quarantined for ${seriesKey}: ${conflicts
+      .map((c) => c.observationDate)
+      .join(",")}`,
+  });
+}
+
 /**
  * Latest eligible VIX close strictly before cutoff.
  */
@@ -69,6 +99,9 @@ export function computeVixLevel(request: FeatureComputeRequest): FeatureResult {
     request.observations,
   );
   if (unitError) return unitError;
+
+  const conflict = conflictResult(request, "vix_level", SERIES_KEYS.VIXCLS);
+  if (conflict) return conflict;
 
   if (request.observations.length === 0) {
     return featureResult({
@@ -86,6 +119,7 @@ export function computeVixLevel(request: FeatureComputeRequest): FeatureResult {
     request.observations,
     SERIES_KEYS.VIXCLS,
     request.cutoff,
+    request.knowledgeMode,
   );
 
   if (eligible.length === 0) {
@@ -131,6 +165,13 @@ export function computeVixTrailingPercentile(
   );
   if (unitError) return unitError;
 
+  const conflict = conflictResult(
+    request,
+    "vix_pct_trailing",
+    SERIES_KEYS.VIXCLS,
+  );
+  if (conflict) return conflict;
+
   if (lookback <= 0) {
     return featureResult({
       featureKey: def.featureKey,
@@ -148,6 +189,7 @@ export function computeVixTrailingPercentile(
     request.observations,
     SERIES_KEYS.VIXCLS,
     request.cutoff,
+    request.knowledgeMode,
   );
 
   if (eligible.length < lookback + 1) {
@@ -188,77 +230,127 @@ export function computeVixTrailingPercentile(
   });
 }
 
+function normalizeSessionCalendar(
+  calendar: readonly string[] | undefined,
+):
+  | { ok: true; days: readonly string[] }
+  | { ok: false; reason: FeatureReasonCode; detail: string } {
+  if (!calendar || calendar.length === 0) {
+    return {
+      ok: false,
+      reason: "missing_session_calendar",
+      detail: "equity RV requires an independently validated sessionCalendar",
+    };
+  }
+  for (const day of calendar) {
+    if (!isValidObservationDate(day)) {
+      return {
+        ok: false,
+        reason: "impossible_observation_date",
+        detail: `invalid session calendar date ${day}`,
+      };
+    }
+  }
+  const sorted = [...calendar].sort();
+  for (let i = 1; i < sorted.length; i += 1) {
+    if (sorted[i] === sorted[i - 1]) {
+      return {
+        ok: false,
+        reason: "invalid_session_calendar",
+        detail: `duplicate session calendar date ${sorted[i]}`,
+      };
+    }
+  }
+  // Reject unsorted input that would silently reorder expectations.
+  for (let i = 0; i < calendar.length; i += 1) {
+    if (calendar[i] !== sorted[i]) {
+      return {
+        ok: false,
+        reason: "invalid_session_calendar",
+        detail: "sessionCalendar must be unique and ascending",
+      };
+    }
+  }
+  return { ok: true, days: calendar };
+}
+
 /**
- * Build the series calendar from all non-conflict observations for the series
- * (including those not yet eligible), then require a consecutive trailing window
- * on that calendar where every session is eligible at cutoff.
+ * Require trailing closes on an independent session calendar.
+ * Missing source rows do not compress the window.
  */
-function consecutiveEligibleCloses(
+function consecutiveEligibleClosesOnCalendar(
   observations: readonly MarketContextObservation[],
   seriesKey: string,
-  cutoff: Date,
+  request: FeatureComputeRequest,
   closeCount: number,
+  sessionCalendar: readonly string[],
 ):
   | { ok: true; window: MarketContextObservation[] }
-  | { ok: false; reason: FeatureResult["reasonCode"]; detail?: string } {
-  const seriesObs = observations
-    .filter((obs) => obs.seriesKey === seriesKey && obs.quality !== "conflict")
-    .slice()
-    .sort((a, b) => {
-      const byDate = a.observationDate.localeCompare(b.observationDate);
-      if (byDate !== 0) return byDate;
-      return a.id.localeCompare(b.id);
-    });
-
-  if (seriesObs.length === 0) {
-    return { ok: false, reason: "empty_input" };
+  | { ok: false; reason: FeatureReasonCode; detail?: string } {
+  const { byDate, conflicts } = indexSeriesByObservationDate(
+    observations,
+    seriesKey,
+  );
+  if (conflicts.length > 0) {
+    return {
+      ok: false,
+      reason: "conflict_quarantined",
+      detail: `duplicate observationDate quarantined: ${conflicts
+        .map((c) => c.observationDate)
+        .join(",")}`,
+    };
   }
-
-  const byDate = new Map<string, MarketContextObservation>();
-  for (const obs of seriesObs) {
-    // Last id wins on duplicate dates — adapters should not emit duplicates.
-    byDate.set(obs.observationDate, obs);
-  }
-  const calendar = [...byDate.keys()].sort();
 
   const eligible = selectEligibleMarketObservations(
     observations,
     seriesKey,
-    cutoff,
+    request.cutoff,
+    request.knowledgeMode,
   );
   if (eligible.length === 0) {
     return { ok: false, reason: "no_eligible_observation" };
   }
 
   const endDate = eligible[eligible.length - 1]!.observationDate;
-  const endIdx = calendar.indexOf(endDate);
+  const endIdx = sessionCalendar.indexOf(endDate);
+  if (endIdx < 0) {
+    return {
+      ok: false,
+      reason: "non_consecutive_sessions",
+      detail: `latest eligible date ${endDate} is not on sessionCalendar`,
+    };
+  }
   if (endIdx < closeCount - 1) {
     return {
       ok: false,
       reason: "insufficient_history",
-      detail: `need ${closeCount} consecutive sessions ending ${endDate}`,
+      detail: `need ${closeCount} consecutive calendar sessions ending ${endDate}`,
     };
   }
 
-  const windowDates = calendar.slice(endIdx - closeCount + 1, endIdx + 1);
+  const windowDates = sessionCalendar.slice(endIdx - closeCount + 1, endIdx + 1);
   const window: MarketContextObservation[] = [];
   for (const date of windowDates) {
     const obs = byDate.get(date);
-    if (!obs || obs.value === null || !Number.isFinite(obs.value)) {
+    if (!obs) {
       return {
         ok: false,
-        reason: "non_consecutive_sessions",
-        detail: `gap or missing value on ${date}`,
+        reason: "incomplete_window",
+        detail: `missing source row for session ${date}; window not compressed`,
       };
     }
     if (
-      !(obs.availableAt instanceof Date) ||
-      obs.availableAt.getTime() >= cutoff.getTime()
+      !selectEligibleMarketObservations(
+        [obs],
+        seriesKey,
+        request.cutoff,
+        request.knowledgeMode,
+      ).length
     ) {
       return {
         ok: false,
         reason: "incomplete_window",
-        detail: `session ${date} not available before cutoff`,
+        detail: `session ${date} not eligible before cutoff`,
       };
     }
     window.push(obs);
@@ -267,17 +359,24 @@ function consecutiveEligibleCloses(
   return { ok: true, window };
 }
 
+export interface EquityRvOptions {
+  readonly seriesKey?: string;
+  readonly sessions?: number;
+}
+
 /**
  * Annualized realized volatility over {@link EQUITY_RV_SESSIONS} log returns.
- * Sample SD uses ddof=1. Zero variance yields 0 only when measured from a
- * complete window of flat prices (a real measurement), not from missing data.
+ * Sample SD uses ddof=1 and requires at least two returns.
+ * `request.sessionCalendar` must be an independently validated ascending unique
+ * session-date list; missing source rows fail instead of compressing.
  */
 export function computeEquityRealizedVol20(
   request: FeatureComputeRequest,
-  seriesKey: string = SERIES_KEYS.SPY,
-  sessions: number = EQUITY_RV_SESSIONS,
+  options: EquityRvOptions = {},
 ): FeatureResult {
   const def = FEATURE_DEFINITIONS.equity_rv_20;
+  const seriesKey = options.seriesKey ?? SERIES_KEYS.SPY;
+  const sessions = options.sessions ?? EQUITY_RV_SESSIONS;
   const requiredUnit =
     seriesKey === SERIES_KEYS.SPY
       ? REQUIRED_UNITS[SERIES_KEYS.SPY]
@@ -300,7 +399,8 @@ export function computeEquityRealizedVol20(
     });
   }
 
-  if (sessions < 1) {
+  // ddof=1 sample SD needs >= 2 returns ⇒ sessions >= 2.
+  if (sessions < 2) {
     return featureResult({
       featureKey: def.featureKey,
       definitionVersion: def.definitionVersion,
@@ -308,17 +408,32 @@ export function computeEquityRealizedVol20(
       request,
       value: null,
       status: "invalid_input",
-      reasonCode: "incomplete_window",
-      detail: "sessions must be >= 1",
+      reasonCode: "insufficient_returns",
+      detail: "equity RV requires at least two log returns (sessions >= 2)",
+    });
+  }
+
+  const calendar = normalizeSessionCalendar(request.sessionCalendar);
+  if (!calendar.ok) {
+    return featureResult({
+      featureKey: def.featureKey,
+      definitionVersion: def.definitionVersion,
+      unit: def.unit,
+      request,
+      value: null,
+      status: "invalid_input",
+      reasonCode: calendar.reason,
+      detail: calendar.detail,
     });
   }
 
   const closeCount = sessions + 1;
-  const selected = consecutiveEligibleCloses(
+  const selected = consecutiveEligibleClosesOnCalendar(
     request.observations,
     seriesKey,
-    request.cutoff,
+    request,
     closeCount,
+    calendar.days,
   );
 
   if (!selected.ok) {
@@ -352,6 +467,20 @@ export function computeEquityRealizedVol20(
   const logReturns: number[] = [];
   for (let i = 1; i < closes.length; i += 1) {
     logReturns.push(Math.log(closes[i]! / closes[i - 1]!));
+  }
+
+  if (logReturns.length < 2) {
+    return featureResult({
+      featureKey: def.featureKey,
+      definitionVersion: def.definitionVersion,
+      unit: def.unit,
+      request,
+      value: null,
+      status: "invalid_input",
+      reasonCode: "insufficient_returns",
+      detail: "sample SD (ddof=1) requires at least two returns",
+      inputRefs: selected.window.map((obs) => ref(obs, "window_member")),
+    });
   }
 
   const n = logReturns.length;

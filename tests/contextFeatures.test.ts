@@ -8,8 +8,10 @@ import {
   VIX_PERCENTILE_LOOKBACK,
 } from "@/services/context/featureDefinitions";
 import {
+  indexSeriesByObservationDate,
   isAvailableBeforeCutoff,
   isMarketObservationEligible,
+  isValidObservationDate,
   marketObservationIneligibilityReasons,
 } from "@/services/context/pointInTime";
 import { computeSpread2s10s } from "@/services/context/rates";
@@ -39,6 +41,7 @@ function obs(args: {
   observationDate: string;
   observationAt: string;
   availableAt: string | null;
+  fetchedAt?: string | null;
   quality?: MarketContextObservation["quality"];
 }): MarketContextObservation {
   return {
@@ -49,6 +52,12 @@ function obs(args: {
     observationDate: args.observationDate,
     observationAt: at(args.observationAt),
     availableAt: args.availableAt === null ? null : at(args.availableAt),
+    fetchedAt:
+      args.fetchedAt === undefined
+        ? undefined
+        : args.fetchedAt === null
+          ? null
+          : at(args.fetchedAt),
     quality: args.quality,
   };
 }
@@ -56,12 +65,16 @@ function obs(args: {
 function request(
   cutoff: string,
   observations: MarketContextObservation[],
-  knowledgeMode: KnowledgeMode = MODE,
+  options: {
+    knowledgeMode?: KnowledgeMode;
+    sessionCalendar?: readonly string[];
+  } = {},
 ): FeatureComputeRequest {
   return {
     cutoff: at(cutoff),
-    knowledgeMode,
+    knowledgeMode: options.knowledgeMode ?? MODE,
     observations,
+    sessionCalendar: options.sessionCalendar,
   };
 }
 
@@ -513,7 +526,9 @@ describe("computeEquityRealizedVol20", () => {
 
     const end = dates[dates.length - 1]!;
     const result = computeEquityRealizedVol20(
-      request(`${end}T23:00:00.000Z`, observations),
+      request(`${end}T23:00:00.000Z`, observations, {
+        sessionCalendar: dates,
+      }),
     );
     expect(result.status).toBe("ok");
     expect(result.value).toBeCloseTo(expected, 10);
@@ -536,7 +551,9 @@ describe("computeEquityRealizedVol20", () => {
     );
     const end = dates[dates.length - 1]!;
     const result = computeEquityRealizedVol20(
-      request(`${end}T23:00:00.000Z`, observations),
+      request(`${end}T23:00:00.000Z`, observations, {
+        sessionCalendar: dates,
+      }),
     );
     expect(result.status).toBe("unavailable");
     expect(result.value).toBeNull();
@@ -544,8 +561,6 @@ describe("computeEquityRealizedVol20", () => {
   });
 
   it("rejects when an interior session in the trailing calendar is unavailable", () => {
-    // Session exists on the series calendar but is not eligible at cutoff, so
-    // the consecutive window cannot be completed without interpolation.
     const fullDates = tradingDates(EQUITY_RV_SESSIONS + 1);
     const withHole = fullDates.map((date, i) => {
       if (i === 10) {
@@ -571,7 +586,9 @@ describe("computeEquityRealizedVol20", () => {
     });
     const end = fullDates[fullDates.length - 1]!;
     const result = computeEquityRealizedVol20(
-      request(`${end}T23:00:00.000Z`, withHole),
+      request(`${end}T23:00:00.000Z`, withHole, {
+        sessionCalendar: fullDates,
+      }),
     );
     expect(result.status).toBe("unavailable");
     expect(result.value).toBeNull();
@@ -593,20 +610,26 @@ describe("computeEquityRealizedVol20", () => {
     );
     const end = dates[dates.length - 1]!;
     const cutoff = `${end}T23:00:00.000Z`;
-    const baseline = computeEquityRealizedVol20(request(cutoff, observations));
+    const baseline = computeEquityRealizedVol20(
+      request(cutoff, observations, { sessionCalendar: dates }),
+    );
     const leaked = computeEquityRealizedVol20(
-      request(cutoff, [
-        ...observations,
-        obs({
-          id: "future",
-          seriesKey: SERIES_KEYS.SPY,
-          value: 999,
-          unit: "price",
-          observationDate: "2099-02-01",
-          observationAt: "2099-02-01T21:00:00.000Z",
-          availableAt: "2099-02-01T21:00:00.000Z",
-        }),
-      ]),
+      request(
+        cutoff,
+        [
+          ...observations,
+          obs({
+            id: "future",
+            seriesKey: SERIES_KEYS.SPY,
+            value: 999,
+            unit: "price",
+            observationDate: "2099-02-01",
+            observationAt: "2099-02-01T21:00:00.000Z",
+            availableAt: "2099-02-01T21:00:00.000Z",
+          }),
+        ],
+        { sessionCalendar: dates },
+      ),
     );
     expect(leaked).toEqual(baseline);
   });
@@ -626,10 +649,253 @@ describe("computeEquityRealizedVol20", () => {
     );
     const end = dates[dates.length - 1]!;
     const result = computeEquityRealizedVol20(
-      request(`${end}T23:00:00.000Z`, observations),
+      request(`${end}T23:00:00.000Z`, observations, {
+        sessionCalendar: dates,
+      }),
     );
     expect(result.status).toBe("invalid_input");
     expect(result.value).toBeNull();
     expect(result.reasonCode).toBe("invalid_unit");
+  });
+});
+
+describe("PR #16 review regressions", () => {
+  it("1. quarantines conflicting duplicate observation dates instead of last-ID-wins", () => {
+    const indexed = indexSeriesByObservationDate(
+      [
+        obs({
+          id: "a",
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 12,
+          unit: "index_points",
+          observationDate: "2024-06-14",
+          observationAt: "2024-06-14T21:00:00.000Z",
+          availableAt: "2024-06-14T21:00:00.000Z",
+        }),
+        obs({
+          id: "b",
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 99,
+          unit: "index_points",
+          observationDate: "2024-06-14",
+          observationAt: "2024-06-14T21:00:00.000Z",
+          availableAt: "2024-06-14T21:00:00.000Z",
+        }),
+      ],
+      SERIES_KEYS.VIXCLS,
+    );
+    expect(indexed.byDate.has("2024-06-14")).toBe(false);
+    expect(indexed.conflicts).toEqual([
+      { observationDate: "2024-06-14", observationIds: ["a", "b"] },
+    ]);
+
+    const result = computeVixLevel(
+      request("2024-06-15T12:00:00.000Z", [
+        obs({
+          id: "old",
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 10,
+          unit: "index_points",
+          observationDate: "2024-06-13",
+          observationAt: "2024-06-13T21:00:00.000Z",
+          availableAt: "2024-06-13T21:00:00.000Z",
+        }),
+        obs({
+          id: "dup-a",
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 12,
+          unit: "index_points",
+          observationDate: "2024-06-14",
+          observationAt: "2024-06-14T21:00:00.000Z",
+          availableAt: "2024-06-14T21:00:00.000Z",
+        }),
+        obs({
+          id: "dup-b",
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 99,
+          unit: "index_points",
+          observationDate: "2024-06-14",
+          observationAt: "2024-06-14T21:00:00.000Z",
+          availableAt: "2024-06-14T21:00:00.000Z",
+        }),
+      ]),
+    );
+    expect(result.status).toBe("unavailable");
+    expect(result.value).toBeNull();
+    expect(result.reasonCode).toBe("conflict_quarantined");
+  });
+
+  it("2. requires an independent session calendar and does not compress missing source rows", () => {
+    const calendar = tradingDates(EQUITY_RV_SESSIONS + 1);
+    // Drop one interior source row while keeping it on the calendar.
+    const missing = calendar[10]!;
+    const observations = calendar
+      .filter((date) => date !== missing)
+      .map((date, i) =>
+        obs({
+          id: `p${i}`,
+          seriesKey: SERIES_KEYS.SPY,
+          value: 100 + i,
+          unit: "price",
+          observationDate: date,
+          observationAt: availableAfterClose(date),
+          availableAt: availableAfterClose(date),
+        }),
+      );
+    const end = calendar[calendar.length - 1]!;
+    const withoutCalendar = computeEquityRealizedVol20(
+      request(`${end}T23:00:00.000Z`, observations),
+    );
+    expect(withoutCalendar.status).toBe("invalid_input");
+    expect(withoutCalendar.reasonCode).toBe("missing_session_calendar");
+
+    const withCalendar = computeEquityRealizedVol20(
+      request(`${end}T23:00:00.000Z`, observations, {
+        sessionCalendar: calendar,
+      }),
+    );
+    expect(withCalendar.status).toBe("unavailable");
+    expect(withCalendar.value).toBeNull();
+    expect(withCalendar.reasonCode).toBe("incomplete_window");
+    expect(withCalendar.detail).toContain(missing);
+  });
+
+  it("3. enforces fetchedAt < cutoff in SYSTEM_REPLAY mode", () => {
+    const cutoff = "2024-06-15T12:00:00.000Z";
+    const row = obs({
+      id: "v1",
+      seriesKey: SERIES_KEYS.VIXCLS,
+      value: 16,
+      unit: "index_points",
+      observationDate: "2024-06-14",
+      observationAt: "2024-06-14T21:00:00.000Z",
+      availableAt: "2024-06-14T21:00:00.000Z",
+      fetchedAt: "2024-06-16T00:00:00.000Z",
+    });
+
+    expect(
+      marketObservationIneligibilityReasons(
+        row,
+        at(cutoff),
+        "SYSTEM_REPLAY",
+      ),
+    ).toContain("not_known_to_system");
+
+    const late = computeVixLevel(
+      request(cutoff, [row], { knowledgeMode: "SYSTEM_REPLAY" }),
+    );
+    expect(late.status).toBe("unavailable");
+    expect(late.value).toBeNull();
+
+    const missingFetchRow = obs({
+      id: "v2",
+      seriesKey: SERIES_KEYS.VIXCLS,
+      value: 16,
+      unit: "index_points",
+      observationDate: "2024-06-14",
+      observationAt: "2024-06-14T21:00:00.000Z",
+      availableAt: "2024-06-14T21:00:00.000Z",
+      fetchedAt: null,
+    });
+    expect(
+      marketObservationIneligibilityReasons(
+        missingFetchRow,
+        at(cutoff),
+        "SYSTEM_REPLAY",
+      ),
+    ).toContain("not_known_to_system");
+    const missingFetch = computeVixLevel(
+      request(cutoff, [missingFetchRow], { knowledgeMode: "SYSTEM_REPLAY" }),
+    );
+    expect(missingFetch.status).toBe("unavailable");
+    expect(missingFetch.value).toBeNull();
+
+    const ok = computeVixLevel(
+      request(
+        cutoff,
+        [
+          obs({
+            id: "v3",
+            seriesKey: SERIES_KEYS.VIXCLS,
+            value: 16,
+            unit: "index_points",
+            observationDate: "2024-06-14",
+            observationAt: "2024-06-14T21:00:00.000Z",
+            availableAt: "2024-06-14T21:00:00.000Z",
+            fetchedAt: "2024-06-14T22:00:00.000Z",
+          }),
+        ],
+        { knowledgeMode: "SYSTEM_REPLAY" },
+      ),
+    );
+    expect(ok.status).toBe("ok");
+    expect(ok.value).toBe(16);
+
+    // Public reconstruction still ignores fetchedAt.
+    const publicMode = computeVixLevel(request(cutoff, [row]));
+    expect(publicMode.status).toBe("ok");
+    expect(publicMode.value).toBe(16);
+  });
+
+  it("4. rejects impossible observation dates", () => {
+    expect(isValidObservationDate("2024-02-30")).toBe(false);
+    expect(isValidObservationDate("2024-13-01")).toBe(false);
+    expect(isValidObservationDate("2024-02-29")).toBe(true); // leap year
+    expect(isValidObservationDate("2023-02-29")).toBe(false);
+
+    const result = computeVixLevel(
+      request("2024-06-15T12:00:00.000Z", [
+        obs({
+          id: "bad-date",
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 11,
+          unit: "index_points",
+          observationDate: "2024-02-30",
+          observationAt: "2024-02-28T21:00:00.000Z",
+          availableAt: "2024-02-28T21:00:00.000Z",
+        }),
+      ]),
+    );
+    expect(result.status).toBe("unavailable");
+    expect(result.value).toBeNull();
+    expect(
+      marketObservationIneligibilityReasons(
+        obs({
+          id: "bad-date",
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 11,
+          unit: "index_points",
+          observationDate: "2024-02-30",
+          observationAt: "2024-02-28T21:00:00.000Z",
+          availableAt: "2024-02-28T21:00:00.000Z",
+        }),
+        at("2024-06-15T12:00:00.000Z"),
+      ),
+    ).toContain("impossible_observation_date");
+  });
+
+  it("5. rejects RV windows with fewer than two returns", () => {
+    const dates = tradingDates(2);
+    const observations = dates.map((date, i) =>
+      obs({
+        id: `p${i}`,
+        seriesKey: SERIES_KEYS.SPY,
+        value: 100 + i,
+        unit: "price",
+        observationDate: date,
+        observationAt: availableAfterClose(date),
+        availableAt: availableAfterClose(date),
+      }),
+    );
+    const end = dates[dates.length - 1]!;
+    const result = computeEquityRealizedVol20(
+      request(`${end}T23:00:00.000Z`, observations, {
+        sessionCalendar: dates,
+      }),
+      { sessions: 1 },
+    );
+    expect(result.status).toBe("invalid_input");
+    expect(result.value).toBeNull();
+    expect(result.reasonCode).toBe("insufficient_returns");
   });
 });

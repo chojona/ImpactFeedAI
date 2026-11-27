@@ -24,11 +24,17 @@ export type {
 } from "@/services/context/featureDefinitions";
 
 export {
+  indexSeriesByObservationDate,
   isAvailableBeforeCutoff,
   isMarketObservationEligible,
   isValidObservationDate,
   marketObservationIneligibilityReasons,
   selectEligibleMarketObservations,
+  seriesHasDateConflicts,
+} from "@/services/context/pointInTime";
+export type {
+  DateIndexConflict,
+  SeriesDateIndex,
 } from "@/services/context/pointInTime";
 
 export { computeSpread2s10s } from "@/services/context/rates";
@@ -38,3 +44,4 @@ export {
   computeVixLevel,
   computeVixTrailingPercentile,
 } from "@/services/context/volatility";
+export type { EquityRvOptions } from "@/services/context/volatility";

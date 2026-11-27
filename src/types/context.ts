@@ -2,12 +2,15 @@
  * Shared Phase 1 market-context contracts.
  *
  * Coordination:
- * - Agent 03 (Phase 1.1 ALFRED / PIT selector) owns macro revision selection and
- *   vintage-aware transforms. Keep `KnowledgeMode` string values identical so
- *   selector outputs and feature inputs share one vocabulary.
+ * - Agent 03 (Phase 1.1 ALFRED / PIT selector, PR #20) owns macro revision
+ *   selection and vintage-aware transforms. Keep `KnowledgeMode` string values
+ *   identical so selector outputs and feature inputs share one vocabulary.
  * - Agent 05 (market-price adapters) populates {@link MarketContextObservation}
  *   rows for VIX, Treasury yields and equity closes.
  * - This module owns continuous feature result shapes consumed by regime math.
+ *
+ * SYSTEM_REPLAY contract (aligned with Agent 03 quality.ts):
+ * `fetchedAt` must be present and satisfy `fetchedAt < cutoff` (strict).
  *
  * Persistence / Prisma models are intentionally absent here.
  */
@@ -56,6 +59,11 @@ export interface MarketContextObservation {
   readonly observationDate: string;
   /** Earliest defensible usable instant under a named availability policy. */
   readonly availableAt: Date | null;
+  /**
+   * When this system locally received the observation.
+   * Required for SYSTEM_REPLAY eligibility (`fetchedAt < cutoff`).
+   */
+  readonly fetchedAt?: Date | null;
   readonly publishedAt?: Date | null;
   readonly sourceAt?: Date | null;
   readonly quality?: MarketObservationQuality;
@@ -79,6 +87,7 @@ export type FeatureReasonCode =
   | "ok"
   | "no_eligible_observation"
   | "not_available_before_cutoff"
+  | "not_known_to_system"
   | "unknown_availability"
   | "non_finite_value"
   | "invalid_unit"
@@ -86,8 +95,12 @@ export type FeatureReasonCode =
   | "incomplete_window"
   | "non_consecutive_sessions"
   | "missing_observation_date"
+  | "impossible_observation_date"
   | "date_misaligned"
   | "insufficient_history"
+  | "insufficient_returns"
+  | "missing_session_calendar"
+  | "invalid_session_calendar"
   | "empty_input"
   | "conflict_quarantined";
 
@@ -117,4 +130,9 @@ export interface FeatureComputeRequest {
   readonly cutoff: Date;
   readonly knowledgeMode: KnowledgeMode;
   readonly observations: readonly MarketContextObservation[];
+  /**
+   * Independently validated session dates (`YYYY-MM-DD`, ascending unique).
+   * Required for equity RV: missing source rows must not compress the window.
+   */
+  readonly sessionCalendar?: readonly string[];
 }
