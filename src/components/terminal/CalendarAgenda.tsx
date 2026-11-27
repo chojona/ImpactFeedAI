@@ -4,6 +4,10 @@ import { ConsensusBadge, TimingBadge } from "@/components/events/StatusBadges";
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { DataStatePanel } from "@/components/ui/DataStatePanel";
 import {
+  eventHasMeasuredReaction,
+  sortCalendarEvents,
+} from "@/services/events/calendarView";
+import {
   eventDateGroup,
   eventWhenDisplay,
   timingDisplay,
@@ -14,7 +18,9 @@ import type { NewsEvent } from "@/types/events";
  * Day-grouped agenda of stored library events.
  *
  * Groups use the same Eastern calendar helper as the feed so a release never
- * lands on two different days depending on which page rendered it.
+ * lands on two different days depending on which page rendered it. Rows are
+ * sorted by effective display time before grouping so mixed releaseAt /
+ * releaseDate / occurredAt sources stay chronological.
  */
 export function CalendarAgenda({
   events,
@@ -37,10 +43,11 @@ export function CalendarAgenda({
   }
 
   const clock = now ?? new Date();
+  const ordered = sortCalendarEvents(events);
   const sections: { key: string; label: string; rows: NewsEvent[] }[] = [];
   const indexByKey = new Map<string, number>();
 
-  for (const event of events) {
+  for (const event of ordered) {
     const when = eventWhenDisplay(event);
     const group = eventDateGroup(when.day, clock);
     const existing = indexByKey.get(group.key);
@@ -62,6 +69,7 @@ export function CalendarAgenda({
               const when = eventWhenDisplay(event);
               const timing = timingDisplay(event.timing);
               const consensus = event.release?.consensusStatus ?? "MISSING";
+              const measured = eventHasMeasuredReaction(event);
               return (
                 <li key={event.id}>
                   <Link
@@ -74,12 +82,9 @@ export function CalendarAgenda({
                         <span className="num text-[11px] text-ink-3">
                           {when.text}
                         </span>
-                        {event.timing.reactionEligible &&
-                          event.assets.length > 0 && (
-                            <span className="text-[11px] text-pos">
-                              Measured
-                            </span>
-                          )}
+                        {measured && (
+                          <span className="text-[11px] text-pos">Measured</span>
+                        )}
                       </div>
                       <p className="truncate text-[14px] font-medium text-ink">
                         {event.title}

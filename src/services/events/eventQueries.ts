@@ -34,16 +34,17 @@ import {
   eventTypesForCategory,
 } from "@/lib/eventCategories";
 import type { ReactionObservation } from "@/services/analytics/patternAnalysis";
+import { sortCalendarEvents } from "@/services/events/calendarView";
 import { mapEvent, type EventRow } from "@/services/events/mapEvent";
+import type {
+  CategoryParam,
+  EventListQuery,
+} from "@/services/events/queryParams";
 import {
   CURRENT_REACTION_CALCULATION_VERSION,
   REACTION_ELIGIBLE_TIMING_STATUSES,
   reactionTimingEligibility,
 } from "@/services/events/timing";
-import type {
-  CategoryParam,
-  EventListQuery,
-} from "@/services/events/queryParams";
 import type { EventCategory, EventTypeName, NewsEvent } from "@/types/events";
 
 export interface EventListResult {
@@ -652,6 +653,10 @@ export async function listRecentMeasuredEvents(
  *
  * Prefer `releaseAt`, then a calendar `releaseDate`, then `occurredAt`. Rows
  * without any of those are omitted rather than forced onto "today".
+ *
+ * Postgres `ORDER BY release_at, release_date, occurred_at` is not a COALESCE
+ * across those columns, so the mapped result is re-sorted by the same
+ * effective display instant the calendar UI uses (`calendarView.ts`).
  */
 export async function listCalendarEvents(options: {
   from: Date;
@@ -678,16 +683,12 @@ export async function listCalendarEvents(options: {
         },
       ],
     },
-    orderBy: [
-      { releaseAt: "desc" },
-      { releaseDate: "desc" },
-      { occurredAt: "desc" },
-      { id: "asc" },
-    ],
+    // Fetch a stable page; chronological truth is applied after mapping.
+    orderBy: [{ id: "asc" }],
     take,
     include: EVENT_INCLUDE,
   });
-  return rows.map((row) => mapEvent(row as EventRow));
+  return sortCalendarEvents(rows.map((row) => mapEvent(row as EventRow)));
 }
 
 /**

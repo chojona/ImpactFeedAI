@@ -48,6 +48,8 @@ Not exposed in navigation: `/regimes`, `/notebooks`, marketing pricing.
 - `components/terminal/PendingReactionList.tsx`
 - Query helpers: `listUpcomingSourcedReleases`, `listRecentMeasuredEvents`,
   `listCalendarEvents`, `listPendingReactionEvents`
+- Calendar helpers: `src/services/events/calendarView.ts` (`eventHasMeasuredReaction`,
+  effective-instant sort across `releaseAt` / `releaseDate` / `occurredAt`)
 
 ## Integrity rules
 
