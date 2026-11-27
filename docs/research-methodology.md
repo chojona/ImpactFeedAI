@@ -148,6 +148,10 @@ than either summary alone.
 The same event in two regimes is two different events. Regime tags are what
 make an analog more than an event-type match.
 
+Academic methods, point-in-time rules, proposed continuous features, and
+validation tests (no implementation yet):
+[regime-classification-research.md](regime-classification-research.md).
+
 Candidate classifications. Deterministic regimes are V2 Phase 1 work (P1.3 in
 the [Phase 1 plan](phase-1-market-context-plan.md)):
 
