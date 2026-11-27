@@ -346,18 +346,6 @@ export function assessWindowCoverage(args: {
 }
 
 /**
- * @deprecated Count-only coverage. Kept as a named trap so call sites migrate
- * explicitly to {@link assessWindowCoverage}; always returns false.
- */
-export function isWindowFullyCovered(
-  _storedCount: number,
-  _interval: CandleInterval,
-  _daysEachSide?: number,
-): boolean {
-  return false;
-}
-
-/**
  * Rank reachable windows oldest-at-risk first: smallest daysRemaining, then
  * earliest releaseAt, then event id.
  */

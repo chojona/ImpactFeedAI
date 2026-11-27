@@ -9,7 +9,6 @@ import {
   eventWindowBounds,
   expectedCriticalOpenTimes,
   expectedRegularOpenTimesForSession,
-  isWindowFullyCovered,
   rankWindowsApproachingLoss,
 } from "../scripts/ingest/candle-preservation-plan";
 import { INTERVAL_LOOKBACK_DAYS } from "../scripts/ingest/candle-semantics";
@@ -265,7 +264,6 @@ describe("incremental skip-when-covered", () => {
     expect(assessment.missingOpenTimes.length).toBeGreaterThan(0);
     // Count matches the expected grid size — still incomplete coverage.
     expect(padded.length).toBe(grid.openTimes.length);
-    expect(isWindowFullyCovered(padded.length, "ONE_HOUR")).toBe(false);
 
     const plan = buildPreservationPlan({
       events: [{ id: "e1", releaseAt }],
