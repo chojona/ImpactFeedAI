@@ -80,7 +80,13 @@ macro foundation (ALFRED adapter, `revisionSelect`, vintage `transforms`),
 sharing `KnowledgeMode` / `MarketContextObservation` in `src/types/context.ts`
 and the historical-actual gate in `services/macro/actualProvenance.ts`. These
 are pure TypeScript with no persistence; Phase 1 remains NO-GO, so nothing
-reads them in the product yet. Components render prepared values rather than
+reads them in the product yet. The data-source registry (provider coverage,
+limits, licensing, point-in-time eligibility, last validation) lives in
+`services/sources/` as static metadata with pure audit functions; it never
+fetches. Read-only official market-context adapters (Cboe, US Treasury, FRED
+market series) live in `services/market-context/` and emit
+`MarketContextObservation` rows plus retrieval provenance without touching
+Prisma. Components render prepared values rather than
 calculate research results. There are no application write routes or Server
 Actions today, and no model calls.
 
@@ -133,6 +139,10 @@ transition is version 4: the engine computes v4, production reads stay on v3,
 and `src/services/events/measurementWriteGate.ts` refuses every `--apply` of a
 version that is neither the live read version nor covered by a committed,
 evidenced cutover authorization (none exists; Phase 1 remains NO-GO).
+
+Read-only market-context adapters in `src/services/market-context/` can fetch
+VIX, Treasury yields, breakevens and Fed target bounds into lean observation
+objects, but nothing persists those snapshots (or regime tags) on an event yet.
 
 ## Data pipeline
 
@@ -217,6 +227,11 @@ flowchart TD
   Snapshot --> Research[Later statistical research and analog engines]
   Outcomes[Four-window reaction outcomes] --> Research
 ```
+
+Read-only official market adapters (`src/services/market-context/`) are the
+first slice of the Sources node for VIX / Treasury / breakevens / Fed target.
+They emit lean observations without Prisma writes; vintage selection and feature
+math remain separate Phase 1 modules (`src/services/context/`).
 
 Pre-release selection requires `availableAt < releaseAt`. Historical public
 information reconstruction and replay of what this application actually knew

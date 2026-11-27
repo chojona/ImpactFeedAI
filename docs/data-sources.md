@@ -12,6 +12,34 @@ defines the separate vintage/publication/availability evidence needed before
 these become historical context inputs. Existing provider/price notes below
 are source inventory, not a fresh verification of provider limits or pricing.
 
+**Machine-readable registry (November 27, 2026):** provider coverage, free-tier
+limits, publication lags, revision behaviour, point-in-time eligibility,
+licensing and auth requirements now live in
+[`src/services/sources/`](../src/services/sources/registry.ts), one file per
+provider. Each coverage claim is **TESTED** (a live request returned it, with
+the date), **ADVERTISED** (the provider documents it, nothing here exercised it)
+or **UNAVAILABLE** (refused under the stated access tier, with the reason). The
+registry is checked by `validateRegistry` in the test suite. `assessCoverage`
+reports availability (could the data be obtained?) separately from research
+suitability (point-in-time status, conditions, licensing, blockers). TESTED
+availability never means certified or historically usable. `npm run
+audit:sources` prints the per-provider audit offline. When this prose and the
+registry disagree, the registry's dated evidence wins. Headline findings from
+the 2026-11-27 validation:
+
+- **Alpha Vantage free key:** every `TIME_SERIES_INTRADAY` call (1/5/60-min,
+  latest or `month=` 2022–2024) is premium-only. Daily is compact (last 100
+  sessions). Only weekly has deep history (1999 onward). Limit: 25 requests/day.
+- **BLS key:** valid. v2 accepts 20-year spans with catalog and calculations.
+  The API still carries no publication timestamps, and values are current.
+- **Yahoo:** 1m covers the last 30 days at 8 days per request, 5m covers 60
+  days, 1h covers 730 days (from 2024-11-29). Daily SPY starts 1993-01-29.
+- **FRED `SP500`:** licensed to a rolling 10 years (from 2016-11-28).
+- **SF Fed Bauer–Swanson:** 361 FOMC announcements, 1988-02-04 → 2023-12-13.
+  Nothing after 2023 is published.
+- **Local NQ archive:** 1m outrights 2010-06-07 → 2026-10-06, but only 11
+  sessions are certified for strict use.
+
 An inventory of the data ImpactFeedAI uses and might use. Only the entries
 marked **Integrated** exist in the codebase; everything else is a candidate.
 
@@ -161,7 +189,7 @@ Candidate paths, none yet chosen:
 | Scraping public calendar sites | Broad | Free | Terms of service almost always prohibit it; fragile; not a foundation to build on | **Rejected** |
 | Philadelphia Fed Survey of Professional Forecasters | Narrow, quarterly | Free | Real forecasts, but wrong frequency for monthly releases *(verify coverage)* | **Researching** |
 | Cleveland Fed inflation nowcast | CPI/PCE only | Free | A model's expectation, not a market consensus — a proxy, and it must be labelled as one | **Researching** |
-| Market-implied expectations (fed funds futures, inflation breakevens/swaps) | Rates and inflation | Free via FRED for some series | Not a "consensus number", but arguably a better measure of what was priced in. Worth having regardless of what else is chosen | **Planned** |
+| Market-implied expectations (fed funds futures, inflation breakevens/swaps) | Rates and inflation | Free via FRED for some series | Not a "consensus number", but arguably a better measure of what was priced in. Daily breakeven adapters (`T5YIE`/`T10YIE`) are Integrated (read-only); futures-path consensus remains Planned | **Partial** |
 | Derive a naive baseline (e.g. prior value, trailing average) | Complete | Free | Honest fallback, clearly labelled as *not* consensus. Useful for coverage, weak as a surprise measure | **Planned** |
 
 The storage contract is now built. Each release carries `consensusStatus`,
@@ -231,6 +259,14 @@ timing-eligible events are past even the hourly window, and the window rolls —
 history is lost permanently as events age. Commercial redistribution terms
 remain unverified.
 
+**Preservation gate:** bulk live provider fetches and candle apply-writes are
+blocked until
+`CANDLE_SOURCE_PERMISSIONS_CONFIRMED=yahoo-finance2-terms-verified` is set
+after terms review. Plan-only dry-runs and local Postgres inventory remain
+allowed while unverified. See [candle-preservation.md](./candle-preservation.md)
+for session / basis / lookback semantics and the inventory → plan → execute →
+apply flow.
+
 ### Polygon.io · **Planned**
 
 Named as the intended price provider in the project instructions; **no code
@@ -240,18 +276,40 @@ natural upgrade from Yahoo when reliability and intraday depth start mattering �
 particularly for 5-minute and 30-minute reaction windows, which Yahoo cannot
 support historically.
 
-### FRED (market series) · **Planned**
+### FRED (market series) · **Integrated (adapters only)**
 
-Free daily series that cover several V2 Phase 1 market-context needs without a new provider:
+Read-only adapters in `src/services/market-context/fred.ts` normalize:
 
-- `VIXCLS` — VIX daily close
-- `DGS2`, `DGS10`, `DGS30` — constant-maturity Treasury yields
-- `T10Y2Y` — 2s10s spread
-- `T5YIE`, `T10YIE` — inflation breakevens
-- `SP500`, `NASDAQ100` — index levels *(verify licensing on index series)*
+- `VIXCLS` — VIX daily close (**mirror**; prefer Cboe CSV as primary)
+- `DGS2`, `DGS10`, `DGS3MO` — constant-maturity Treasury yields (**mirrors**;
+  prefer US Treasury XML as primary)
+- `T5YIE`, `T10YIE` — inflation breakevens (**primary** free daily source)
+- `DFEDTARU`, `DFEDTARL` — Fed funds target-range upper/lower (**primary**)
+
+Still Planned / not adapted here: `DGS30`, `T10Y2Y`, `SP500`, `NASDAQ100`
+*(verify licensing on index series)*.
 
 Daily granularity only — fine for regime and context features, insufficient for
-intraday reaction analysis.
+intraday reaction analysis. **No production DB writes.** Default FRED pulls are
+marked `revised_latest` and are **not** point-in-time historical reconstruction;
+pass `vintageAsOf` for an ALFRED-style as-of panel. 2024 FRED API Terms restrict
+storing/caching/archiving FRED Content and incorporating it into databases;
+re-verify before any durable warehouse or commercial redistribution. Details:
+[market-context-adapters.md](market-context-adapters.md).
+
+### US Treasury Daily Par Yield Curve · **Integrated (adapters only)**
+
+| | |
+| --- | --- |
+| Provides | Daily Par Yield Curve rates including `BC_3MONTH`, `BC_2YEAR`, `BC_10YEAR` |
+| Endpoint | `home.treasury.gov/.../pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value=YYYY` |
+| Cost | Free, no key |
+| History | From 1990 |
+| Used by | `src/services/market-context/treasury.ts` |
+
+Official publisher for the yield levels FRED redistributes as `DGS*`. Public
+government data suitable for personal research. Availability is date-precision
+only in the adapter (no verified per-observation clock).
 
 ### Futures data (ES, NQ, ZN) · **Researching**
 
@@ -262,10 +320,19 @@ ETF opens. Continuous-contract history with correct roll handling is the hard
 part. Candidate providers: Databento, CME DataMine, Barchart *(all paid,
 verify)*.
 
-### Cboe · **Researching**
+### Cboe · **Integrated (VIX daily CSV adapters only)**
 
-VIX history and index data direct from the source. Some free daily files; the
-intraday and options products are paid *(verify)*.
+| | |
+| --- | --- |
+| Provides | VIX daily OHLC history (`VIX_History.csv`); CLOSE mapped to `market:VIXCLS:level` |
+| Endpoint | `https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv` |
+| Cost | Free daily file, no key; intraday/options products remain paid *(verify)* |
+| History | ~1990–present; pre-2003 rows are methodology backfills, not contemporaneous VXO |
+| Used by | `src/services/market-context/cboe.ts` |
+
+Personal/research use of the free history file; redistribution of index values
+is restricted under Cboe data terms. Intraday VIX and DataShop options feeds
+remain **Researching**.
 
 ---
 

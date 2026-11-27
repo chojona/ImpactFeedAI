@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<feed xml:base="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns="http://www.w3.org/2005/Atom">
+<title type="text">DailyTreasuryYieldCurveRateData</title>
+<entry>
+<title type="text"></title>
+<content type="application/xml">
+<m:properties>
+<d:NEW_DATE m:type="Edm.DateTime">2024-01-02T00:00:00</d:NEW_DATE>
+<d:BC_3MONTH m:type="Edm.Double">5.46</d:BC_3MONTH>
+<d:BC_2YEAR m:type="Edm.Double">4.33</d:BC_2YEAR>
+<d:BC_10YEAR m:type="Edm.Double">3.95</d:BC_10YEAR>
+</m:properties>
+</content>
+</entry>
+<entry>
+<title type="text"></title>
+<content type="application/xml">
+<m:properties>
+<d:NEW_DATE m:type="Edm.DateTime">2024-01-03T00:00:00</d:NEW_DATE>
+<d:BC_3MONTH m:type="Edm.Double">5.48</d:BC_3MONTH>
+<d:BC_2YEAR m:type="Edm.Double">4.29</d:BC_2YEAR>
+<d:BC_10YEAR m:type="Edm.Double">3.91</d:BC_10YEAR>
+</m:properties>
+</content>
+</entry>
+<entry>
+<title type="text"></title>
+<content type="application/xml">
+<m:properties>
+<d:NEW_DATE m:type="Edm.DateTime">2024-01-04T00:00:00</d:NEW_DATE>
+<d:BC_3MONTH m:type="Edm.Double">.</d:BC_3MONTH>
+<d:BC_2YEAR m:type="Edm.Double">4.30</d:BC_2YEAR>
+<d:BC_10YEAR m:type="Edm.Double">3.99</d:BC_10YEAR>
+</m:properties>
+</content>
+</entry>
+</feed>
