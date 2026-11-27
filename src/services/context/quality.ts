@@ -49,14 +49,14 @@ export function observationEligibilityReasons(
     reasons.push("non_finite_value");
   }
 
-  if (
-    !(observation.availableAt instanceof Date) ||
-    !Number.isFinite(observation.availableAt.getTime())
+  const { availableAt } = observation;
+  const hasAvailabilityTime = availableAt instanceof Date && Number.isFinite(availableAt.getTime());
+  if (observation.quality !== "revised_latest" &&
+    (!hasAvailabilityTime || observation.availabilityQuality === "UNRESOLVED")
   ) {
-    if (observation.quality !== "revised_latest") {
-      reasons.push("unknown_availability");
-    }
-  } else if (observation.availableAt.getTime() >= policy.cutoff.getTime()) {
+    reasons.push("unknown_availability");
+  }
+  if (hasAvailabilityTime && !(availableAt.getTime() < policy.cutoff.getTime())) {
     reasons.push("not_available_before_cutoff");
   }
 
@@ -75,7 +75,8 @@ export function observationEligibilityReasons(
 
   if (
     policy.requireInitial &&
-    observation.valueKind !== "INITIAL_REPORTED"
+    (observation.releaseStage !== "INITIAL" ||
+      observation.valueKind !== "INITIAL_REPORTED")
   ) {
     // Reuse the closest selection reason; first-print research gate.
     reasons.push("no_observation_for_period");

@@ -28,9 +28,26 @@ import {
   deriveMetric,
   type CanonicalMetric,
   type Observation,
+  type SeasonalAdjustment,
 } from "@/services/macro/metrics";
 import { validateConsensusEstimate } from "@/services/macro/consensus";
 import type { MacroRelease } from "./types";
+
+/**
+ * Whether a forecast may be compared with an actual for surprise.
+ *
+ * Metrics with no SA/NSA dimension (`na` — Fed target, sentiment, …) always
+ * allow a surprise: a policy-rate forecast has no seasonal-adjustment basis to
+ * mismatch. SA/NSA-sensitive metrics (CPI, PPI, payrolls, …) require a known
+ * forecast basis that matches the metric; unknown or mismatched → no surprise.
+ */
+export function forecastBasisAllowsSurprise(
+  metricBasis: SeasonalAdjustment,
+  forecastBasis: SeasonalAdjustment | null | undefined,
+): boolean {
+  if (metricBasis === "na") return true;
+  return forecastBasis != null && forecastBasis === metricBasis;
+}
 
 const FRED_BASE = "https://api.stlouisfed.org/fred";
 
@@ -57,6 +74,11 @@ export interface MacroFetchInput {
   consensusSource?: string | null;
   consensusSourceUrl?: string | null;
   consensusAsOf?: Date | null;
+  /**
+   * Seasonal-adjustment basis of the forecast / consensus number.
+   * Required (and must match the metric) before a surprise can be VERIFIED.
+   */
+  expectedSeasonalAdjustment?: SeasonalAdjustment | null;
 }
 
 const isoDate = (d: Date): string => d.toISOString().slice(0, 10);
@@ -225,6 +247,10 @@ export async function fetchMacroRelease(
   const metric: CanonicalMetric = binding.metric;
   const metricName = input.metricNameOverride ?? metric.canonicalName;
   const actualSourceUrl = `https://fred.stlouisfed.org/series/${binding.seriesId}`;
+  const basisAllowsSurprise = forecastBasisAllowsSurprise(
+    metric.seasonalAdjustment,
+    input.expectedSeasonalAdjustment,
+  );
   let consensusStatus: "VERIFIED" | "UNVERIFIED" | "MISSING" =
     input.expectedValue === null ? "MISSING" : "UNVERIFIED";
   let consensusSource = input.consensusSource ?? null;
@@ -233,14 +259,16 @@ export async function fetchMacroRelease(
 
   // A number is promoted to verified consensus only when its citation and
   // snapshot time validate against an independently established release
-  // instant. Invalid metadata remains visible as UNVERIFIED instead of being
+  // instant AND its seasonal-adjustment basis matches the metric. Invalid
+  // metadata or an SA/NSA mismatch remains UNVERIFIED instead of being
   // silently laundered into surprise analysis.
   if (
     input.expectedValue !== null &&
     input.releaseAt &&
     input.consensusSource &&
     input.consensusSourceUrl &&
-    input.consensusAsOf
+    input.consensusAsOf &&
+    basisAllowsSurprise
   ) {
     try {
       const estimate = validateConsensusEstimate(
@@ -260,6 +288,19 @@ export async function fetchMacroRelease(
       const detail = error instanceof Error ? error.message : String(error);
       console.warn(`  ⚠ consensus provenance rejected: ${detail}`);
     }
+  } else if (
+    input.expectedValue !== null &&
+    input.releaseAt &&
+    input.consensusSource &&
+    input.consensusSourceUrl &&
+    input.consensusAsOf &&
+    !basisAllowsSurprise
+  ) {
+    console.warn(
+      `  ⚠ consensus basis rejected: forecast basis ${
+        input.expectedSeasonalAdjustment ?? "unknown"
+      } is incompatible with metric basis ${metric.seasonalAdjustment}`,
+    );
   }
 
   const baseProvenance = {
@@ -365,10 +406,9 @@ export async function fetchMacroRelease(
     actualValue,
     priorValue,
     expectedValue: input.expectedValue,
-    // Both sides are now in the metric's canonical unit.
-    surpriseMagnitude: computeSurpriseInCanonicalUnit(
-      actualValue,
-      input.expectedValue,
-    ),
+    // Both sides must share a known, matching seasonal-adjustment basis.
+    surpriseMagnitude: basisAllowsSurprise
+      ? computeSurpriseInCanonicalUnit(actualValue, input.expectedValue)
+      : null,
   };
 }

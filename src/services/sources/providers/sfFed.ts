@@ -19,7 +19,7 @@ export const SF_FED_PROVIDER: DataProviderEntry = {
     termsUrl: null,
     basis: "DOCUMENTED",
   },
-  implementations: [{ status: "OPEN_PR", path: "scripts/ingest/release-calendar/source-fomc-sffed.ts", pullRequest: 31 }],
+  implementations: [{ status: "MAIN", path: "scripts/ingest/release-calendar/source-fomc-sffed.ts" }],
   lastSuccessfulValidation: TESTED_ON,
   series: [
     {

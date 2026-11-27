@@ -161,8 +161,10 @@ async function runBea(): Promise<void> {
         const title = beaReleaseTitle(html);
         const identity = title ? classifyBeaTitle(title) : null;
         if (!identity || identity.family !== family) continue;
-        let embargo = parseBeaEmbargo(htmlToText(html));
-        let cite = { sourceUrl: doc.finalUrl, retrievedAt: doc.retrievedAt, contentSha256: doc.contentSha256 };
+        const releaseText = htmlToText(html);
+        let embargo = parseBeaEmbargo(releaseText);
+        const releaseMeta = { sourceUrl: doc.finalUrl, retrievedAt: doc.retrievedAt, contentSha256: doc.contentSha256 };
+        let cite = releaseMeta;
         if (!embargo) {
           for (const txtUrl of beaTextAttachments(html)) {
             const txt = await fetcher.get(txtUrl);
@@ -171,7 +173,7 @@ async function runBea(): Promise<void> {
           }
         }
         if (!embargo) { rep.notes.push(`no embargo/wire line: ${url} (${title})`); continue; }
-        observations.push(beaReleaseObservation(identity, embargo, cite));
+        observations.push(beaReleaseObservation(identity, embargo, cite, releaseText, releaseMeta));
         rep.observations++;
       }
     }
