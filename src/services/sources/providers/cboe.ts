@@ -80,7 +80,7 @@ export const CBOE_PROVIDER: DataProviderEntry = {
     termsUrl: null,
     basis: "THIRD_PARTY",
   },
-  implementations: [{ status: "OPEN_PR", path: "src/services/market-context/cboe.ts", pullRequest: 24 }],
+  implementations: [{ status: "MAIN", path: "src/services/market-context/cboe.ts" }],
   lastSuccessfulValidation: TESTED_ON,
   series: [
     volIndex("VIX", "Cboe Volatility Index", ["market:VIXCLS:level"], "1990-01-02", "2026-11-26", 9325, [

@@ -22,7 +22,7 @@ export const TREASURY_PROVIDER: DataProviderEntry = {
     termsUrl: "https://fiscaldata.treasury.gov/about-us/",
     basis: "DOCUMENTED",
   },
-  implementations: [{ status: "OPEN_PR", path: "src/services/market-context/treasury.ts", pullRequest: 24 }],
+  implementations: [{ status: "MAIN", path: "src/services/market-context/treasury.ts" }],
   lastSuccessfulValidation: TESTED_ON,
   series: [
     {

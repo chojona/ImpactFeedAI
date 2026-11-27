@@ -159,7 +159,7 @@ export const FRED_PROVIDER: DataProviderEntry = {
     { status: "MAIN", path: "scripts/ingest/sources-fred.ts" },
     { status: "MAIN", path: "scripts/ingest/fetch-macro.ts" },
     { status: "MAIN", path: "scripts/ingest/sources-fomc.ts" },
-    { status: "OPEN_PR", path: "src/services/market-context/fred.ts", pullRequest: 24 },
+    { status: "MAIN", path: "src/services/market-context/fred.ts" },
   ],
   lastSuccessfulValidation: TESTED_ON,
   series: [
