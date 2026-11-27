@@ -1,0 +1,1673 @@
+{
+  "auditedAt": "2026-11-05T21:31:06.279Z",
+  "gitHead": "3fe158504a22f765105e2a0aa7697bccaa3d7acc",
+  "readOnly": "on",
+  "migrations": [
+    {
+      "migration_name": "20260512194452_init",
+      "checksum": "8e1646c92dc75236fad8f0ef7d66e923c560c0f32b2d38126a5370111c70f7c0",
+      "finished_at": "2026-08-07T17:37:16.414Z",
+      "rolled_back_at": null,
+      "localChecksumMatches": true
+    },
+    {
+      "migration_name": "20260810231105_add_event_timing_provenance",
+      "checksum": "63ff8071a69f28d8402d1251c982d4b2d6c61d9bc0156b9bc49865933d8022ef",
+      "finished_at": "2026-08-20T17:41:08.424Z",
+      "rolled_back_at": null,
+      "localChecksumMatches": true
+    },
+    {
+      "migration_name": "20260820185236_add_candle_storage",
+      "checksum": "d64f3f34db513c500405e5dcff866debf684574a24cc2a62d7b487b076d32e15",
+      "finished_at": "2026-08-20T18:52:50.045Z",
+      "rolled_back_at": null,
+      "localChecksumMatches": true
+    },
+    {
+      "migration_name": "20260912175823_add_reaction_measurements",
+      "checksum": "2a796b6762b0dc468b281948a6299702014370069f92bfc822f6f5c4127bb9f3",
+      "finished_at": "2026-09-12T18:25:34.027Z",
+      "rolled_back_at": null,
+      "localChecksumMatches": true
+    }
+  ],
+  "localMigrations": [
+    "20260512194452_init",
+    "20260810231105_add_event_timing_provenance",
+    "20260820185236_add_candle_storage",
+    "20260912175823_add_reaction_measurements"
+  ],
+  "counts": [
+    {
+      "relation": "events",
+      "rows": 50
+    },
+    {
+      "relation": "data_releases",
+      "rows": 21
+    },
+    {
+      "relation": "asset_reactions_archive",
+      "rows": 597
+    },
+    {
+      "relation": "reaction_measurements",
+      "rows": 828
+    },
+    {
+      "relation": "candles",
+      "rows": 1276
+    }
+  ],
+  "eventTypes": [
+    {
+      "event_type": "TARIFF",
+      "events": 11,
+      "earliest_display": "2025-02-10T22:00:00.000Z",
+      "latest_display": "2025-08-29T20:00:00.000Z",
+      "earliest_release": null,
+      "latest_release": null
+    },
+    {
+      "event_type": "FED_DECISION",
+      "events": 7,
+      "earliest_display": "2022-11-02T18:00:00.000Z",
+      "latest_display": "2025-08-22T14:00:00.000Z",
+      "earliest_release": "2022-11-02T18:00:00.000Z",
+      "latest_release": "2025-05-07T18:00:00.000Z"
+    },
+    {
+      "event_type": "CPI",
+      "events": 7,
+      "earliest_display": "2022-07-13T12:30:00.000Z",
+      "latest_display": "2025-06-11T12:30:00.000Z",
+      "earliest_release": "2022-07-13T12:30:00.000Z",
+      "latest_release": "2025-06-11T12:30:00.000Z"
+    },
+    {
+      "event_type": "PPI",
+      "events": 2,
+      "earliest_display": "2024-04-11T12:30:00.000Z",
+      "latest_display": "2025-02-13T13:30:00.000Z",
+      "earliest_release": "2024-04-11T12:30:00.000Z",
+      "latest_release": "2025-02-13T13:30:00.000Z"
+    },
+    {
+      "event_type": "NFP",
+      "events": 5,
+      "earliest_display": "2023-02-03T13:30:00.000Z",
+      "latest_display": "2025-07-03T12:30:00.000Z",
+      "earliest_release": "2023-02-03T13:30:00.000Z",
+      "latest_release": "2025-07-03T12:30:00.000Z"
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "events": 8,
+      "earliest_display": "2022-02-24T10:00:00.000Z",
+      "latest_display": "2026-02-24T15:00:00.000Z",
+      "earliest_release": null,
+      "latest_release": null
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "events": 7,
+      "earliest_display": "2024-07-30T20:05:00.000Z",
+      "latest_display": "2025-05-28T20:20:00.000Z",
+      "earliest_release": null,
+      "latest_release": null
+    },
+    {
+      "event_type": "MACRO_DATA",
+      "events": 3,
+      "earliest_display": "2024-04-25T12:30:00.000Z",
+      "latest_display": "2025-07-30T12:30:00.000Z",
+      "earliest_release": null,
+      "latest_release": null
+    }
+  ],
+  "timing": [
+    {
+      "timing_status": "SCHEDULED",
+      "events": 20,
+      "exact_instants": 20,
+      "release_dates": 20,
+      "eligible": 20
+    },
+    {
+      "timing_status": "UNVERIFIED",
+      "events": 30,
+      "exact_instants": 0,
+      "release_dates": 0,
+      "eligible": 0
+    }
+  ],
+  "releaseCoverage": [
+    {
+      "releases": 21,
+      "missing_actual": 0,
+      "missing_forecast": 1,
+      "missing_metric_key": 21,
+      "missing_reference_period": 21,
+      "incomplete_actual_provenance": 21,
+      "stored_surprises": 20
+    }
+  ],
+  "consensus": [
+    {
+      "consensus_status": "UNVERIFIED",
+      "releases": 20,
+      "forecast_values": 20,
+      "provenance_complete": 0
+    },
+    {
+      "consensus_status": "MISSING",
+      "releases": 1,
+      "forecast_values": 0,
+      "provenance_complete": 0
+    }
+  ],
+  "metrics": [
+    {
+      "metric_key": null,
+      "metric_name": "CPI (headline, YoY)",
+      "rows": 7,
+      "first_reference": null,
+      "last_reference": null
+    },
+    {
+      "metric_key": null,
+      "metric_name": "Fed funds target rate (upper bound)",
+      "rows": 7,
+      "first_reference": null,
+      "last_reference": null
+    },
+    {
+      "metric_key": null,
+      "metric_name": "Nonfarm payrolls (MoM change)",
+      "rows": 5,
+      "first_reference": null,
+      "last_reference": null
+    },
+    {
+      "metric_key": null,
+      "metric_name": "PPI (final demand, YoY)",
+      "rows": 2,
+      "first_reference": null,
+      "last_reference": null
+    }
+  ],
+  "measureCoverage": [
+    {
+      "calculation_version": 3,
+      "measure": "INTRADAY_60M",
+      "rows": 108,
+      "events": 9,
+      "instruments": 12
+    },
+    {
+      "calculation_version": 3,
+      "measure": "RELEASE_SESSION",
+      "rows": 240,
+      "events": 20,
+      "instruments": 12
+    },
+    {
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_1",
+      "rows": 240,
+      "events": 20,
+      "instruments": 12
+    },
+    {
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_5",
+      "rows": 240,
+      "events": 20,
+      "instruments": 12
+    }
+  ],
+  "measureSymbols": [
+    {
+      "symbol": "BTC-USD",
+      "session_basis": "CONTINUOUS_24_7",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "BTC-USD",
+      "session_basis": "CONTINUOUS_24_7",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "BTC-USD",
+      "session_basis": "CONTINUOUS_24_7",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "BTC-USD",
+      "session_basis": "CONTINUOUS_24_7",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "CL=F",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "CL=F",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "CL=F",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "CL=F",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "DX-Y.NYB",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "DX-Y.NYB",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "DX-Y.NYB",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "DX-Y.NYB",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "GC=F",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "GC=F",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "GC=F",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "GC=F",
+      "session_basis": "EXTENDED_FUTURES",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "GLD",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "GLD",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "GLD",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "GLD",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "IWM",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "IWM",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "IWM",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "IWM",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "QQQ",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "QQQ",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "QQQ",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "QQQ",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "SPY",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "SPY",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "SPY",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "SPY",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "TLT",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "TLT",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "TLT",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "TLT",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "XLE",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "XLE",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "XLE",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "XLE",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "XLF",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "XLF",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "XLF",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "XLF",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    },
+    {
+      "symbol": "XLK",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "INTRADAY_60M",
+      "rows": 9
+    },
+    {
+      "symbol": "XLK",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "RELEASE_SESSION",
+      "rows": 20
+    },
+    {
+      "symbol": "XLK",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_1",
+      "rows": 20
+    },
+    {
+      "symbol": "XLK",
+      "session_basis": "US_EQUITY_RTH",
+      "measure": "SESSION_PLUS_5",
+      "rows": 20
+    }
+  ],
+  "missingMeasurements": [
+    {
+      "eligible_events": 20,
+      "without_any_v3": 0,
+      "without_first_hour": 11
+    }
+  ],
+  "measurementIntegrity": [
+    {
+      "ineligible_timing_rows": 0,
+      "invalid_numeric_rows": 0,
+      "arithmetic_mismatches": 0,
+      "intraday_bound_violations": 0
+    }
+  ],
+  "consensusIntegrity": [
+    {
+      "invalid_verified_forecasts": 0
+    }
+  ],
+  "candles": [
+    {
+      "symbol": "QQQ",
+      "interval": "ONE_HOUR",
+      "price_basis": "AS_TRADED",
+      "ingestion_version": 1,
+      "rows": 638,
+      "first_bar": "2024-09-09T13:00:00.000Z",
+      "last_bar": "2025-07-03T20:00:00.000Z",
+      "last_fetch": "2026-08-20T19:02:54.552Z",
+      "null_volume": 363
+    },
+    {
+      "symbol": "SPY",
+      "interval": "ONE_HOUR",
+      "price_basis": "AS_TRADED",
+      "ingestion_version": 1,
+      "rows": 638,
+      "first_bar": "2024-09-09T13:00:00.000Z",
+      "last_bar": "2025-07-03T20:00:00.000Z",
+      "last_fetch": "2026-08-20T19:02:53.728Z",
+      "null_volume": 363
+    }
+  ],
+  "calendarExposure": [],
+  "indexes": [
+    {
+      "tablename": "_prisma_migrations",
+      "indexname": "_prisma_migrations_pkey",
+      "indexdef": "CREATE UNIQUE INDEX _prisma_migrations_pkey ON public._prisma_migrations USING btree (id)"
+    },
+    {
+      "tablename": "asset_reactions",
+      "indexname": "asset_reactions_asset_symbol_idx",
+      "indexdef": "CREATE INDEX asset_reactions_asset_symbol_idx ON public.asset_reactions USING btree (asset_symbol)"
+    },
+    {
+      "tablename": "asset_reactions",
+      "indexname": "asset_reactions_calculation_version_idx",
+      "indexdef": "CREATE INDEX asset_reactions_calculation_version_idx ON public.asset_reactions USING btree (calculation_version)"
+    },
+    {
+      "tablename": "asset_reactions",
+      "indexname": "asset_reactions_event_id_asset_symbol_key",
+      "indexdef": "CREATE UNIQUE INDEX asset_reactions_event_id_asset_symbol_key ON public.asset_reactions USING btree (event_id, asset_symbol)"
+    },
+    {
+      "tablename": "asset_reactions",
+      "indexname": "asset_reactions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX asset_reactions_pkey ON public.asset_reactions USING btree (id)"
+    },
+    {
+      "tablename": "candles",
+      "indexname": "candles_ingestion_version_idx",
+      "indexdef": "CREATE INDEX candles_ingestion_version_idx ON public.candles USING btree (ingestion_version)"
+    },
+    {
+      "tablename": "candles",
+      "indexname": "candles_pkey",
+      "indexdef": "CREATE UNIQUE INDEX candles_pkey ON public.candles USING btree (id)"
+    },
+    {
+      "tablename": "candles",
+      "indexname": "candles_symbol_interval_open_time_idx",
+      "indexdef": "CREATE INDEX candles_symbol_interval_open_time_idx ON public.candles USING btree (symbol, \"interval\", open_time)"
+    },
+    {
+      "tablename": "candles",
+      "indexname": "candles_symbol_interval_open_time_price_basis_key",
+      "indexdef": "CREATE UNIQUE INDEX candles_symbol_interval_open_time_price_basis_key ON public.candles USING btree (symbol, \"interval\", open_time, price_basis)"
+    },
+    {
+      "tablename": "data_releases",
+      "indexname": "data_releases_consensus_status_idx",
+      "indexdef": "CREATE INDEX data_releases_consensus_status_idx ON public.data_releases USING btree (consensus_status)"
+    },
+    {
+      "tablename": "data_releases",
+      "indexname": "data_releases_event_id_metric_name_key",
+      "indexdef": "CREATE UNIQUE INDEX data_releases_event_id_metric_name_key ON public.data_releases USING btree (event_id, metric_name)"
+    },
+    {
+      "tablename": "data_releases",
+      "indexname": "data_releases_metric_key_reference_period_start_idx",
+      "indexdef": "CREATE INDEX data_releases_metric_key_reference_period_start_idx ON public.data_releases USING btree (metric_key, reference_period_start)"
+    },
+    {
+      "tablename": "data_releases",
+      "indexname": "data_releases_pkey",
+      "indexdef": "CREATE UNIQUE INDEX data_releases_pkey ON public.data_releases USING btree (id)"
+    },
+    {
+      "tablename": "data_releases",
+      "indexname": "data_releases_reference_period_start_idx",
+      "indexdef": "CREATE INDEX data_releases_reference_period_start_idx ON public.data_releases USING btree (reference_period_start)"
+    },
+    {
+      "tablename": "events",
+      "indexname": "events_event_key_key",
+      "indexdef": "CREATE UNIQUE INDEX events_event_key_key ON public.events USING btree (event_key)"
+    },
+    {
+      "tablename": "events",
+      "indexname": "events_event_type_idx",
+      "indexdef": "CREATE INDEX events_event_type_idx ON public.events USING btree (event_type)"
+    },
+    {
+      "tablename": "events",
+      "indexname": "events_headline_occurred_at_key",
+      "indexdef": "CREATE UNIQUE INDEX events_headline_occurred_at_key ON public.events USING btree (headline, occurred_at)"
+    },
+    {
+      "tablename": "events",
+      "indexname": "events_occurred_at_idx",
+      "indexdef": "CREATE INDEX events_occurred_at_idx ON public.events USING btree (occurred_at)"
+    },
+    {
+      "tablename": "events",
+      "indexname": "events_pkey",
+      "indexdef": "CREATE UNIQUE INDEX events_pkey ON public.events USING btree (id)"
+    },
+    {
+      "tablename": "events",
+      "indexname": "events_release_at_idx",
+      "indexdef": "CREATE INDEX events_release_at_idx ON public.events USING btree (release_at)"
+    },
+    {
+      "tablename": "events",
+      "indexname": "events_release_date_idx",
+      "indexdef": "CREATE INDEX events_release_date_idx ON public.events USING btree (release_date)"
+    },
+    {
+      "tablename": "events",
+      "indexname": "events_timing_status_idx",
+      "indexdef": "CREATE INDEX events_timing_status_idx ON public.events USING btree (timing_status)"
+    },
+    {
+      "tablename": "reaction_measurements",
+      "indexname": "reaction_measurements_event_id_calculation_version_idx",
+      "indexdef": "CREATE INDEX reaction_measurements_event_id_calculation_version_idx ON public.reaction_measurements USING btree (event_id, calculation_version)"
+    },
+    {
+      "tablename": "reaction_measurements",
+      "indexname": "reaction_measurements_event_id_symbol_measure_calculation_v_key",
+      "indexdef": "CREATE UNIQUE INDEX reaction_measurements_event_id_symbol_measure_calculation_v_key ON public.reaction_measurements USING btree (event_id, symbol, measure, calculation_version)"
+    },
+    {
+      "tablename": "reaction_measurements",
+      "indexname": "reaction_measurements_measure_calculation_version_idx",
+      "indexdef": "CREATE INDEX reaction_measurements_measure_calculation_version_idx ON public.reaction_measurements USING btree (measure, calculation_version)"
+    },
+    {
+      "tablename": "reaction_measurements",
+      "indexname": "reaction_measurements_pkey",
+      "indexdef": "CREATE UNIQUE INDEX reaction_measurements_pkey ON public.reaction_measurements USING btree (id)"
+    },
+    {
+      "tablename": "reaction_measurements",
+      "indexname": "reaction_measurements_symbol_measure_calculation_version_idx",
+      "indexdef": "CREATE INDEX reaction_measurements_symbol_measure_calculation_version_idx ON public.reaction_measurements USING btree (symbol, measure, calculation_version)"
+    }
+  ],
+  "columns": [
+    {
+      "table_name": "_prisma_migrations",
+      "column_name": "id",
+      "data_type": "character varying",
+      "udt_name": "varchar",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "_prisma_migrations",
+      "column_name": "checksum",
+      "data_type": "character varying",
+      "udt_name": "varchar",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "_prisma_migrations",
+      "column_name": "finished_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "_prisma_migrations",
+      "column_name": "migration_name",
+      "data_type": "character varying",
+      "udt_name": "varchar",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "_prisma_migrations",
+      "column_name": "logs",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "_prisma_migrations",
+      "column_name": "rolled_back_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "_prisma_migrations",
+      "column_name": "started_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "_prisma_migrations",
+      "column_name": "applied_steps_count",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "event_id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "asset_symbol",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "price_at_event",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "price_1h",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "price_1d",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "price_1w",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "pct_change_1h",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "pct_change_1d",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "pct_change_1w",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "anchor_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "asset_reactions",
+      "column_name": "calculation_version",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "symbol",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "interval",
+      "data_type": "USER-DEFINED",
+      "udt_name": "CandleInterval",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "open_time",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "open",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "high",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "low",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "close",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "volume",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "session",
+      "data_type": "USER-DEFINED",
+      "udt_name": "MarketSession",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "price_basis",
+      "data_type": "USER-DEFINED",
+      "udt_name": "PriceBasis",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "adjustment_factor",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "provider",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "ingestion_version",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "fetched_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "udt_name": "timestamp",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "candles",
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "udt_name": "timestamp",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "event_id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "metric_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "expected_value",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "actual_value",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "surprise_magnitude",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "prior_value",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "metric_key",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "reference_period_start",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "actual_source",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "actual_source_url",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "consensus_status",
+      "data_type": "USER-DEFINED",
+      "udt_name": "ConsensusStatus",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "consensus_source",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "consensus_source_url",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "data_releases",
+      "column_name": "consensus_as_of",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "events",
+      "column_name": "id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "events",
+      "column_name": "headline",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "events",
+      "column_name": "event_type",
+      "data_type": "USER-DEFINED",
+      "udt_name": "EventType",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "events",
+      "column_name": "occurred_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "events",
+      "column_name": "source_url",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "events",
+      "column_name": "explanation",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "events",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "udt_name": "timestamp",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "events",
+      "column_name": "event_key",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "events",
+      "column_name": "release_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "events",
+      "column_name": "release_date",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "events",
+      "column_name": "timing_status",
+      "data_type": "USER-DEFINED",
+      "udt_name": "EventTimingStatus",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "events",
+      "column_name": "timing_source",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "event_id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "symbol",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "measure",
+      "data_type": "USER-DEFINED",
+      "udt_name": "ReactionMeasure",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "anchor_kind",
+      "data_type": "USER-DEFINED",
+      "udt_name": "ReactionAnchorKind",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "anchor_price",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "anchor_bar_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "anchor_session_day",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "endpoint_price",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "endpoint_bar_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "endpoint_session_day",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "release_session_day",
+      "data_type": "date",
+      "udt_name": "date",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "pct_change",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "price_basis",
+      "data_type": "USER-DEFINED",
+      "udt_name": "PriceBasis",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "session_basis",
+      "data_type": "USER-DEFINED",
+      "udt_name": "SessionBasis",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "provider",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "calculation_version",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "fetched_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "reaction_measurements",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "udt_name": "timestamp",
+      "is_nullable": "NO"
+    }
+  ],
+  "constraints": [
+    {
+      "relation": "_prisma_migrations",
+      "conname": "_prisma_migrations_applied_steps_count_not_null",
+      "contype": "n",
+      "definition": "NOT NULL applied_steps_count"
+    },
+    {
+      "relation": "_prisma_migrations",
+      "conname": "_prisma_migrations_checksum_not_null",
+      "contype": "n",
+      "definition": "NOT NULL checksum"
+    },
+    {
+      "relation": "_prisma_migrations",
+      "conname": "_prisma_migrations_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "relation": "_prisma_migrations",
+      "conname": "_prisma_migrations_migration_name_not_null",
+      "contype": "n",
+      "definition": "NOT NULL migration_name"
+    },
+    {
+      "relation": "_prisma_migrations",
+      "conname": "_prisma_migrations_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relation": "_prisma_migrations",
+      "conname": "_prisma_migrations_started_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL started_at"
+    },
+    {
+      "relation": "asset_reactions",
+      "conname": "asset_reactions_asset_symbol_not_null",
+      "contype": "n",
+      "definition": "NOT NULL asset_symbol"
+    },
+    {
+      "relation": "asset_reactions",
+      "conname": "asset_reactions_event_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE"
+    },
+    {
+      "relation": "asset_reactions",
+      "conname": "asset_reactions_event_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL event_id"
+    },
+    {
+      "relation": "asset_reactions",
+      "conname": "asset_reactions_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "relation": "asset_reactions",
+      "conname": "asset_reactions_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relation": "asset_reactions",
+      "conname": "asset_reactions_price_at_event_not_null",
+      "contype": "n",
+      "definition": "NOT NULL price_at_event"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_close_not_null",
+      "contype": "n",
+      "definition": "NOT NULL close"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_created_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_fetched_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL fetched_at"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_high_not_null",
+      "contype": "n",
+      "definition": "NOT NULL high"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_ingestion_version_not_null",
+      "contype": "n",
+      "definition": "NOT NULL ingestion_version"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_interval_not_null",
+      "contype": "n",
+      "definition": "NOT NULL \"interval\""
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_low_not_null",
+      "contype": "n",
+      "definition": "NOT NULL low"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_open_not_null",
+      "contype": "n",
+      "definition": "NOT NULL open"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_open_time_not_null",
+      "contype": "n",
+      "definition": "NOT NULL open_time"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_price_basis_not_null",
+      "contype": "n",
+      "definition": "NOT NULL price_basis"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_provider_not_null",
+      "contype": "n",
+      "definition": "NOT NULL provider"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_session_not_null",
+      "contype": "n",
+      "definition": "NOT NULL session"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_symbol_not_null",
+      "contype": "n",
+      "definition": "NOT NULL symbol"
+    },
+    {
+      "relation": "candles",
+      "conname": "candles_updated_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL updated_at"
+    },
+    {
+      "relation": "data_releases",
+      "conname": "data_releases_consensus_status_not_null",
+      "contype": "n",
+      "definition": "NOT NULL consensus_status"
+    },
+    {
+      "relation": "data_releases",
+      "conname": "data_releases_event_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE"
+    },
+    {
+      "relation": "data_releases",
+      "conname": "data_releases_event_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL event_id"
+    },
+    {
+      "relation": "data_releases",
+      "conname": "data_releases_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "relation": "data_releases",
+      "conname": "data_releases_metric_name_not_null",
+      "contype": "n",
+      "definition": "NOT NULL metric_name"
+    },
+    {
+      "relation": "data_releases",
+      "conname": "data_releases_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relation": "events",
+      "conname": "events_created_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "relation": "events",
+      "conname": "events_event_type_not_null",
+      "contype": "n",
+      "definition": "NOT NULL event_type"
+    },
+    {
+      "relation": "events",
+      "conname": "events_headline_not_null",
+      "contype": "n",
+      "definition": "NOT NULL headline"
+    },
+    {
+      "relation": "events",
+      "conname": "events_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "relation": "events",
+      "conname": "events_occurred_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL occurred_at"
+    },
+    {
+      "relation": "events",
+      "conname": "events_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relation": "events",
+      "conname": "events_timing_status_not_null",
+      "contype": "n",
+      "definition": "NOT NULL timing_status"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_anchor_bar_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL anchor_bar_at"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_anchor_kind_not_null",
+      "contype": "n",
+      "definition": "NOT NULL anchor_kind"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_anchor_price_not_null",
+      "contype": "n",
+      "definition": "NOT NULL anchor_price"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_anchor_session_day_not_null",
+      "contype": "n",
+      "definition": "NOT NULL anchor_session_day"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_calculation_version_not_null",
+      "contype": "n",
+      "definition": "NOT NULL calculation_version"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_created_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_endpoint_bar_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL endpoint_bar_at"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_endpoint_price_not_null",
+      "contype": "n",
+      "definition": "NOT NULL endpoint_price"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_endpoint_session_day_not_null",
+      "contype": "n",
+      "definition": "NOT NULL endpoint_session_day"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_event_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_event_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL event_id"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_fetched_at_not_null",
+      "contype": "n",
+      "definition": "NOT NULL fetched_at"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_id_not_null",
+      "contype": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_measure_not_null",
+      "contype": "n",
+      "definition": "NOT NULL measure"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_pct_change_not_null",
+      "contype": "n",
+      "definition": "NOT NULL pct_change"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_price_basis_not_null",
+      "contype": "n",
+      "definition": "NOT NULL price_basis"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_provider_not_null",
+      "contype": "n",
+      "definition": "NOT NULL provider"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_release_session_day_not_null",
+      "contype": "n",
+      "definition": "NOT NULL release_session_day"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_session_basis_not_null",
+      "contype": "n",
+      "definition": "NOT NULL session_basis"
+    },
+    {
+      "relation": "reaction_measurements",
+      "conname": "reaction_measurements_symbol_not_null",
+      "contype": "n",
+      "definition": "NOT NULL symbol"
+    }
+  ],
+  "supplementalChecks": {
+    "note": "Separate read-only checks after the main snapshot",
+    "actualProvenanceFieldPresence": {
+      "actual_source_count": 0,
+      "actual_source_url_count": 0,
+      "metric_key_count": 0,
+      "reference_period_count": 0
+    },
+    "prismaSchemaDiff": {
+      "command": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
+      "exitCode": 0,
+      "result": "No difference detected."
+    }
+  }
+}

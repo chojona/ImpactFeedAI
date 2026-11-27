@@ -130,7 +130,7 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-1 flex-col text-ink-2">
-      <Header active="feed" />
+      <Header active="events" />
       <main className="mx-auto w-full max-w-6xl px-5 pt-6 pb-24 sm:px-6 sm:pt-8">
         <Breadcrumbs
           trail={[
