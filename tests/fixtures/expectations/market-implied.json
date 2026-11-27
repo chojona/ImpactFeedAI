@@ -1,0 +1,18 @@
+[
+  {
+    "id": "fred:T5YIE:2023-08-09",
+    "kind": "MARKET_IMPLIED",
+    "metricKey": "INFLATION_BREAKEVEN_5Y",
+    "referencePeriodStart": "2023-08-09",
+    "horizon": "other",
+    "value": 2.25,
+    "unit": "pct_level",
+    "asOf": null,
+    "asOfQuality": "DATE_ONLY",
+    "asOfDate": "2023-08-09",
+    "source": "FRED T5YIE",
+    "sourceUrl": "https://fred.stlouisfed.org/series/T5YIE",
+    "licenseNote": "Free FRED series. Market-implied 5-year inflation breakeven — not survey consensus and not a CPI print forecast.",
+    "providerRecordId": "T5YIE:2023-08-09"
+  }
+]
