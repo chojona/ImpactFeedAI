@@ -27,6 +27,9 @@ export interface DailyBar {
   /** Provider bar stamp. Yahoo stamps daily bars at the session OPEN. */
   barAt: Date;
   close: number | null;
+  /** Independently evidenced usable instant, when known. Economic close is
+   * only a lower bound; omission never certifies actual provider availability. */
+  availableAt?: Date;
 }
 
 export interface SessionMeasurementInput {
@@ -53,6 +56,9 @@ export interface ResolvedMeasurement {
 }
 
 export type MeasurementRefusal =
+  | "invalid_release_timestamp"
+  | "invalid_anchor_timestamp"
+  | "anchor_availability_invalid"
   | "undeclared_symbol"
   | "no_session_after_release"
   | "early_close_unknown"
@@ -86,6 +92,9 @@ const pct = (anchor: number, endpoint: number): number =>
 export function resolveSessionMeasurements(
   input: SessionMeasurementInput,
 ): MeasurementOutcome {
+  if (!Number.isFinite(input.releaseAt.getTime())) {
+    return { status: "refused", reason: "invalid_release_timestamp" };
+  }
   const sessionBasis = sessionBasisFor(input.symbol);
   if (sessionBasis === null) {
     return { status: "refused", reason: "undeclared_symbol" };
@@ -107,6 +116,10 @@ export function resolveSessionMeasurements(
     return { status: "refused", reason: "unusable_anchor_price" };
   }
 
+  if (!Number.isFinite(anchorBar.barAt.getTime())) {
+    return { status: "refused", reason: "invalid_anchor_timestamp" };
+  }
+
   // The anchor PRICE must have been realised strictly before the release.
   // Resolved from the bar itself — a daily bar's stamp is an identifier (and
   // for most bases, the session OPEN), never the instant its close became
@@ -120,7 +133,15 @@ export function resolveSessionMeasurements(
     barAt: anchorBar.barAt,
     isEarlyClose: input.calendar.isEarlyClose(anchorDay),
   });
-  if (anchorClose.getTime() >= input.releaseAt.getTime()) {
+  if (
+    anchorBar.availableAt !== undefined &&
+    (!Number.isFinite(anchorBar.availableAt.getTime()) ||
+      anchorBar.availableAt.getTime() < anchorClose.getTime())
+  ) {
+    return { status: "refused", reason: "anchor_availability_invalid" };
+  }
+  const availabilityBound = anchorBar.availableAt ?? anchorClose;
+  if (availabilityBound.getTime() >= input.releaseAt.getTime()) {
     return { status: "refused", reason: "anchor_not_pre_release" };
   }
 
@@ -132,7 +153,8 @@ export function resolveSessionMeasurements(
     const endpointDay = input.calendar.dayAt(release.index + offset);
     if (endpointDay === null) continue;
     const endpointBar = byDay.get(endpointDay);
-    if (endpointBar === undefined || !usable(endpointBar.close)) continue;
+    if (endpointBar === undefined || !usable(endpointBar.close) ||
+      !Number.isFinite(endpointBar.barAt.getTime())) continue;
 
     measurements.push({
       measure,
@@ -162,6 +184,8 @@ export interface IntradayBar {
   /** Provider bar stamp. Intraday bars are stamped at the bar OPEN. */
   barAt: Date;
   open: number | null;
+  /** Usable instant of this OPEN value, not of the completed OHLC bar. */
+  availableAt?: Date;
   /**
    * Basis of THIS bar. Carried per-bar rather than once for the whole call so
    * the anchor/endpoint same-basis invariant is an enforced runtime check
@@ -197,6 +221,9 @@ export interface IntradayMeasurementInput {
 export function resolveIntradayMeasurement(
   input: IntradayMeasurementInput,
 ): MeasurementOutcome {
+  if (!Number.isFinite(input.releaseAt.getTime())) {
+    return { status: "refused", reason: "invalid_release_timestamp" };
+  }
   const sessionBasis = sessionBasisFor(input.symbol);
   if (sessionBasis === null) {
     return { status: "refused", reason: "undeclared_symbol" };
@@ -214,7 +241,9 @@ export function resolveIntradayMeasurement(
     const ms = bar.barAt.getTime();
     if (ms >= releaseMs) continue;
     if (releaseMs - ms > INTRADAY_ANCHOR_MAX_AGE_MS) break;
-    if (usable(bar.open)) {
+    const available = bar.availableAt ?? bar.barAt;
+    if (usable(bar.open) && Number.isFinite(available.getTime()) &&
+      available.getTime() >= ms && available.getTime() < releaseMs) {
       anchor = bar;
       break;
     }

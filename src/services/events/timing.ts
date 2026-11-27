@@ -31,6 +31,10 @@ export const ARCHIVED_ASSET_REACTION_VERSION = 2;
  */
 export const CURRENT_REACTION_CALCULATION_VERSION = 3;
 
+/** Corrected NYSE hours and anchor guards. Additive writes only; live read
+ * cutover is gated on archived-input replay, completeness and acceptance. */
+export const COMPUTED_REACTION_CALCULATION_VERSION = 4;
+
 /**
  * The only timing statuses that can anchor a published reaction.
  *

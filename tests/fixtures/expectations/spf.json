@@ -1,0 +1,18 @@
+[
+  {
+    "id": "spf:median:CPI_HEADLINE:2023-Q3:CPI2",
+    "kind": "PROFESSIONAL_SURVEY",
+    "metricKey": "CPI_HEADLINE",
+    "referencePeriodStart": null,
+    "horizon": "quarter_ahead",
+    "value": 3.3,
+    "unit": "pct_saar",
+    "asOf": null,
+    "asOfQuality": "DATE_ONLY",
+    "asOfDate": "2023-08-11",
+    "source": "Philadelphia Fed SPF (median)",
+    "sourceUrl": "https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/survey-of-professional-forecasters",
+    "licenseNote": "Informational/educational/research use per Philly Fed terms. Quarterly annualized QoQ — not a monthly BLS print consensus.",
+    "providerRecordId": "2023-Q3:CPI2"
+  }
+]

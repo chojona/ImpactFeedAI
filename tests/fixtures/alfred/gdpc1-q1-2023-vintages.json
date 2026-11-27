@@ -1,0 +1,50 @@
+{
+  "2023-04-27": {
+    "observations": [
+      {
+        "realtime_start": "2023-04-27",
+        "realtime_end": "2023-04-27",
+        "date": "2022-10-01",
+        "value": "20182.491"
+      },
+      {
+        "realtime_start": "2023-04-27",
+        "realtime_end": "2023-04-27",
+        "date": "2023-01-01",
+        "value": "20235.878"
+      }
+    ]
+  },
+  "2023-05-25": {
+    "observations": [
+      {
+        "realtime_start": "2023-05-25",
+        "realtime_end": "2023-05-25",
+        "date": "2022-10-01",
+        "value": "20182.491"
+      },
+      {
+        "realtime_start": "2023-05-25",
+        "realtime_end": "2023-05-25",
+        "date": "2023-01-01",
+        "value": "20246.439"
+      }
+    ]
+  },
+  "2023-06-29": {
+    "observations": [
+      {
+        "realtime_start": "2023-06-29",
+        "realtime_end": "2023-06-29",
+        "date": "2022-10-01",
+        "value": "20182.491"
+      },
+      {
+        "realtime_start": "2023-06-29",
+        "realtime_end": "2023-06-29",
+        "date": "2023-01-01",
+        "value": "20282.76"
+      }
+    ]
+  }
+}

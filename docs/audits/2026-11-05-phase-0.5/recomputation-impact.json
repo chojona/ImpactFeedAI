@@ -1,0 +1,3670 @@
+{
+  "generatedAt": "2026-11-05T22:07:43.669Z",
+  "mode": "dry_run_no_database_client",
+  "inputsSha256": "689e674d6930bbc9d15a4a77b1362efdef1501192c05afcf01de1a7c91283b5d",
+  "candidateCalculationVersion": 4,
+  "observedBefore": 828,
+  "computedAfter": 813,
+  "unchanged": 753,
+  "changed": 75,
+  "removed": 15,
+  "added": 0,
+  "incomplete": [],
+  "unavailableCurrentProvider": [
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/SPY/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/QQQ/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/IWM/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/TLT/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GLD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GC=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/CL=F/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/DX-Y.NYB/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/BTC-USD/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/XLE/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/XLF/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/XLK/INTRADAY_60M",
+      "reason": "no_intraday_anchor"
+    }
+  ],
+  "changedObservations": [
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1723.300048828125,
+        "anchorBarAt": "2022-07-12T04:00:00.000Z",
+        "anchorSessionDay": "2022-07-12",
+        "endpointPrice": 1734.199951171875,
+        "endpointBarAt": "2022-07-13T04:00:00.000Z",
+        "endpointSessionDay": "2022-07-13",
+        "releaseSessionDay": "2022-07-13",
+        "pctChange": 0.6325017138577886,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1724.800048828125,
+        "anchorBarAt": "2022-07-12T04:00:00.000Z",
+        "anchorSessionDay": "2022-07-12",
+        "endpointPrice": 1735.5,
+        "endpointBarAt": "2022-07-13T04:00:00.000Z",
+        "endpointSessionDay": "2022-07-13",
+        "releaseSessionDay": "2022-07-13",
+        "pctChange": 0.6203589325698844,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.012142781287904247,
+        "anchorPriceDelta": 1.5,
+        "endpointPriceDelta": 1.300048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1723.300048828125,
+        "anchorBarAt": "2022-07-12T04:00:00.000Z",
+        "anchorSessionDay": "2022-07-12",
+        "endpointPrice": 1704.5,
+        "endpointBarAt": "2022-07-14T04:00:00.000Z",
+        "endpointSessionDay": "2022-07-14",
+        "releaseSessionDay": "2022-07-13",
+        "pctChange": -1.0909329945710482,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1724.800048828125,
+        "anchorBarAt": "2022-07-12T04:00:00.000Z",
+        "anchorSessionDay": "2022-07-12",
+        "endpointPrice": 1705.800048828125,
+        "endpointBarAt": "2022-07-14T04:00:00.000Z",
+        "endpointSessionDay": "2022-07-14",
+        "releaseSessionDay": "2022-07-13",
+        "pctChange": -1.1015769632491086,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.01064396867806039,
+        "anchorPriceDelta": 1.5,
+        "endpointPriceDelta": 1.300048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1723.300048828125,
+        "anchorBarAt": "2022-07-12T04:00:00.000Z",
+        "anchorSessionDay": "2022-07-12",
+        "endpointPrice": 1699.5,
+        "endpointBarAt": "2022-07-20T04:00:00.000Z",
+        "endpointSessionDay": "2022-07-20",
+        "releaseSessionDay": "2022-07-13",
+        "pctChange": -1.3810739948803148,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1724.800048828125,
+        "anchorBarAt": "2022-07-12T04:00:00.000Z",
+        "anchorSessionDay": "2022-07-12",
+        "endpointPrice": 1700.199951171875,
+        "endpointBarAt": "2022-07-20T04:00:00.000Z",
+        "endpointSessionDay": "2022-07-20",
+        "releaseSessionDay": "2022-07-13",
+        "pctChange": -1.4262579406212308,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.045183945740916,
+        "anchorPriceDelta": 1.5,
+        "endpointPriceDelta": 0.699951171875
+      },
+      "resolved": false
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2053,
+        "anchorBarAt": "2024-02-01T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-01",
+        "endpointPrice": 2036.0999755859375,
+        "endpointBarAt": "2024-02-02T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-02",
+        "releaseSessionDay": "2024-02-02",
+        "pctChange": -0.8231867712646128,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2071.10009765625,
+        "anchorBarAt": "2024-02-01T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-01",
+        "endpointPrice": 2053.699951171875,
+        "endpointBarAt": "2024-02-02T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-02",
+        "releaseSessionDay": "2024-02-02",
+        "pctChange": -0.8401402956846842,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.016953524420071364,
+        "anchorPriceDelta": 18.10009765625,
+        "endpointPriceDelta": 17.5999755859375
+      },
+      "resolved": false
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2053,
+        "anchorBarAt": "2024-02-01T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-01",
+        "endpointPrice": 2025.699951171875,
+        "endpointBarAt": "2024-02-05T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-05",
+        "releaseSessionDay": "2024-02-02",
+        "pctChange": -1.3297637032696055,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2071.10009765625,
+        "anchorBarAt": "2024-02-01T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-01",
+        "endpointPrice": 2042.9000244140625,
+        "endpointBarAt": "2024-02-05T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-05",
+        "releaseSessionDay": "2024-02-02",
+        "pctChange": -1.361598759717117,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.03183505644751161,
+        "anchorPriceDelta": 18.10009765625,
+        "endpointPriceDelta": 17.2000732421875
+      },
+      "resolved": false
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2053,
+        "anchorBarAt": "2024-02-01T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-01",
+        "endpointPrice": 2023.300048828125,
+        "endpointBarAt": "2024-02-09T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-09",
+        "releaseSessionDay": "2024-02-02",
+        "pctChange": -1.4466610410070628,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2071.10009765625,
+        "anchorBarAt": "2024-02-01T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-01",
+        "endpointPrice": 2038.699951171875,
+        "endpointBarAt": "2024-02-09T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-09",
+        "releaseSessionDay": "2024-02-02",
+        "pctChange": -1.5643930740498957,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.11773203304283286,
+        "anchorPriceDelta": 18.10009765625,
+        "endpointPriceDelta": 15.39990234375
+      },
+      "resolved": false
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2329.60009765625,
+        "anchorBarAt": "2024-04-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-04-10",
+        "endpointPrice": 2354.800048828125,
+        "endpointBarAt": "2024-04-11T04:00:00.000Z",
+        "endpointSessionDay": "2024-04-11",
+        "releaseSessionDay": "2024-04-11",
+        "pctChange": 1.081728627897467,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2348.39990234375,
+        "anchorBarAt": "2024-04-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-04-10",
+        "endpointPrice": 2372.699951171875,
+        "endpointBarAt": "2024-04-11T04:00:00.000Z",
+        "endpointSessionDay": "2024-04-11",
+        "releaseSessionDay": "2024-04-11",
+        "pctChange": 1.0347491840666942,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.04697944383077268,
+        "anchorPriceDelta": 18.7998046875,
+        "endpointPriceDelta": 17.89990234375
+      },
+      "resolved": false
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2329.60009765625,
+        "anchorBarAt": "2024-04-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-04-10",
+        "endpointPrice": 2356.199951171875,
+        "endpointBarAt": "2024-04-12T04:00:00.000Z",
+        "endpointSessionDay": "2024-04-12",
+        "releaseSessionDay": "2024-04-11",
+        "pctChange": 1.1418205872495635,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2348.39990234375,
+        "anchorBarAt": "2024-04-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-04-10",
+        "endpointPrice": 2374.10009765625,
+        "endpointBarAt": "2024-04-12T04:00:00.000Z",
+        "endpointSessionDay": "2024-04-12",
+        "releaseSessionDay": "2024-04-11",
+        "pctChange": 1.094370481230675,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.04745010601888855,
+        "anchorPriceDelta": 18.7998046875,
+        "endpointPriceDelta": 17.900146484375
+      },
+      "resolved": false
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2329.60009765625,
+        "anchorBarAt": "2024-04-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-04-10",
+        "endpointPrice": 2382.300048828125,
+        "endpointBarAt": "2024-04-18T04:00:00.000Z",
+        "endpointSessionDay": "2024-04-18",
+        "releaseSessionDay": "2024-04-11",
+        "pctChange": 2.2621887432480383,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2348.39990234375,
+        "anchorBarAt": "2024-04-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-04-10",
+        "endpointPrice": 2398,
+        "endpointBarAt": "2024-04-18T04:00:00.000Z",
+        "endpointSessionDay": "2024-04-18",
+        "releaseSessionDay": "2024-04-11",
+        "pctChange": 2.112080553518509,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.15010818972952933,
+        "anchorPriceDelta": 18.7998046875,
+        "endpointPriceDelta": 15.699951171875
+      },
+      "resolved": false
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3411.39990234375,
+        "anchorBarAt": "2025-05-06T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-06",
+        "endpointPrice": 3381.39990234375,
+        "endpointBarAt": "2025-05-07T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-07",
+        "releaseSessionDay": "2025-05-07",
+        "pctChange": -0.8794043752944051,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3422.800048828125,
+        "anchorBarAt": "2025-05-06T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-06",
+        "endpointPrice": 3391.89990234375,
+        "endpointBarAt": "2025-05-07T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-07",
+        "releaseSessionDay": "2025-05-07",
+        "pctChange": -0.9027739290512861,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.02336955375688099,
+        "anchorPriceDelta": 11.400146484375,
+        "endpointPriceDelta": 10.5
+      },
+      "resolved": false
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3411.39990234375,
+        "anchorBarAt": "2025-05-06T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-06",
+        "endpointPrice": 3296.60009765625,
+        "endpointBarAt": "2025-05-08T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-08",
+        "releaseSessionDay": "2025-05-07",
+        "pctChange": -3.365181684171022,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3422.800048828125,
+        "anchorBarAt": "2025-05-06T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-06",
+        "endpointPrice": 3306,
+        "endpointBarAt": "2025-05-08T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-08",
+        "releaseSessionDay": "2025-05-07",
+        "pctChange": -3.4124122695427155,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.04723058537169367,
+        "anchorPriceDelta": 11.400146484375,
+        "endpointPriceDelta": 9.39990234375
+      },
+      "resolved": false
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3411.39990234375,
+        "anchorBarAt": "2025-05-06T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-06",
+        "endpointPrice": 3181.39990234375,
+        "endpointBarAt": "2025-05-14T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-14",
+        "releaseSessionDay": "2025-05-07",
+        "pctChange": -6.742100210590439,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3422.800048828125,
+        "anchorBarAt": "2025-05-06T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-06",
+        "endpointPrice": 3188.300048828125,
+        "endpointBarAt": "2025-05-14T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-14",
+        "releaseSessionDay": "2025-05-07",
+        "pctChange": -6.851115947608057,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.10901573701761791,
+        "anchorPriceDelta": 11.400146484375,
+        "endpointPriceDelta": 6.900146484375
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/BTC-USD/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 76337.4765625,
+        "anchorBarAt": "2024-11-07T18:00:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 76560.234375,
+        "endpointBarAt": "2024-11-07T20:00:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.29180662307801186,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "CONTINUOUS_24_7"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:08.522Z",
+        "ageDaysAtFetch": 728.1285708564815
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/CL=F/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 72.56999969482422,
+        "anchorBarAt": "2024-11-07T18:00:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 72.2300033569336,
+        "endpointBarAt": "2024-11-07T20:00:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": -0.4685081153650245,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:08.189Z",
+        "ageDaysAtFetch": 728.1285670023149
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/DX-Y.NYB/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 104.3290023803711,
+        "anchorBarAt": "2024-11-07T18:00:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 104.50900268554688,
+        "endpointBarAt": "2024-11-07T20:00:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.17253141606733824,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:08.350Z",
+        "ageDaysAtFetch": 728.1285688657407
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GC=F/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 2706.800048828125,
+        "anchorBarAt": "2024-11-07T18:00:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 2701.699951171875,
+        "endpointBarAt": "2024-11-07T20:00:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": -0.1884179682373666,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:08.007Z",
+        "ageDaysAtFetch": 728.1285648958333
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2667.60009765625,
+        "anchorBarAt": "2024-11-06T05:00:00.000Z",
+        "anchorSessionDay": "2024-11-06",
+        "endpointPrice": 2698.39990234375,
+        "endpointBarAt": "2024-11-07T05:00:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 1.1545885275143253,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2676.300048828125,
+        "anchorBarAt": "2024-11-06T05:00:00.000Z",
+        "anchorSessionDay": "2024-11-06",
+        "endpointPrice": 2705.800048828125,
+        "endpointBarAt": "2024-11-07T05:00:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 1.1022680365348871,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.05232049097943814,
+        "anchorPriceDelta": 8.699951171875,
+        "endpointPriceDelta": 7.400146484375
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2667.60009765625,
+        "anchorBarAt": "2024-11-06T05:00:00.000Z",
+        "anchorSessionDay": "2024-11-06",
+        "endpointPrice": 2687.5,
+        "endpointBarAt": "2024-11-08T05:00:00.000Z",
+        "endpointSessionDay": "2024-11-08",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.7459852157463193,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2676.300048828125,
+        "anchorBarAt": "2024-11-06T05:00:00.000Z",
+        "anchorSessionDay": "2024-11-06",
+        "endpointPrice": 2694.800048828125,
+        "endpointBarAt": "2024-11-08T05:00:00.000Z",
+        "endpointSessionDay": "2024-11-08",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.6912528364710309,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.0547323792752884,
+        "anchorPriceDelta": 8.699951171875,
+        "endpointPriceDelta": 7.300048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2667.60009765625,
+        "anchorBarAt": "2024-11-06T05:00:00.000Z",
+        "anchorSessionDay": "2024-11-06",
+        "endpointPrice": 2568.199951171875,
+        "endpointBarAt": "2024-11-14T05:00:00.000Z",
+        "endpointSessionDay": "2024-11-14",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": -3.7262011862912976,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2676.300048828125,
+        "anchorBarAt": "2024-11-06T05:00:00.000Z",
+        "anchorSessionDay": "2024-11-06",
+        "endpointPrice": 2572.89990234375,
+        "endpointBarAt": "2024-11-14T05:00:00.000Z",
+        "endpointSessionDay": "2024-11-14",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": -3.8635483539915847,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.1373471677002871,
+        "anchorPriceDelta": 8.699951171875,
+        "endpointPriceDelta": 4.699951171875
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GLD/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 249.1199951171875,
+        "anchorBarAt": "2024-11-07T18:30:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 249.9499969482422,
+        "endpointBarAt": "2024-11-07T20:30:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.33317350968325515,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "US_EQUITY_RTH"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:07.815Z",
+        "ageDaysAtFetch": 728.1285626736111
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/IWM/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 236.67999267578125,
+        "anchorBarAt": "2024-11-07T18:30:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 236.75,
+        "endpointBarAt": "2024-11-07T20:30:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.029578894027874305,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "US_EQUITY_RTH"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:07.481Z",
+        "ageDaysAtFetch": 728.1285588078704
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/QQQ/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 512.3800048828125,
+        "anchorBarAt": "2024-11-07T18:30:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 513.8099975585938,
+        "endpointBarAt": "2024-11-07T20:30:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.2790883059748412,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "US_EQUITY_RTH"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:07.303Z",
+        "ageDaysAtFetch": 728.1285567476851
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/SPY/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 594.8499755859375,
+        "anchorBarAt": "2024-11-07T18:30:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 596.1300048828125,
+        "endpointBarAt": "2024-11-07T20:30:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.2151852314718764,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "US_EQUITY_RTH"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:07.129Z",
+        "ageDaysAtFetch": 728.1285547337962
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/TLT/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 91.0979995727539,
+        "anchorBarAt": "2024-11-07T18:30:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 91.45500183105469,
+        "endpointBarAt": "2024-11-07T20:30:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.39188814241268527,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "US_EQUITY_RTH"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:07.655Z",
+        "ageDaysAtFetch": 728.1285608217593
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/XLE/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 93.11499786376953,
+        "anchorBarAt": "2024-11-07T18:30:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 93.375,
+        "endpointBarAt": "2024-11-07T20:30:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.2792269153148249,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "US_EQUITY_RTH"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:08.704Z",
+        "ageDaysAtFetch": 728.128572962963
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/XLF/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 48.915000915527344,
+        "anchorBarAt": "2024-11-07T18:30:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 48.875,
+        "endpointBarAt": "2024-11-07T20:30:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": -0.0817763769368469,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "US_EQUITY_RTH"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:08.899Z",
+        "ageDaysAtFetch": 728.1285752199074
+      },
+      "resolved": false
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/XLK/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 236.50999450683594,
+        "anchorBarAt": "2024-11-07T18:30:00.000Z",
+        "anchorSessionDay": "2024-11-07",
+        "endpointPrice": 237.35000610351562,
+        "endpointBarAt": "2024-11-07T20:30:00.000Z",
+        "endpointSessionDay": "2024-11-07",
+        "releaseSessionDay": "2024-11-07",
+        "pctChange": 0.3551695979830604,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "US_EQUITY_RTH"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval outside_retention. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "outside_retention"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 0,
+        "firstCurrentIntradayBar": null,
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:09.080Z",
+        "ageDaysAtFetch": 728.1285773148148
+      },
+      "resolved": false
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/CL=F/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 67.42,
+        "anchorBarAt": "2025-07-03T12:00:00.000Z",
+        "anchorSessionDay": "2025-07-03",
+        "endpointPrice": 67.41000366210938,
+        "endpointBarAt": "2025-07-03T13:30:00.000Z",
+        "endpointSessionDay": "2025-07-03",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": -0.01482696216349259,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval fetched. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "fetched"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 5,
+        "firstCurrentIntradayBar": "2025-07-03T13:30:00.000Z",
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:10.784Z",
+        "ageDaysAtFetch": 490.3994303703704
+      },
+      "resolved": false
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/DX-Y.NYB/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 96.867,
+        "anchorBarAt": "2025-07-03T12:00:00.000Z",
+        "anchorSessionDay": "2025-07-03",
+        "endpointPrice": 97.27400207519531,
+        "endpointBarAt": "2025-07-03T13:30:00.000Z",
+        "endpointSessionDay": "2025-07-03",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": 0.42016587196393823,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval fetched. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "fetched"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 5,
+        "firstCurrentIntradayBar": "2025-07-03T13:30:00.000Z",
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:11.030Z",
+        "ageDaysAtFetch": 490.3994332175926
+      },
+      "resolved": false
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/GC=F/INTRADAY_60M",
+      "before": {
+        "measure": "INTRADAY_60M",
+        "anchorKind": "PRE_RELEASE_INTRADAY_BAR",
+        "anchorPrice": 3356.3,
+        "anchorBarAt": "2025-07-03T12:00:00.000Z",
+        "anchorSessionDay": "2025-07-03",
+        "endpointPrice": 3335,
+        "endpointBarAt": "2025-07-03T13:30:00.000Z",
+        "endpointSessionDay": "2025-07-03",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": -0.6346274170962125,
+        "priceBasis": "AS_TRADED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": null,
+      "investigation": "No v4 candidate; engine reason no_intraday_anchor; current intraday retrieval fetched. This explains current reproducibility only, not historical nonexistence. Preserve the v3 observation; original input archive required for lossless replay.",
+      "evidence": {
+        "retrieval": {
+          "status": "fetched"
+        },
+        "reason": "no_intraday_anchor",
+        "currentIntradayBarCount": 5,
+        "firstCurrentIntradayBar": "2025-07-03T13:30:00.000Z",
+        "oldAnchorStillPresent": false,
+        "currentBarsBeforeRelease": 0,
+        "fetchedAt": "2026-11-05T22:05:10.569Z",
+        "ageDaysAtFetch": 490.39942788194446
+      },
+      "resolved": false
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3348,
+        "anchorBarAt": "2025-07-02T04:00:00.000Z",
+        "anchorSessionDay": "2025-07-02",
+        "endpointPrice": 3331.60009765625,
+        "endpointBarAt": "2025-07-03T13:30:00.000Z",
+        "endpointSessionDay": "2025-07-03",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": -0.4898417665397252,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3359.699951171875,
+        "anchorBarAt": "2025-07-02T04:00:00.000Z",
+        "anchorSessionDay": "2025-07-02",
+        "endpointPrice": 3342.89990234375,
+        "endpointBarAt": "2025-07-03T13:30:00.000Z",
+        "endpointSessionDay": "2025-07-03",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": -0.5000461074586462,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.010204340918920973,
+        "anchorPriceDelta": 11.699951171875,
+        "endpointPriceDelta": 11.2998046875
+      },
+      "resolved": false
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3348,
+        "anchorBarAt": "2025-07-02T04:00:00.000Z",
+        "anchorSessionDay": "2025-07-02",
+        "endpointPrice": 3332.199951171875,
+        "endpointBarAt": "2025-07-07T04:00:00.000Z",
+        "endpointSessionDay": "2025-07-07",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": -0.47192499486633815,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3359.699951171875,
+        "anchorBarAt": "2025-07-02T04:00:00.000Z",
+        "anchorSessionDay": "2025-07-02",
+        "endpointPrice": 3342.800048828125,
+        "endpointBarAt": "2025-07-07T04:00:00.000Z",
+        "endpointSessionDay": "2025-07-07",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": -0.5030182036897448,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.03109320882340666,
+        "anchorPriceDelta": 11.699951171875,
+        "endpointPriceDelta": 10.60009765625
+      },
+      "resolved": false
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3348,
+        "anchorBarAt": "2025-07-02T04:00:00.000Z",
+        "anchorSessionDay": "2025-07-02",
+        "endpointPrice": 3356,
+        "endpointBarAt": "2025-07-11T04:00:00.000Z",
+        "endpointSessionDay": "2025-07-11",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": 0.23894862604540024,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3359.699951171875,
+        "anchorBarAt": "2025-07-02T04:00:00.000Z",
+        "anchorSessionDay": "2025-07-02",
+        "endpointPrice": 3364,
+        "endpointBarAt": "2025-07-11T04:00:00.000Z",
+        "endpointSessionDay": "2025-07-11",
+        "releaseSessionDay": "2025-07-03",
+        "pctChange": 0.12798907314997365,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.11095955289542658,
+        "anchorPriceDelta": 11.699951171875,
+        "endpointPriceDelta": 8
+      },
+      "resolved": false
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1710.0999755859375,
+        "anchorBarAt": "2022-11-09T05:00:00.000Z",
+        "anchorSessionDay": "2022-11-09",
+        "endpointPrice": 1750.300048828125,
+        "endpointBarAt": "2022-11-10T05:00:00.000Z",
+        "endpointSessionDay": "2022-11-10",
+        "releaseSessionDay": "2022-11-10",
+        "pctChange": 2.350744039301773,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1713.699951171875,
+        "anchorBarAt": "2022-11-09T05:00:00.000Z",
+        "anchorSessionDay": "2022-11-09",
+        "endpointPrice": 1753.699951171875,
+        "endpointBarAt": "2022-11-10T05:00:00.000Z",
+        "endpointSessionDay": "2022-11-10",
+        "releaseSessionDay": "2022-11-10",
+        "pctChange": 2.3341308945388546,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.01661314476291853,
+        "anchorPriceDelta": 3.5999755859375,
+        "endpointPriceDelta": 3.39990234375
+      },
+      "resolved": false
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1710.0999755859375,
+        "anchorBarAt": "2022-11-09T05:00:00.000Z",
+        "anchorSessionDay": "2022-11-09",
+        "endpointPrice": 1766,
+        "endpointBarAt": "2022-11-11T05:00:00.000Z",
+        "endpointSessionDay": "2022-11-11",
+        "releaseSessionDay": "2022-11-10",
+        "pctChange": 3.2688161635058375,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1713.699951171875,
+        "anchorBarAt": "2022-11-09T05:00:00.000Z",
+        "anchorSessionDay": "2022-11-09",
+        "endpointPrice": 1769.4000244140625,
+        "endpointBarAt": "2022-11-11T05:00:00.000Z",
+        "endpointSessionDay": "2022-11-11",
+        "releaseSessionDay": "2022-11-10",
+        "pctChange": 3.250281544566671,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.018534618939166414,
+        "anchorPriceDelta": 3.5999755859375,
+        "endpointPriceDelta": 3.4000244140625
+      },
+      "resolved": false
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1710.0999755859375,
+        "anchorBarAt": "2022-11-09T05:00:00.000Z",
+        "anchorSessionDay": "2022-11-09",
+        "endpointPrice": 1760.800048828125,
+        "endpointBarAt": "2022-11-17T05:00:00.000Z",
+        "endpointSessionDay": "2022-11-17",
+        "releaseSessionDay": "2022-11-10",
+        "pctChange": 2.9647432294018925,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1713.699951171875,
+        "anchorBarAt": "2022-11-09T05:00:00.000Z",
+        "anchorSessionDay": "2022-11-09",
+        "endpointPrice": 1763,
+        "endpointBarAt": "2022-11-17T05:00:00.000Z",
+        "endpointSessionDay": "2022-11-17",
+        "releaseSessionDay": "2022-11-10",
+        "pctChange": 2.8768191768000153,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.08792405260187719,
+        "anchorPriceDelta": 3.5999755859375,
+        "endpointPriceDelta": 2.199951171875
+      },
+      "resolved": false
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2909,
+        "anchorBarAt": "2025-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2025-02-12",
+        "endpointPrice": 2925.89990234375,
+        "endpointBarAt": "2025-02-13T05:00:00.000Z",
+        "endpointSessionDay": "2025-02-13",
+        "releaseSessionDay": "2025-02-13",
+        "pctChange": 0.5809522978257133,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2928.699951171875,
+        "anchorBarAt": "2025-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2025-02-12",
+        "endpointPrice": 2945.39990234375,
+        "endpointBarAt": "2025-02-13T05:00:00.000Z",
+        "endpointSessionDay": "2025-02-13",
+        "releaseSessionDay": "2025-02-13",
+        "pctChange": 0.5702172107181128,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.010735087107600516,
+        "anchorPriceDelta": 19.699951171875,
+        "endpointPriceDelta": 19.5
+      },
+      "resolved": false
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2909,
+        "anchorBarAt": "2025-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2025-02-12",
+        "endpointPrice": 2883.60009765625,
+        "endpointBarAt": "2025-02-14T05:00:00.000Z",
+        "endpointSessionDay": "2025-02-14",
+        "releaseSessionDay": "2025-02-13",
+        "pctChange": -0.8731489289704365,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2928.699951171875,
+        "anchorBarAt": "2025-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2025-02-12",
+        "endpointPrice": 2900.699951171875,
+        "endpointBarAt": "2025-02-14T05:00:00.000Z",
+        "endpointSessionDay": "2025-02-14",
+        "releaseSessionDay": "2025-02-13",
+        "pctChange": -0.9560556037430951,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.08290667477265856,
+        "anchorPriceDelta": 19.699951171875,
+        "endpointPriceDelta": 17.099853515625
+      },
+      "resolved": false
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2909,
+        "anchorBarAt": "2025-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2025-02-12",
+        "endpointPrice": 2937.60009765625,
+        "endpointBarAt": "2025-02-21T05:00:00.000Z",
+        "endpointSessionDay": "2025-02-21",
+        "releaseSessionDay": "2025-02-13",
+        "pctChange": 0.9831590806548641,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2928.699951171875,
+        "anchorBarAt": "2025-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2025-02-12",
+        "endpointPrice": 2953.199951171875,
+        "endpointBarAt": "2025-02-21T05:00:00.000Z",
+        "endpointSessionDay": "2025-02-21",
+        "releaseSessionDay": "2025-02-13",
+        "pctChange": 0.8365486532752082,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.1466104273796559,
+        "anchorPriceDelta": 19.699951171875,
+        "endpointPriceDelta": 15.599853515625
+      },
+      "resolved": false
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3320.89990234375,
+        "anchorBarAt": "2025-06-10T04:00:00.000Z",
+        "anchorSessionDay": "2025-06-10",
+        "endpointPrice": 3321.300048828125,
+        "endpointBarAt": "2025-06-11T04:00:00.000Z",
+        "endpointSessionDay": "2025-06-11",
+        "releaseSessionDay": "2025-06-11",
+        "pctChange": 0.012049338918423696,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3343.39990234375,
+        "anchorBarAt": "2025-06-10T04:00:00.000Z",
+        "anchorSessionDay": "2025-06-10",
+        "endpointPrice": 3343.699951171875,
+        "endpointBarAt": "2025-06-11T04:00:00.000Z",
+        "endpointSessionDay": "2025-06-11",
+        "releaseSessionDay": "2025-06-11",
+        "pctChange": 0.008974362531824667,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.003074976386599029,
+        "anchorPriceDelta": 22.5,
+        "endpointPriceDelta": 22.39990234375
+      },
+      "resolved": false
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3320.89990234375,
+        "anchorBarAt": "2025-06-10T04:00:00.000Z",
+        "anchorSessionDay": "2025-06-10",
+        "endpointPrice": 3380.89990234375,
+        "endpointBarAt": "2025-06-12T04:00:00.000Z",
+        "endpointSessionDay": "2025-06-12",
+        "releaseSessionDay": "2025-06-11",
+        "pctChange": 1.806739190110926,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3343.39990234375,
+        "anchorBarAt": "2025-06-10T04:00:00.000Z",
+        "anchorSessionDay": "2025-06-10",
+        "endpointPrice": 3402.39990234375,
+        "endpointBarAt": "2025-06-12T04:00:00.000Z",
+        "endpointSessionDay": "2025-06-12",
+        "releaseSessionDay": "2025-06-11",
+        "pctChange": 1.7646707460462783,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.042068444064647714,
+        "anchorPriceDelta": 22.5,
+        "endpointPriceDelta": 21.5
+      },
+      "resolved": false
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3320.89990234375,
+        "anchorBarAt": "2025-06-10T04:00:00.000Z",
+        "anchorSessionDay": "2025-06-10",
+        "endpointPrice": 3389.800048828125,
+        "endpointBarAt": "2025-06-18T04:00:00.000Z",
+        "endpointSessionDay": "2025-06-18",
+        "releaseSessionDay": "2025-06-11",
+        "pctChange": 2.0747432476283976,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3343.39990234375,
+        "anchorBarAt": "2025-06-10T04:00:00.000Z",
+        "anchorSessionDay": "2025-06-10",
+        "endpointPrice": 3408.10009765625,
+        "endpointBarAt": "2025-06-18T04:00:00.000Z",
+        "endpointSessionDay": "2025-06-18",
+        "releaseSessionDay": "2025-06-11",
+        "pctChange": 1.9351617276516833,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.1395815199767143,
+        "anchorPriceDelta": 22.5,
+        "endpointPriceDelta": 18.300048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1645,
+        "anchorBarAt": "2022-11-01T04:00:00.000Z",
+        "anchorSessionDay": "2022-11-01",
+        "endpointPrice": 1645.699951171875,
+        "endpointBarAt": "2022-11-02T04:00:00.000Z",
+        "endpointSessionDay": "2022-11-02",
+        "releaseSessionDay": "2022-11-02",
+        "pctChange": 0.04255022321428571,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1649.699951171875,
+        "anchorBarAt": "2022-11-01T04:00:00.000Z",
+        "anchorSessionDay": "2022-11-01",
+        "endpointPrice": 1650,
+        "endpointBarAt": "2022-11-02T04:00:00.000Z",
+        "endpointSessionDay": "2022-11-02",
+        "releaseSessionDay": "2022-11-02",
+        "pctChange": 0.018188084924889426,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.024362138289396287,
+        "anchorPriceDelta": 4.699951171875,
+        "endpointPriceDelta": 4.300048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1645,
+        "anchorBarAt": "2022-11-01T04:00:00.000Z",
+        "anchorSessionDay": "2022-11-01",
+        "endpointPrice": 1627.300048828125,
+        "endpointBarAt": "2022-11-03T04:00:00.000Z",
+        "endpointSessionDay": "2022-11-03",
+        "releaseSessionDay": "2022-11-02",
+        "pctChange": -1.0759848736702127,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1649.699951171875,
+        "anchorBarAt": "2022-11-01T04:00:00.000Z",
+        "anchorSessionDay": "2022-11-01",
+        "endpointPrice": 1630.9000244140625,
+        "endpointBarAt": "2022-11-03T04:00:00.000Z",
+        "endpointSessionDay": "2022-11-03",
+        "releaseSessionDay": "2022-11-02",
+        "pctChange": -1.1395967336034563,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.06361185993324359,
+        "anchorPriceDelta": 4.699951171875,
+        "endpointPriceDelta": 3.5999755859375
+      },
+      "resolved": false
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1645,
+        "anchorBarAt": "2022-11-01T04:00:00.000Z",
+        "anchorSessionDay": "2022-11-01",
+        "endpointPrice": 1710.0999755859375,
+        "endpointBarAt": "2022-11-09T05:00:00.000Z",
+        "endpointSessionDay": "2022-11-09",
+        "releaseSessionDay": "2022-11-02",
+        "pctChange": 3.9574453243731003,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1649.699951171875,
+        "anchorBarAt": "2022-11-01T04:00:00.000Z",
+        "anchorSessionDay": "2022-11-01",
+        "endpointPrice": 1713.699951171875,
+        "endpointBarAt": "2022-11-09T05:00:00.000Z",
+        "endpointSessionDay": "2022-11-09",
+        "releaseSessionDay": "2022-11-02",
+        "pctChange": 3.879493356021329,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.07795196835177132,
+        "anchorPriceDelta": 4.699951171875,
+        "endpointPriceDelta": 3.5999755859375
+      },
+      "resolved": false
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2664.5,
+        "anchorBarAt": "2025-01-08T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-08",
+        "endpointPrice": 2708.5,
+        "endpointBarAt": "2025-01-10T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-10",
+        "releaseSessionDay": "2025-01-10",
+        "pctChange": 1.651341715143554,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2672.39990234375,
+        "anchorBarAt": "2025-01-08T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-08",
+        "endpointPrice": 2715,
+        "endpointBarAt": "2025-01-10T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-10",
+        "releaseSessionDay": "2025-01-10",
+        "pctChange": 1.5940764561055711,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.05726525903798296,
+        "anchorPriceDelta": 7.89990234375,
+        "endpointPriceDelta": 6.5
+      },
+      "resolved": false
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2664.5,
+        "anchorBarAt": "2025-01-08T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-08",
+        "endpointPrice": 2673.5,
+        "endpointBarAt": "2025-01-13T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-13",
+        "releaseSessionDay": "2025-01-10",
+        "pctChange": 0.3377744417339088,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2672.39990234375,
+        "anchorBarAt": "2025-01-08T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-08",
+        "endpointPrice": 2678.60009765625,
+        "endpointBarAt": "2025-01-13T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-13",
+        "releaseSessionDay": "2025-01-10",
+        "pctChange": 0.23200851440917583,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.10576592732473297,
+        "anchorPriceDelta": 7.89990234375,
+        "endpointPriceDelta": 5.10009765625
+      },
+      "resolved": false
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2664.5,
+        "anchorBarAt": "2025-01-08T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-08",
+        "endpointPrice": 2744.300048828125,
+        "endpointBarAt": "2025-01-17T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-17",
+        "releaseSessionDay": "2025-01-10",
+        "pctChange": 2.9949352159176206,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2672.39990234375,
+        "anchorBarAt": "2025-01-08T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-08",
+        "endpointPrice": 2748.699951171875,
+        "endpointBarAt": "2025-01-17T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-17",
+        "releaseSessionDay": "2025-01-10",
+        "pctChange": 2.855113441712383,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.13982177420523767,
+        "anchorPriceDelta": 7.89990234375,
+        "endpointPriceDelta": 4.39990234375
+      },
+      "resolved": false
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2677.5,
+        "anchorBarAt": "2025-01-14T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-14",
+        "endpointPrice": 2712.5,
+        "endpointBarAt": "2025-01-15T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-15",
+        "releaseSessionDay": "2025-01-15",
+        "pctChange": 1.3071895424836601,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2682.300048828125,
+        "anchorBarAt": "2025-01-14T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-14",
+        "endpointPrice": 2717.800048828125,
+        "endpointBarAt": "2025-01-15T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-15",
+        "releaseSessionDay": "2025-01-15",
+        "pctChange": 1.3234910097216626,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": 0.01630146723800241,
+        "anchorPriceDelta": 4.800048828125,
+        "endpointPriceDelta": 5.300048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2677.5,
+        "anchorBarAt": "2025-01-14T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-14",
+        "endpointPrice": 2746.39990234375,
+        "endpointBarAt": "2025-01-16T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-16",
+        "releaseSessionDay": "2025-01-15",
+        "pctChange": 2.5732923377684407,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2682.300048828125,
+        "anchorBarAt": "2025-01-14T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-14",
+        "endpointPrice": 2750.89990234375,
+        "endpointBarAt": "2025-01-16T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-16",
+        "releaseSessionDay": "2025-01-15",
+        "pctChange": 2.5575011097507794,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.015791228017661307,
+        "anchorPriceDelta": 4.800048828125,
+        "endpointPriceDelta": 4.5
+      },
+      "resolved": false
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2677.5,
+        "anchorBarAt": "2025-01-14T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-14",
+        "endpointPrice": 2763.10009765625,
+        "endpointBarAt": "2025-01-23T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-23",
+        "releaseSessionDay": "2025-01-15",
+        "pctChange": 3.197015785480859,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2682.300048828125,
+        "anchorBarAt": "2025-01-14T05:00:00.000Z",
+        "anchorSessionDay": "2025-01-14",
+        "endpointPrice": 2765,
+        "endpointBarAt": "2025-01-23T05:00:00.000Z",
+        "endpointSessionDay": "2025-01-23",
+        "releaseSessionDay": "2025-01-15",
+        "pctChange": 3.08317301071541,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.11384277476544913,
+        "anchorPriceDelta": 4.800048828125,
+        "endpointPriceDelta": 1.89990234375
+      },
+      "resolved": false
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2512.300048828125,
+        "anchorBarAt": "2024-09-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-10",
+        "endpointPrice": 2512.10009765625,
+        "endpointBarAt": "2024-09-11T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-11",
+        "releaseSessionDay": "2024-09-11",
+        "pctChange": -0.007958888985743094,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2543.10009765625,
+        "anchorBarAt": "2024-09-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-10",
+        "endpointPrice": 2542.39990234375,
+        "endpointBarAt": "2024-09-11T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-11",
+        "releaseSessionDay": "2024-09-11",
+        "pctChange": -0.027533140089346386,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.019574251103603293,
+        "anchorPriceDelta": 30.800048828125,
+        "endpointPriceDelta": 30.2998046875
+      },
+      "resolved": false
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2512.300048828125,
+        "anchorBarAt": "2024-09-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-10",
+        "endpointPrice": 2551.199951171875,
+        "endpointBarAt": "2024-09-12T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-12",
+        "releaseSessionDay": "2024-09-11",
+        "pctChange": 1.548378043534054,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2543.10009765625,
+        "anchorBarAt": "2024-09-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-10",
+        "endpointPrice": 2580.60009765625,
+        "endpointBarAt": "2024-09-12T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-12",
+        "releaseSessionDay": "2024-09-11",
+        "pctChange": 1.4745782139900991,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.07379982954395481,
+        "anchorPriceDelta": 30.800048828125,
+        "endpointPriceDelta": 29.400146484375
+      },
+      "resolved": false
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2512.300048828125,
+        "anchorBarAt": "2024-09-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-10",
+        "endpointPrice": 2570.699951171875,
+        "endpointBarAt": "2024-09-18T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-18",
+        "releaseSessionDay": "2024-09-11",
+        "pctChange": 2.3245592170008087,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2543.10009765625,
+        "anchorBarAt": "2024-09-10T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-10",
+        "endpointPrice": 2598.60009765625,
+        "endpointBarAt": "2024-09-18T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-18",
+        "releaseSessionDay": "2024-09-11",
+        "pctChange": 2.182375756705347,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.14218346029546192,
+        "anchorPriceDelta": 30.800048828125,
+        "endpointPriceDelta": 27.900146484375
+      },
+      "resolved": false
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1916.300048828125,
+        "anchorBarAt": "2023-02-02T05:00:00.000Z",
+        "anchorSessionDay": "2023-02-02",
+        "endpointPrice": 1862.9000244140625,
+        "endpointBarAt": "2023-02-03T05:00:00.000Z",
+        "endpointSessionDay": "2023-02-03",
+        "releaseSessionDay": "2023-02-03",
+        "pctChange": -2.7866212520694877,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1930.800048828125,
+        "anchorBarAt": "2023-02-02T05:00:00.000Z",
+        "anchorSessionDay": "2023-02-02",
+        "endpointPrice": 1876.5999755859375,
+        "endpointBarAt": "2023-02-03T05:00:00.000Z",
+        "endpointSessionDay": "2023-02-03",
+        "releaseSessionDay": "2023-02-03",
+        "pctChange": -2.8071303020260205,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.0205090499565328,
+        "anchorPriceDelta": 14.5,
+        "endpointPriceDelta": 13.699951171875
+      },
+      "resolved": false
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1916.300048828125,
+        "anchorBarAt": "2023-02-02T05:00:00.000Z",
+        "anchorSessionDay": "2023-02-02",
+        "endpointPrice": 1866.199951171875,
+        "endpointBarAt": "2023-02-06T05:00:00.000Z",
+        "endpointSessionDay": "2023-02-06",
+        "releaseSessionDay": "2023-02-03",
+        "pctChange": -2.614418221556051,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1930.800048828125,
+        "anchorBarAt": "2023-02-02T05:00:00.000Z",
+        "anchorSessionDay": "2023-02-02",
+        "endpointPrice": 1879.5,
+        "endpointBarAt": "2023-02-06T05:00:00.000Z",
+        "endpointSessionDay": "2023-02-06",
+        "releaseSessionDay": "2023-02-03",
+        "pctChange": -2.6569322317585877,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.042514010202536756,
+        "anchorPriceDelta": 14.5,
+        "endpointPriceDelta": 13.300048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1916.300048828125,
+        "anchorBarAt": "2023-02-02T05:00:00.000Z",
+        "anchorSessionDay": "2023-02-02",
+        "endpointPrice": 1862.800048828125,
+        "endpointBarAt": "2023-02-10T05:00:00.000Z",
+        "endpointSessionDay": "2023-02-10",
+        "releaseSessionDay": "2023-02-03",
+        "pctChange": -2.7918383675206213,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1930.800048828125,
+        "anchorBarAt": "2023-02-02T05:00:00.000Z",
+        "anchorSessionDay": "2023-02-02",
+        "endpointPrice": 1874.5,
+        "endpointBarAt": "2023-02-10T05:00:00.000Z",
+        "endpointSessionDay": "2023-02-10",
+        "releaseSessionDay": "2023-02-03",
+        "pctChange": -2.9158922417831725,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.12405387426255121,
+        "anchorPriceDelta": 14.5,
+        "endpointPriceDelta": 11.699951171875
+      },
+      "resolved": false
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3220,
+        "anchorBarAt": "2025-05-12T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-12",
+        "endpointPrice": 3240.300048828125,
+        "endpointBarAt": "2025-05-13T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-13",
+        "releaseSessionDay": "2025-05-13",
+        "pctChange": 0.6304362990100931,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3228,
+        "anchorBarAt": "2025-05-12T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-12",
+        "endpointPrice": 3247.800048828125,
+        "endpointBarAt": "2025-05-13T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-13",
+        "releaseSessionDay": "2025-05-13",
+        "pctChange": 0.6133844122715304,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.017051886738562727,
+        "anchorPriceDelta": 8,
+        "endpointPriceDelta": 7.5
+      },
+      "resolved": false
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3220,
+        "anchorBarAt": "2025-05-12T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-12",
+        "endpointPrice": 3181.39990234375,
+        "endpointBarAt": "2025-05-14T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-14",
+        "releaseSessionDay": "2025-05-13",
+        "pctChange": -1.1987607967779503,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3228,
+        "anchorBarAt": "2025-05-12T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-12",
+        "endpointPrice": 3188.300048828125,
+        "endpointBarAt": "2025-05-14T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-14",
+        "releaseSessionDay": "2025-05-13",
+        "pctChange": -1.229862180045694,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.031101383267743588,
+        "anchorPriceDelta": 8,
+        "endpointPriceDelta": 6.900146484375
+      },
+      "resolved": false
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3220,
+        "anchorBarAt": "2025-05-12T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-12",
+        "endpointPrice": 3280.300048828125,
+        "endpointBarAt": "2025-05-20T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-20",
+        "releaseSessionDay": "2025-05-13",
+        "pctChange": 1.8726723238548137,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 3228,
+        "anchorBarAt": "2025-05-12T04:00:00.000Z",
+        "anchorSessionDay": "2025-05-12",
+        "endpointPrice": 3284.60009765625,
+        "endpointBarAt": "2025-05-20T04:00:00.000Z",
+        "endpointSessionDay": "2025-05-20",
+        "releaseSessionDay": "2025-05-13",
+        "pctChange": 1.7534107080622676,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.11926161579254613,
+        "anchorPriceDelta": 8,
+        "endpointPriceDelta": 4.300048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2435,
+        "anchorBarAt": "2024-08-01T04:00:00.000Z",
+        "anchorSessionDay": "2024-08-01",
+        "endpointPrice": 2425.699951171875,
+        "endpointBarAt": "2024-08-02T04:00:00.000Z",
+        "endpointSessionDay": "2024-08-02",
+        "releaseSessionDay": "2024-08-02",
+        "pctChange": -0.3819321900667351,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2480.800048828125,
+        "anchorBarAt": "2024-08-01T04:00:00.000Z",
+        "anchorSessionDay": "2024-08-01",
+        "endpointPrice": 2469.800048828125,
+        "endpointBarAt": "2024-08-02T04:00:00.000Z",
+        "endpointSessionDay": "2024-08-02",
+        "releaseSessionDay": "2024-08-02",
+        "pctChange": -0.4434053443846132,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.06147315431787809,
+        "anchorPriceDelta": 45.800048828125,
+        "endpointPriceDelta": 44.10009765625
+      },
+      "resolved": false
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2435,
+        "anchorBarAt": "2024-08-01T04:00:00.000Z",
+        "anchorSessionDay": "2024-08-01",
+        "endpointPrice": 2401.699951171875,
+        "endpointBarAt": "2024-08-05T04:00:00.000Z",
+        "endpointSessionDay": "2024-08-05",
+        "releaseSessionDay": "2024-08-02",
+        "pctChange": -1.3675584734342916,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2480.800048828125,
+        "anchorBarAt": "2024-08-01T04:00:00.000Z",
+        "anchorSessionDay": "2024-08-01",
+        "endpointPrice": 2444.39990234375,
+        "endpointBarAt": "2024-08-05T04:00:00.000Z",
+        "endpointSessionDay": "2024-08-05",
+        "releaseSessionDay": "2024-08-02",
+        "pctChange": -1.4672744988686057,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.09971602543431413,
+        "anchorPriceDelta": 45.800048828125,
+        "endpointPriceDelta": 42.699951171875
+      },
+      "resolved": false
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2435,
+        "anchorBarAt": "2024-08-01T04:00:00.000Z",
+        "anchorSessionDay": "2024-08-01",
+        "endpointPrice": 2432.10009765625,
+        "endpointBarAt": "2024-08-09T04:00:00.000Z",
+        "endpointSessionDay": "2024-08-09",
+        "releaseSessionDay": "2024-08-02",
+        "pctChange": -0.11909249871663245,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2480.800048828125,
+        "anchorBarAt": "2024-08-01T04:00:00.000Z",
+        "anchorSessionDay": "2024-08-01",
+        "endpointPrice": 2473.39990234375,
+        "endpointBarAt": "2024-08-09T04:00:00.000Z",
+        "endpointSessionDay": "2024-08-09",
+        "releaseSessionDay": "2024-08-02",
+        "pctChange": -0.29829677276371647,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.179204274047084,
+        "anchorPriceDelta": 45.800048828125,
+        "endpointPriceDelta": 41.2998046875
+      },
+      "resolved": false
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2564.300048828125,
+        "anchorBarAt": "2024-09-17T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-17",
+        "endpointPrice": 2570.699951171875,
+        "endpointBarAt": "2024-09-18T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-18",
+        "releaseSessionDay": "2024-09-18",
+        "pctChange": 0.2495769692269331,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2592.39990234375,
+        "anchorBarAt": "2024-09-17T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-17",
+        "endpointPrice": 2598.60009765625,
+        "endpointBarAt": "2024-09-18T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-18",
+        "releaseSessionDay": "2024-09-18",
+        "pctChange": 0.23916816641192185,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.010408802815011248,
+        "anchorPriceDelta": 28.099853515625,
+        "endpointPriceDelta": 27.900146484375
+      },
+      "resolved": false
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2564.300048828125,
+        "anchorBarAt": "2024-09-17T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-17",
+        "endpointPrice": 2588,
+        "endpointBarAt": "2024-09-19T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-19",
+        "releaseSessionDay": "2024-09-18",
+        "pctChange": 0.9242269126308282,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2592.39990234375,
+        "anchorBarAt": "2024-09-17T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-17",
+        "endpointPrice": 2614.60009765625,
+        "endpointBarAt": "2024-09-19T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-19",
+        "releaseSessionDay": "2024-09-18",
+        "pctChange": 0.8563568951082406,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.06787001752258759,
+        "anchorPriceDelta": 28.099853515625,
+        "endpointPriceDelta": 26.60009765625
+      },
+      "resolved": false
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2564.300048828125,
+        "anchorBarAt": "2024-09-17T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-17",
+        "endpointPrice": 2659.199951171875,
+        "endpointBarAt": "2024-09-25T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-25",
+        "releaseSessionDay": "2024-09-18",
+        "pctChange": 3.7008111584726167,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2592.39990234375,
+        "anchorBarAt": "2024-09-17T04:00:00.000Z",
+        "anchorSessionDay": "2024-09-17",
+        "endpointPrice": 2684.699951171875,
+        "endpointBarAt": "2024-09-25T04:00:00.000Z",
+        "endpointSessionDay": "2024-09-25",
+        "releaseSessionDay": "2024-09-18",
+        "pctChange": 3.5604093621774133,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.14040179629520333,
+        "anchorPriceDelta": 28.099853515625,
+        "endpointPriceDelta": 25.5
+      },
+      "resolved": false
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1944.5999755859375,
+        "anchorBarAt": "2023-06-13T04:00:00.000Z",
+        "anchorSessionDay": "2023-06-13",
+        "endpointPrice": 1955.300048828125,
+        "endpointBarAt": "2023-06-14T04:00:00.000Z",
+        "endpointSessionDay": "2023-06-14",
+        "releaseSessionDay": "2023-06-14",
+        "pctChange": 0.5502454682980958,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1958.5999755859375,
+        "anchorBarAt": "2023-06-13T04:00:00.000Z",
+        "anchorSessionDay": "2023-06-13",
+        "endpointPrice": 1968.9000244140625,
+        "endpointBarAt": "2023-06-14T04:00:00.000Z",
+        "endpointSessionDay": "2023-06-14",
+        "releaseSessionDay": "2023-06-14",
+        "pctChange": 0.5258883363890384,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.024357131909057417,
+        "anchorPriceDelta": 14,
+        "endpointPriceDelta": 13.5999755859375
+      },
+      "resolved": false
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1944.5999755859375,
+        "anchorBarAt": "2023-06-13T04:00:00.000Z",
+        "anchorSessionDay": "2023-06-13",
+        "endpointPrice": 1957.800048828125,
+        "endpointBarAt": "2023-06-15T04:00:00.000Z",
+        "endpointSessionDay": "2023-06-15",
+        "releaseSessionDay": "2023-06-14",
+        "pctChange": 0.6788066135920894,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1958.5999755859375,
+        "anchorBarAt": "2023-06-13T04:00:00.000Z",
+        "anchorSessionDay": "2023-06-13",
+        "endpointPrice": 1970.699951171875,
+        "endpointBarAt": "2023-06-15T04:00:00.000Z",
+        "endpointSessionDay": "2023-06-15",
+        "releaseSessionDay": "2023-06-14",
+        "pctChange": 0.6177869772676605,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.06101963632442886,
+        "anchorPriceDelta": 14,
+        "endpointPriceDelta": 12.89990234375
+      },
+      "resolved": false
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1944.5999755859375,
+        "anchorBarAt": "2023-06-13T04:00:00.000Z",
+        "anchorSessionDay": "2023-06-13",
+        "endpointPrice": 1912.699951171875,
+        "endpointBarAt": "2023-06-22T04:00:00.000Z",
+        "endpointSessionDay": "2023-06-22",
+        "releaseSessionDay": "2023-06-14",
+        "pctChange": -1.6404414694312923,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 1958.5999755859375,
+        "anchorBarAt": "2023-06-13T04:00:00.000Z",
+        "anchorSessionDay": "2023-06-13",
+        "endpointPrice": 1923.699951171875,
+        "endpointBarAt": "2023-06-22T04:00:00.000Z",
+        "endpointSessionDay": "2023-06-22",
+        "releaseSessionDay": "2023-06-14",
+        "pctChange": -1.781886288629293,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.14144481919800067,
+        "anchorPriceDelta": 14,
+        "endpointPriceDelta": 11
+      },
+      "resolved": false
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2018.199951171875,
+        "anchorBarAt": "2024-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-12",
+        "endpointPrice": 1992.9000244140625,
+        "endpointBarAt": "2024-02-13T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-13",
+        "releaseSessionDay": "2024-02-13",
+        "pctChange": -1.2535887112236828,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2033,
+        "anchorBarAt": "2024-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-12",
+        "endpointPrice": 2007.199951171875,
+        "endpointBarAt": "2024-02-13T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-13",
+        "releaseSessionDay": "2024-02-13",
+        "pctChange": -1.2690629034985244,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.015474192274841592,
+        "anchorPriceDelta": 14.800048828125,
+        "endpointPriceDelta": 14.2999267578125
+      },
+      "resolved": false
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2018.199951171875,
+        "anchorBarAt": "2024-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-12",
+        "endpointPrice": 1990.300048828125,
+        "endpointBarAt": "2024-02-14T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-14",
+        "releaseSessionDay": "2024-02-13",
+        "pctChange": -1.3824151728648009,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2033,
+        "anchorBarAt": "2024-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-12",
+        "endpointPrice": 2004.300048828125,
+        "endpointBarAt": "2024-02-14T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-14",
+        "releaseSessionDay": "2024-02-13",
+        "pctChange": -1.4117044354094934,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.02928926254469255,
+        "anchorPriceDelta": 14.800048828125,
+        "endpointPriceDelta": 14
+      },
+      "resolved": false
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2018.199951171875,
+        "anchorBarAt": "2024-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-12",
+        "endpointPrice": 2022.300048828125,
+        "endpointBarAt": "2024-02-21T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-21",
+        "releaseSessionDay": "2024-02-13",
+        "pctChange": 0.20315616665579958,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2033,
+        "anchorBarAt": "2024-02-12T05:00:00.000Z",
+        "anchorSessionDay": "2024-02-12",
+        "endpointPrice": 2034.300048828125,
+        "endpointBarAt": "2024-02-21T05:00:00.000Z",
+        "endpointSessionDay": "2024-02-21",
+        "releaseSessionDay": "2024-02-13",
+        "pctChange": 0.06394731077840629,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.1392088558773933,
+        "anchorPriceDelta": 14.800048828125,
+        "endpointPriceDelta": 12
+      },
+      "resolved": false
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/GC=F/RELEASE_SESSION",
+      "before": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2644.39990234375,
+        "anchorBarAt": "2024-12-17T05:00:00.000Z",
+        "anchorSessionDay": "2024-12-17",
+        "endpointPrice": 2636.5,
+        "endpointBarAt": "2024-12-18T05:00:00.000Z",
+        "endpointSessionDay": "2024-12-18",
+        "releaseSessionDay": "2024-12-18",
+        "pctChange": -0.2987408348014331,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "RELEASE_SESSION",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2662,
+        "anchorBarAt": "2024-12-17T05:00:00.000Z",
+        "anchorSessionDay": "2024-12-17",
+        "endpointPrice": 2653.300048828125,
+        "endpointBarAt": "2024-12-18T05:00:00.000Z",
+        "endpointSessionDay": "2024-12-18",
+        "releaseSessionDay": "2024-12-18",
+        "pctChange": -0.3268201041275357,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.028079269326102607,
+        "anchorPriceDelta": 17.60009765625,
+        "endpointPriceDelta": 16.800048828125
+      },
+      "resolved": false
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/GC=F/SESSION_PLUS_1",
+      "before": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2644.39990234375,
+        "anchorBarAt": "2024-12-17T05:00:00.000Z",
+        "anchorSessionDay": "2024-12-17",
+        "endpointPrice": 2592.199951171875,
+        "endpointBarAt": "2024-12-19T05:00:00.000Z",
+        "endpointSessionDay": "2024-12-19",
+        "releaseSessionDay": "2024-12-18",
+        "pctChange": -1.9739809824380123,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_1",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2662,
+        "anchorBarAt": "2024-12-17T05:00:00.000Z",
+        "anchorSessionDay": "2024-12-17",
+        "endpointPrice": 2608.10009765625,
+        "endpointBarAt": "2024-12-19T05:00:00.000Z",
+        "endpointSessionDay": "2024-12-19",
+        "releaseSessionDay": "2024-12-18",
+        "pctChange": -2.024789719900451,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.050808737462438636,
+        "anchorPriceDelta": 17.60009765625,
+        "endpointPriceDelta": 15.900146484375
+      },
+      "resolved": false
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/GC=F/SESSION_PLUS_5",
+      "before": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2644.39990234375,
+        "anchorBarAt": "2024-12-17T05:00:00.000Z",
+        "anchorSessionDay": "2024-12-17",
+        "endpointPrice": 2638.800048828125,
+        "endpointBarAt": "2024-12-26T05:00:00.000Z",
+        "endpointSessionDay": "2024-12-26",
+        "releaseSessionDay": "2024-12-18",
+        "pctChange": -0.21176273341493515,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "after": {
+        "measure": "SESSION_PLUS_5",
+        "anchorKind": "PRIOR_SESSION_CLOSE",
+        "anchorPrice": 2662,
+        "anchorBarAt": "2024-12-17T05:00:00.000Z",
+        "anchorSessionDay": "2024-12-17",
+        "endpointPrice": 2653.89990234375,
+        "endpointBarAt": "2024-12-26T05:00:00.000Z",
+        "endpointSessionDay": "2024-12-26",
+        "releaseSessionDay": "2024-12-18",
+        "pctChange": -0.30428616289444027,
+        "priceBasis": "SPLIT_ADJUSTED",
+        "sessionBasis": "EXTENDED_FUTURES"
+      },
+      "investigation": "Changed fields: anchorPrice, endpointPrice, pctChange. Same source bar identities and session labels; price values differ. Current provider evidence does not identify the historical revision/roll cause. Retain both versions and keep cutover blocked.",
+      "evidence": {
+        "changedFields": [
+          "anchorPrice",
+          "endpointPrice",
+          "pctChange"
+        ],
+        "returnDeltaPercentagePoints": -0.09252342947950512,
+        "anchorPriceDelta": 17.60009765625,
+        "endpointPriceDelta": 15.099853515625
+      },
+      "resolved": false
+    }
+  ],
+  "addedObservations": [],
+  "unresolvedChanges": 75,
+  "applyAuthorized": false,
+  "readCutoverAuthorized": false,
+  "pointInTimeCertified": false
+}

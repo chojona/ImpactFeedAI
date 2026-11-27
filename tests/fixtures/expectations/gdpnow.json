@@ -1,0 +1,18 @@
+[
+  {
+    "id": "gdpnow:2023-Q2:dated-update",
+    "kind": "MODEL_NOWCAST",
+    "metricKey": "GDP_REAL",
+    "referencePeriodStart": "2023-04-01",
+    "horizon": "release_print",
+    "value": 2.4,
+    "unit": "pct_saar",
+    "asOf": null,
+    "asOfQuality": "DATE_ONLY",
+    "asOfDate": "2023-07-27",
+    "source": "Atlanta Fed GDPNow (fixture from public archive semantics)",
+    "sourceUrl": "https://www.atlantafed.org/research-and-data/data/gdpnow",
+    "licenseNote": "Personal/educational use only per Atlanta Fed. Fixture encodes a dated model update; not an official Fed forecast. Exact intraday clock unknown → DATE_ONLY.",
+    "providerRecordId": "GDPNOW:2023-Q2:2023-07-27"
+  }
+]

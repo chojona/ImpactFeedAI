@@ -1,0 +1,280 @@
+{
+  "generatedAt": "2026-11-05T22:07:43.217Z",
+  "sourceSnapshotSha256": "b9a051de740e8fa0014d70dfede077f22b0cc1fc99fadc55d5ee2f7125578b04",
+  "mode": "dry_run_no_writes",
+  "baselineCommit": "3fe158504a22f765105e2a0aa7697bccaa3d7acc",
+  "candidateCalculationVersion": 4,
+  "observedRows": 828,
+  "checkedEvents": 20,
+  "incompleteEvents": [],
+  "disputedDateExposures": [],
+  "changedObservedRows": 0,
+  "changedObservations": [],
+  "eventComparisons": [
+    {
+      "eventId": "06340b0a-8f98-4426-ac76-d84c1597199a",
+      "before": {
+        "status": "resolved",
+        "day": "2022-07-13",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2022-07-13",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "207a28ac-9178-43a5-beed-4a94a023e3cf",
+      "before": {
+        "status": "resolved",
+        "day": "2024-02-02",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2024-02-02",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "2cded866-475d-4cf1-b79c-f2532460a1ce",
+      "before": {
+        "status": "resolved",
+        "day": "2024-04-11",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2024-04-11",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064",
+      "before": {
+        "status": "resolved",
+        "day": "2025-05-07",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2025-05-07",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "4193c2c6-95f9-450c-80ae-3468777d6d33",
+      "before": {
+        "status": "resolved",
+        "day": "2024-11-07",
+        "index": 14
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2024-11-07",
+        "index": 14
+      }
+    },
+    {
+      "eventId": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f",
+      "before": {
+        "status": "resolved",
+        "day": "2025-07-03",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2025-07-03",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b",
+      "before": {
+        "status": "resolved",
+        "day": "2022-11-10",
+        "index": 14
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2022-11-10",
+        "index": 14
+      }
+    },
+    {
+      "eventId": "631cd675-c999-4e39-99f1-19f9414e1f87",
+      "before": {
+        "status": "resolved",
+        "day": "2025-02-13",
+        "index": 14
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2025-02-13",
+        "index": 14
+      }
+    },
+    {
+      "eventId": "6e4278e0-f5f5-4929-9a86-06b3eb417239",
+      "before": {
+        "status": "resolved",
+        "day": "2025-06-11",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2025-06-11",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "7314681b-ba4a-4ded-bc3b-396f37f112ec",
+      "before": {
+        "status": "resolved",
+        "day": "2022-11-02",
+        "index": 14
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2022-11-02",
+        "index": 14
+      }
+    },
+    {
+      "eventId": "808d3cee-74c1-4d49-8fff-08b29926c4ed",
+      "before": {
+        "status": "resolved",
+        "day": "2025-01-10",
+        "index": 11
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2025-01-10",
+        "index": 11
+      }
+    },
+    {
+      "eventId": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605",
+      "before": {
+        "status": "resolved",
+        "day": "2025-01-15",
+        "index": 12
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2025-01-15",
+        "index": 12
+      }
+    },
+    {
+      "eventId": "9838bd52-2470-4e07-8420-dc784c9cac81",
+      "before": {
+        "status": "resolved",
+        "day": "2024-09-11",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2024-09-11",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "a5f9f7a8-162b-4402-a937-e151e74af7c6",
+      "before": {
+        "status": "resolved",
+        "day": "2023-02-03",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2023-02-03",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "a76b62c9-1c62-40da-b549-8138759a9151",
+      "before": {
+        "status": "resolved",
+        "day": "2025-05-13",
+        "index": 14
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2025-05-13",
+        "index": 14
+      }
+    },
+    {
+      "eventId": "daca639d-d202-4ec1-8be0-88c612d40b33",
+      "before": {
+        "status": "resolved",
+        "day": "2024-08-02",
+        "index": 14
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2024-08-02",
+        "index": 14
+      }
+    },
+    {
+      "eventId": "dbadd60e-a539-470d-a572-b67dda7d955d",
+      "before": {
+        "status": "resolved",
+        "day": "2024-09-18",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2024-09-18",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c",
+      "before": {
+        "status": "resolved",
+        "day": "2023-06-14",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2023-06-14",
+        "index": 13
+      }
+    },
+    {
+      "eventId": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4",
+      "before": {
+        "status": "resolved",
+        "day": "2024-02-13",
+        "index": 14
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2024-02-13",
+        "index": 14
+      }
+    },
+    {
+      "eventId": "f261fa54-88f2-4b47-9de4-e64952c713b5",
+      "before": {
+        "status": "resolved",
+        "day": "2024-12-18",
+        "index": 13
+      },
+      "after": {
+        "status": "resolved",
+        "day": "2024-12-18",
+        "index": 13
+      }
+    }
+  ],
+  "fullPriceReplay": "unavailable_original_input_series_not_archived",
+  "historicalReturnDelta": "not_recomputed_from_source_prices",
+  "applyAuthorized": false,
+  "liveReadCutoverAuthorized": false,
+  "requiredNextStep": "Archive inputs; replay v4 additively on an isolated database, investigate every price/basis/coverage difference, obtain acceptance before live cutover."
+}

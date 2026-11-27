@@ -71,6 +71,8 @@ export interface SeriesFetchResult {
   intraday: IntradayBar[];
   /** Null when the two series do not overlap. Diagnostic only — see §15.2. */
   basisRatio: number | null;
+  /** Current retrieval outcome, not proof that a historical window never existed. */
+  intradayAvailability?: { status: "fetched" | "outside_retention" | "not_yet_released" | "failed" };
 }
 
 export type SeriesFetchOutcome =
@@ -162,6 +164,9 @@ export function createYahooMeasurementProvider(): MeasurementSeriesProvider {
 
       const age = Date.now() - releaseAt.getTime();
       let intraday: IntradayBar[] = [];
+      let intradayAvailability: NonNullable<SeriesFetchResult["intradayAvailability"]> = {
+        status: age < 0 ? "not_yet_released" : "outside_retention",
+      };
       if (age >= 0 && age < INTRADAY_HORIZON_MS) {
         try {
           const res = await yahooFinance.chart(symbol, {
@@ -170,12 +175,14 @@ export function createYahooMeasurementProvider(): MeasurementSeriesProvider {
             interval: "1h",
             return: "array",
           });
+          intradayAvailability = { status: "fetched" };
           intraday = res.quotes.map((q) => ({
             barAt: q.date,
             open: q.open,
             priceBasis: YAHOO_INTRADAY_BASIS,
           }));
         } catch {
+          intradayAvailability = { status: "failed" };
           // Intraday is optional: its absence removes INTRADAY_60M and
           // leaves every session measure untouched.
           intraday = [];
@@ -188,6 +195,7 @@ export function createYahooMeasurementProvider(): MeasurementSeriesProvider {
           daily,
           dailyBasis: YAHOO_DAILY_BASIS,
           intraday,
+          intradayAvailability,
           basisRatio: diagnosticBasisRatio(basis, daily, intraday),
         },
       };
