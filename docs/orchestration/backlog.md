@@ -11,7 +11,7 @@ Active worker cap: 6.
 
 | ID | Task | Status | Owner (provider/model, thread) | Owns (files) | Depends on | PR |
 |----|------|--------|--------------------------------|--------------|------------|----|
-| A1 | Phase 1 integration and research-readiness audit (read-only). Verdict NO-GO; report + evidence in #48 | IN REVIEW (reviewer: Cursor Auto; checking committed price data) | Claude Opus 5.5, user thread "Phase 1 Integration Readiness Audit" | docs/audits/2026-11-27-phase-1-*/** | — | #48 |
+| A1 | Phase 1 integration and research-readiness audit (read-only). Verdict NO-GO; report + evidence in #48 | CHANGES REQUESTED (41-recompute-replay.json commits 270 Yahoo price levels); routed to the audit thread | Claude Opus 5.5, user thread "Phase 1 Integration Readiness Audit" | docs/audits/2026-11-27-phase-1-*/** | — | #48 |
 | A2 | Independent audit: historical macro timing and first-print actuals; status of `feat/phase-1.1-alfred-point-in-time` (read-only). Verdict NOT READY; phase-1.1 branch superseded by #20 | DONE | Codex gpt-6.2-sol, delegated by orchestrator | none (read-only) | — | — |
 | A3 | Audit: NQ archive qualification and reaction measurement integration (read-only). Verdict NOT READY: adapter unwired; 180 verifier-failing v3 rows reach UI | DONE | Claude Opus 5.5, delegated by orchestrator | none (read-only) | — | — |
 | A4 | Audit: data acquisition coverage and licensing restrictions (read-only) | DONE | Claude Opus 5.5, delegated by orchestrator | none (read-only) | — | — |
