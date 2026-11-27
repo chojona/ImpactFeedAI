@@ -1,0 +1,58 @@
+/**
+ * Coverage join: every release-calendar record × NQ session eligibility ×
+ * NYSE schedule range × DB presence. Offline, read-only, counts only.
+ */
+import { readFileSync, writeFileSync } from "node:fs";
+
+const WT = process.env.WT!;
+const SP = process.env.SP!;
+const ROOT = process.env.NQ_ARCHIVE_ROOT!;
+const nq = await import(`${WT}/src/services/market/nqArchive/index.ts`);
+const sc = await import(`${WT}/src/services/market/sessionCalendar.ts`);
+
+const records = JSON.parse(readFileSync(`${SP}/calendar-replay/records.json`, "utf8"));
+const db = JSON.parse(readFileSync(`${SP}/evidence/20-db-snapshot.json`, "utf8"));
+const paths = nq.pathsFromArchiveRoot ? nq.pathsFromArchiveRoot(ROOT) : nq.resolveNqArchivePaths({ NQ_ARCHIVE_ROOT: ROOT });
+const index = await nq.loadEligibilityIndex({
+  strictAllowlistCsv: paths.strictAllowlistCsv,
+  exploratoryAllowlistCsv: paths.exploratoryAllowlistCsv,
+  certificationBySessionCsv: paths.certificationBySessionCsv,
+});
+const NQ_START = "2010-06-07", NQ_END = "2026-10-06";
+const today = "2026-11-27";
+
+type Agg = { n: number; first: string | null; last: string | null };
+const bump = (m: Map<string, Agg>, k: string, d: string) => {
+  const a = m.get(k) ?? { n: 0, first: null, last: null };
+  a.n++; if (!a.first || d < a.first) a.first = d; if (!a.last || d > a.last) a.last = d; m.set(k, a);
+};
+const byStatus = new Map<string, Agg>();
+const byNq = new Map<string, Agg>();
+const strictList: string[] = [];
+for (const r of records) {
+  const d = r.releaseDate as string;
+  bump(byStatus, `${r.family}|${r.timingStatus}`, d);
+  if (r.timingStatus !== "VERIFIED" || !r.releaseAt) continue;
+  const at = new Date(r.releaseAt);
+  let label = "outside_archive";
+  if (d >= NQ_START && d <= NQ_END) {
+    const td = nq.tradingDateForReleaseAt(at);
+    const e = index.lookup(td);
+    label = e.researchEligibility === "STRICT_AND_EXPLORATORY" ? "strict" : e.researchEligibility === "EXPLORATORY_ONLY" ? "exploratory" : `refused:${e.reasonCode}`;
+    if (label === "strict") strictList.push(`${r.family} ${r.releaseAt} (${r.metricKeys.join(",")} ${r.releaseStage})`);
+  }
+  const nyse = d >= sc.NYSE_SCHEDULE_RANGE_START && d <= sc.NYSE_SCHEDULE_RANGE_END ? "nyse_schedule_known" : "nyse_schedule_unknown";
+  bump(byNq, `${r.family}|${label}|${nyse}`, d);
+}
+const out = {
+  generatedAt: new Date().toISOString(),
+  today,
+  recordsByFamilyStatus: Object.fromEntries([...byStatus].sort()),
+  verifiedByNqLabelAndNyseRange: Object.fromEntries([...byNq].sort()),
+  strictNqReleases: strictList,
+  dbEventsByType: db.eventsByTypeTiming,
+};
+writeFileSync(`${SP}/evidence/61-coverage-join.json`, JSON.stringify(out, null, 2));
+console.log("== records by family|status"); console.table(Object.fromEntries([...byStatus].sort()));
+console.log("== VERIFIED records by family|NQ label|NYSE schedule range"); console.table(Object.fromEntries([...byNq].sort()));
+console.log("== strict NQ sessions hit by a VERIFIED release:", strictList.length); for (const s of strictList) console.log("  ", s);

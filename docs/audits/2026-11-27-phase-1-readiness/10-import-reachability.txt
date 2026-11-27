@@ -1,0 +1,87 @@
+script roots: 21 app roots: 13
+
+== src/scripts modules NOT reachable from any app route or npm-script entrypoint ==
+scripts/maintenance/smoke-alfred-live.ts  [importers: 0 (tests 0)]
+src/components/landing/Capabilities.tsx  [importers: 0 (tests 0)]
+src/components/landing/Hero.tsx  [importers: 0 (tests 0)]
+src/components/landing/LandingFooter.tsx  [importers: 0 (tests 0)]
+src/components/landing/LandingNav.tsx  [importers: 0 (tests 0)]
+src/components/landing/LibraryStats.tsx  [importers: 0 (tests 0)]
+src/components/landing/LivePreviewPanel.tsx  [importers: 0 (tests 0)]
+src/components/landing/PricingTable.tsx  [importers: 0 (tests 0)]
+src/services/context/alfred.ts  [importers: 3 (tests 2)]
+src/services/context/availability.ts  [importers: 2 (tests 1)]
+src/services/context/definitions.ts  [importers: 7 (tests 4)]
+src/services/context/featureDefinitions.ts  [importers: 5 (tests 1)]
+src/services/context/featureResult.ts  [importers: 2 (tests 0)]
+src/services/context/index.ts  [importers: 0 (tests 0)]
+src/services/context/knowledgeMode.ts  [importers: 2 (tests 0)]
+src/services/context/pointInTime.ts  [importers: 6 (tests 2)]
+src/services/context/quality.ts  [importers: 1 (tests 0)]
+src/services/context/rates.ts  [importers: 2 (tests 1)]
+src/services/context/revisionSelect.ts  [importers: 1 (tests 1)]
+src/services/context/transforms.ts  [importers: 2 (tests 1)]
+src/services/context/volatility.ts  [importers: 3 (tests 1)]
+src/services/expectations/adapters/archivedNewsConsensus.ts  [importers: 2 (tests 0)]
+src/services/expectations/adapters/clevelandNowcast.ts  [importers: 1 (tests 0)]
+src/services/expectations/adapters/gdpnow.ts  [importers: 1 (tests 0)]
+src/services/expectations/adapters/marketImplied.ts  [importers: 1 (tests 0)]
+src/services/expectations/adapters/prospectiveCollector.ts  [importers: 1 (tests 0)]
+src/services/expectations/adapters/spf.ts  [importers: 1 (tests 0)]
+src/services/expectations/eligibility.ts  [importers: 2 (tests 0)]
+src/services/expectations/fixtureStore.ts  [importers: 7 (tests 0)]
+src/services/expectations/fixtureTypes.ts  [importers: 9 (tests 0)]
+src/services/expectations/hash.ts  [importers: 1 (tests 0)]
+src/services/expectations/index.ts  [importers: 1 (tests 1)]
+src/services/expectations/sources.ts  [importers: 7 (tests 0)]
+src/services/expectations/toConsensusEstimate.ts  [importers: 1 (tests 0)]
+src/services/expectations/validate.ts  [importers: 4 (tests 0)]
+src/services/market-context/availability.ts  [importers: 6 (tests 0)]
+src/services/market-context/cboe.ts  [importers: 1 (tests 0)]
+src/services/market-context/eligibility.ts  [importers: 4 (tests 0)]
+src/services/market-context/fred.ts  [importers: 1 (tests 0)]
+src/services/market-context/http.ts  [importers: 3 (tests 0)]
+src/services/market-context/index.ts  [importers: 1 (tests 1)]
+src/services/market-context/series.ts  [importers: 4 (tests 0)]
+src/services/market-context/sessionCalendar.ts  [importers: 1 (tests 0)]
+src/services/market-context/treasury.ts  [importers: 1 (tests 0)]
+src/services/market-context/types.ts  [importers: 8 (tests 0)]
+src/services/market/nqArchive/adapter.ts  [importers: 1 (tests 0)]
+src/services/market/nqArchive/coverage.ts  [importers: 2 (tests 0)]
+src/services/market/nqArchive/csv.ts  [importers: 2 (tests 0)]
+src/services/market/nqArchive/eligibility.ts  [importers: 3 (tests 0)]
+src/services/market/nqArchive/extract.ts  [importers: 2 (tests 0)]
+src/services/market/nqArchive/index.ts  [importers: 1 (tests 1)]
+src/services/market/nqArchive/memoryStore.ts  [importers: 2 (tests 0)]
+src/services/market/nqArchive/parquetStore.ts  [importers: 2 (tests 0)]
+src/services/market/nqArchive/paths.ts  [importers: 2 (tests 0)]
+src/services/market/nqArchive/rolls.ts  [importers: 3 (tests 0)]
+src/services/market/nqArchive/tradingDate.ts  [importers: 3 (tests 0)]
+src/services/market/nqArchive/types.ts  [importers: 9 (tests 0)]
+src/services/market/sessionCalendar.internal.ts  [importers: 0 (tests 0)]
+src/types/context.ts  [importers: 23 (tests 4)]
+src/types/expectations.ts  [importers: 13 (tests 1)]
+
+== reachable from scripts only (not app) under src/services ==
+src/services/events/measurementCoverage.ts
+src/services/events/measurementVerification.ts
+src/services/events/measurementWriteGate.ts
+src/services/events/reactionMeasurement.ts
+src/services/events/reactionRepair.ts
+src/services/macro/actualProvenance.ts
+src/services/macro/consensus.ts
+src/services/macro/release-calendar-records.ts
+src/services/macro/release-calendar.ts
+src/services/market/sessionCalendar.ts
+src/services/sources/audit.ts
+src/services/sources/providers/alfred.ts
+src/services/sources/providers/alphaVantage.ts
+src/services/sources/providers/bls.ts
+src/services/sources/providers/cboe.ts
+src/services/sources/providers/clevelandFed.ts
+src/services/sources/providers/fred.ts
+src/services/sources/providers/nqArchive.ts
+src/services/sources/providers/sfFed.ts
+src/services/sources/providers/treasury.ts
+src/services/sources/providers/yahoo.ts
+src/services/sources/registry.ts

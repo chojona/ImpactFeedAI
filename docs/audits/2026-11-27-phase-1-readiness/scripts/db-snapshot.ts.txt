@@ -1,0 +1,34 @@
+// TEMPORARY audit script (scratch worktree only, never committed). SELECT-only.
+import { createDryRunPrismaClient } from "../lib/readonly-prisma";
+const db = createDryRunPrismaClient();
+const q = async (label: string, sql: string) => {
+  const rows = await db.$queryRawUnsafe<Record<string, unknown>[]>(sql);
+  return [label, rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, typeof v === "bigint" ? Number(v) : v instanceof Date ? v.toISOString() : v])))] as const;
+};
+async function main() {
+  const out: Record<string, unknown> = { capturedAt: new Date().toISOString() };
+  const queries: [string, string][] = [
+    ["readOnlySetting", "SHOW default_transaction_read_only"],
+    ["txReadOnly", "SHOW transaction_read_only"],
+    ["tables", "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY 1"],
+    ["migrations", "SELECT migration_name, finished_at, rolled_back_at, checksum FROM _prisma_migrations ORDER BY started_at"],
+    ["rowCounts", "SELECT 'events' t, count(*) n FROM events UNION ALL SELECT 'data_releases', count(*) FROM data_releases UNION ALL SELECT 'asset_reactions', count(*) FROM asset_reactions UNION ALL SELECT 'candles', count(*) FROM candles UNION ALL SELECT 'reaction_measurements', count(*) FROM reaction_measurements"],
+    ["eventsByTypeTiming", "SELECT event_type, timing_status, count(*) n, min(occurred_at) first, max(occurred_at) last, count(release_at) with_release_at, count(release_date) with_release_date FROM events GROUP BY 1,2 ORDER BY 1,2"],
+    ["eventTimingSources", "SELECT coalesce(timing_source,'<null>') src, timing_status, count(*) n FROM events GROUP BY 1,2 ORDER BY 3 DESC"],
+    ["dataReleasesByMetric", "SELECT metric_name, coalesce(metric_key,'<null>') metric_key, count(*) n, count(actual_value) actual, count(expected_value) expected, count(surprise_magnitude) surprise, count(prior_value) prior, count(reference_period_start) ref_period, min(reference_period_start) first_ref, max(reference_period_start) last_ref, string_agg(DISTINCT consensus_status::text, ',') consensus_statuses, string_agg(DISTINCT coalesce(actual_source,'<null>'), ' | ') actual_sources FROM data_releases GROUP BY 1,2 ORDER BY 1"],
+    ["consensusSources", "SELECT consensus_status, coalesce(consensus_source,'<null>') src, count(*) n FROM data_releases GROUP BY 1,2 ORDER BY 3 DESC"],
+    ["candlesBySeries", "SELECT symbol, interval, price_basis, provider, ingestion_version, count(*) n, min(open_time) first, max(open_time) last, count(volume) with_volume, string_agg(DISTINCT session::text, ',') sessions FROM candles GROUP BY 1,2,3,4,5 ORDER BY 1,2"],
+    ["measurementsByVersionMeasure", "SELECT calculation_version, measure, count(*) n, count(DISTINCT event_id) events, count(DISTINCT symbol) symbols, min(release_session_day) first, max(release_session_day) last FROM reaction_measurements GROUP BY 1,2 ORDER BY 1,2"],
+    ["measurementsBySymbol", "SELECT symbol, calculation_version, session_basis, price_basis, provider, count(*) n FROM reaction_measurements GROUP BY 1,2,3,4,5 ORDER BY 1,2"],
+    ["measurementsByEventType", "SELECT e.event_type, m.calculation_version, m.measure, count(*) n, count(DISTINCT e.id) events FROM reaction_measurements m JOIN events e ON e.id=m.event_id GROUP BY 1,2,3 ORDER BY 1,2,3"],
+    ["assetReactionsByVersion", "SELECT coalesce(calculation_version,-1) v, count(*) n, count(pct_change_1h) h1, count(pct_change_1d) d1, count(pct_change_1w) w1 FROM asset_reactions GROUP BY 1 ORDER BY 1"],
+    ["targetEvents", "SELECT e.event_type, e.event_key, e.headline, e.occurred_at, e.release_at, e.release_date, e.timing_status, e.timing_source, (SELECT count(*) FROM data_releases d WHERE d.event_id=e.id) releases, (SELECT count(*) FROM reaction_measurements m WHERE m.event_id=e.id AND m.calculation_version=3) v3_measurements, (SELECT count(*) FROM reaction_measurements m WHERE m.event_id=e.id AND m.calculation_version=4) v4_measurements FROM events e ORDER BY e.occurred_at"],
+    ["releasesDetail", "SELECT e.event_key, d.metric_name, d.metric_key, d.reference_period_start, d.actual_value, d.expected_value, d.prior_value, d.surprise_magnitude, d.actual_source, d.consensus_status, d.consensus_source FROM data_releases d JOIN events e ON e.id=d.event_id ORDER BY e.occurred_at"],
+  ];
+  for (const [label, sql] of queries) {
+    const [k, v] = await q(label, sql);
+    out[k] = v;
+  }
+  console.log(JSON.stringify(out, null, 2));
+}
+main().catch((e) => { console.error("SNAPSHOT_FAILED", e instanceof Error ? e.message : e); process.exitCode = 1; }).finally(() => db.$disconnect());

@@ -1,0 +1,224 @@
+{
+  "generatedAt": "2026-11-27T17:10:46.873Z",
+  "today": "2026-11-27",
+  "recordsByFamilyStatus": {
+    "BEA_GDP|SCHEDULED": {
+      "n": 14,
+      "first": "2026-11-25",
+      "last": "2027-12-22"
+    },
+    "BEA_GDP|VERIFIED": {
+      "n": 360,
+      "first": "1996-08-01",
+      "last": "2026-10-29"
+    },
+    "BEA_PERSONAL_INCOME_OUTLAYS|SCHEDULED": {
+      "n": 14,
+      "first": "2026-11-25",
+      "last": "2027-12-22"
+    },
+    "BEA_PERSONAL_INCOME_OUTLAYS|VERIFIED": {
+      "n": 358,
+      "first": "1996-07-01",
+      "last": "2026-10-29"
+    },
+    "FOMC_STATEMENT|DATE_ONLY": {
+      "n": 155,
+      "first": "1994-02-04",
+      "last": "2015-12-16"
+    },
+    "FOMC_STATEMENT|SECONDARY_ONLY": {
+      "n": 131,
+      "first": "1988-02-04",
+      "last": "2020-08-27"
+    },
+    "FOMC_STATEMENT|VERIFIED": {
+      "n": 92,
+      "first": "2008-10-08",
+      "last": "2026-10-28"
+    }
+  },
+  "verifiedByNqLabelAndNyseRange": {
+    "BEA_GDP|exploratory|nyse_schedule_known": {
+      "n": 41,
+      "first": "2022-01-27",
+      "last": "2026-09-30"
+    },
+    "BEA_GDP|exploratory|nyse_schedule_unknown": {
+      "n": 22,
+      "first": "2018-02-28",
+      "last": "2021-10-28"
+    },
+    "BEA_GDP|outside_archive|nyse_schedule_known": {
+      "n": 1,
+      "first": "2026-10-29",
+      "last": "2026-10-29"
+    },
+    "BEA_GDP|outside_archive|nyse_schedule_unknown": {
+      "n": 165,
+      "first": "1996-08-01",
+      "last": "2010-05-27"
+    },
+    "BEA_GDP|refused:NOT_ON_ALLOWLIST|nyse_schedule_known": {
+      "n": 15,
+      "first": "2022-02-24",
+      "last": "2026-05-28"
+    },
+    "BEA_GDP|refused:NOT_ON_ALLOWLIST|nyse_schedule_unknown": {
+      "n": 116,
+      "first": "2010-06-25",
+      "last": "2021-12-22"
+    },
+    "BEA_PERSONAL_INCOME_OUTLAYS|exploratory|nyse_schedule_known": {
+      "n": 45,
+      "first": "2022-01-28",
+      "last": "2026-09-30"
+    },
+    "BEA_PERSONAL_INCOME_OUTLAYS|exploratory|nyse_schedule_unknown": {
+      "n": 22,
+      "first": "2018-03-01",
+      "last": "2021-10-29"
+    },
+    "BEA_PERSONAL_INCOME_OUTLAYS|outside_archive|nyse_schedule_known": {
+      "n": 1,
+      "first": "2026-10-29",
+      "last": "2026-10-29"
+    },
+    "BEA_PERSONAL_INCOME_OUTLAYS|outside_archive|nyse_schedule_unknown": {
+      "n": 164,
+      "first": "1996-07-01",
+      "last": "2010-05-28"
+    },
+    "BEA_PERSONAL_INCOME_OUTLAYS|refused:NOT_ON_ALLOWLIST|nyse_schedule_known": {
+      "n": 11,
+      "first": "2022-05-27",
+      "last": "2026-05-28"
+    },
+    "BEA_PERSONAL_INCOME_OUTLAYS|refused:NOT_ON_ALLOWLIST|nyse_schedule_unknown": {
+      "n": 115,
+      "first": "2010-06-28",
+      "last": "2021-12-23"
+    },
+    "FOMC_STATEMENT|exploratory|nyse_schedule_known": {
+      "n": 22,
+      "first": "2022-01-26",
+      "last": "2026-07-29"
+    },
+    "FOMC_STATEMENT|exploratory|nyse_schedule_unknown": {
+      "n": 18,
+      "first": "2018-11-08",
+      "last": "2021-12-15"
+    },
+    "FOMC_STATEMENT|outside_archive|nyse_schedule_known": {
+      "n": 1,
+      "first": "2026-10-28",
+      "last": "2026-10-28"
+    },
+    "FOMC_STATEMENT|outside_archive|nyse_schedule_unknown": {
+      "n": 2,
+      "first": "2008-10-08",
+      "last": "2010-05-09"
+    },
+    "FOMC_STATEMENT|refused:NOT_ON_ALLOWLIST|nyse_schedule_known": {
+      "n": 15,
+      "first": "2022-07-27",
+      "last": "2026-06-17"
+    },
+    "FOMC_STATEMENT|refused:NOT_ON_ALLOWLIST|nyse_schedule_unknown": {
+      "n": 33,
+      "first": "2016-01-27",
+      "last": "2021-07-28"
+    },
+    "FOMC_STATEMENT|strict|nyse_schedule_known": {
+      "n": 1,
+      "first": "2026-09-16",
+      "last": "2026-09-16"
+    }
+  },
+  "strictNqReleases": [
+    "FOMC_STATEMENT 2026-09-16T18:00:00.000Z (FED_TARGET_UPPER INITIAL)"
+  ],
+  "dbEventsByType": [
+    {
+      "event_type": "TARIFF",
+      "timing_status": "UNVERIFIED",
+      "n": 11,
+      "first": "2025-02-10T22:00:00.000Z",
+      "last": "2025-08-29T20:00:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "timing_status": "SCHEDULED",
+      "n": 6,
+      "first": "2022-11-02T18:00:00.000Z",
+      "last": "2025-05-07T18:00:00.000Z",
+      "with_release_at": 6,
+      "with_release_date": 6
+    },
+    {
+      "event_type": "FED_DECISION",
+      "timing_status": "UNVERIFIED",
+      "n": 1,
+      "first": "2025-08-22T14:00:00.000Z",
+      "last": "2025-08-22T14:00:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    },
+    {
+      "event_type": "CPI",
+      "timing_status": "SCHEDULED",
+      "n": 7,
+      "first": "2022-07-13T12:30:00.000Z",
+      "last": "2025-06-11T12:30:00.000Z",
+      "with_release_at": 7,
+      "with_release_date": 7
+    },
+    {
+      "event_type": "PPI",
+      "timing_status": "SCHEDULED",
+      "n": 2,
+      "first": "2024-04-11T12:30:00.000Z",
+      "last": "2025-02-13T13:30:00.000Z",
+      "with_release_at": 2,
+      "with_release_date": 2
+    },
+    {
+      "event_type": "NFP",
+      "timing_status": "SCHEDULED",
+      "n": 5,
+      "first": "2023-02-03T13:30:00.000Z",
+      "last": "2025-07-03T12:30:00.000Z",
+      "with_release_at": 5,
+      "with_release_date": 5
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "timing_status": "UNVERIFIED",
+      "n": 8,
+      "first": "2022-02-24T10:00:00.000Z",
+      "last": "2026-02-24T15:00:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "timing_status": "UNVERIFIED",
+      "n": 7,
+      "first": "2024-07-30T20:05:00.000Z",
+      "last": "2025-05-28T20:20:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    },
+    {
+      "event_type": "MACRO_DATA",
+      "timing_status": "UNVERIFIED",
+      "n": 3,
+      "first": "2024-04-25T12:30:00.000Z",
+      "last": "2025-07-30T12:30:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    }
+  ]
+}

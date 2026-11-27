@@ -1,0 +1,12 @@
+import { readFileSync } from "node:fs";
+import { selectFixtureExpectation, toConsensusEstimate } from "$SCRATCH/wt-main/src/services/expectations";
+import { METRICS } from "$SCRATCH/wt-main/src/services/macro/metrics";
+const rows = JSON.parse(readFileSync("$SCRATCH/wt-main/tests/fixtures/expectations/archived-news.json","utf8"));
+const rel = new Date("2023-08-10T12:30:00Z");
+for (const m of ["CPI_HEADLINE","CPI_HEADLINE_MOM"]) {
+  const o = selectFixtureExpectation(rows,{kind:"SURVEY_CONSENSUS",metricKey:m,referencePeriodStart:"2023-07-01",releaseAt:rel},new Date());
+  const c = o && toConsensusEstimate(o, rel);
+  console.log(m, "inRegistry=", m in METRICS, "unit=", o?.unit, "->", JSON.stringify(c));
+}
+const post = selectFixtureExpectation(rows,{kind:"SURVEY_CONSENSUS",metricKey:"CPI_HEADLINE",referencePeriodStart:null,releaseAt:null},new Date());
+console.log("releaseAt null select:", post?.id, "toConsensus:", post && toConsensusEstimate(post,null));

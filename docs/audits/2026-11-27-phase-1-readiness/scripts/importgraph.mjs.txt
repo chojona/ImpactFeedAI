@@ -1,0 +1,38 @@
+import fs from "node:fs"; import path from "node:path"; import { execSync } from "node:child_process";
+const files = execSync("git ls-files", {encoding:"utf8"}).trim().split("\n").filter(f=>/^(src|scripts|tests)\/.*\.tsx?$/.test(f)).filter(f=>!f.includes("generated"));
+const set = new Set(files);
+const resolve = (from, spec) => {
+  let base;
+  if (spec.startsWith("@/")) base = "src/" + spec.slice(2);
+  else if (spec.startsWith(".")) base = path.normalize(path.join(path.dirname(from), spec));
+  else return null;
+  base = base.replace(/\.(js|ts|tsx)$/, "");
+  for (const c of [base+".ts", base+".tsx", base+"/index.ts", base+"/index.tsx"]) if (set.has(c)) return c;
+  return "UNRESOLVED:"+base;
+};
+const importers = new Map(files.map(f=>[f, []]));
+for (const f of files) {
+  const src = fs.readFileSync(f, "utf8");
+  for (const m of src.matchAll(/(?:import|export)\s[^'"]*?from\s+['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+    const r = resolve(f, m[1] ?? m[2]); if (!r) continue;
+    if (r.startsWith("UNRESOLVED")) { console.log("UNRESOLVED", f, "->", m[1]??m[2]); continue; }
+    importers.get(r).push(f);
+  }
+}
+// reachability from production roots: src/app/** and scripts entrypoints in package.json
+const pkg = JSON.parse(fs.readFileSync("package.json","utf8"));
+const scriptRoots = [...new Set(Object.values(pkg.scripts).flatMap(s=>[...s.matchAll(/tsx (scripts\/\S+\.ts)/g)].map(m=>m[1])))];
+const appRoots = files.filter(f=>f.startsWith("src/app/"));
+const deps = new Map(files.map(f=>[f,[]])); for (const [t, fs_] of importers) for (const f of fs_) deps.get(f).push(t);
+const reach = (roots)=>{const seen=new Set(); const st=[...roots]; while(st.length){const x=st.pop(); if(seen.has(x))continue; seen.add(x); st.push(...(deps.get(x)||[]));} return seen;};
+const appReach = reach(appRoots), scriptReach = reach(scriptRoots);
+console.log("script roots:", scriptRoots.length, "app roots:", appRoots.length);
+console.log("\n== src/scripts modules NOT reachable from any app route or npm-script entrypoint ==");
+for (const f of files) {
+  if (f.startsWith("tests/")) continue;
+  if (appReach.has(f) || scriptReach.has(f)) continue;
+  const imp = importers.get(f); const t = imp.filter(i=>i.startsWith("tests/")).length;
+  console.log(`${f}  [importers: ${imp.length} (tests ${t})]`);
+}
+console.log("\n== reachable from scripts only (not app) under src/services ==");
+for (const f of files) if (f.startsWith("src/services") && scriptReach.has(f) && !appReach.has(f)) console.log(f);

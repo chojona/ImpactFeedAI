@@ -1,0 +1,229 @@
+/**
+ * Phase 1 readiness audit — network-free, read-only end-to-end event dry runs.
+ *
+ * Runs from the scratch worktree of origin/main. Never opens a DB connection,
+ * never fetches, never writes outside the scratch evidence directory.
+ *
+ * Inputs (all local, all hashed in the output):
+ *   - release calendar records replayed offline from cache (calendar-replay/records.json)
+ *   - DB aggregate snapshot captured earlier this session (evidence/20-db-snapshot.json)
+ *   - committed measurement snapshot (docs/audits/2026-11-05-phase-0.5/measurement-snapshot.json)
+ *   - committed test fixtures (tests/fixtures/**) — labelled FIXTURE, never research input
+ *   - local licensed NQ archive via NQ_ARCHIVE_ROOT
+ *
+ * No value is invented. A stage with no input reports UNAVAILABLE + reason.
+ */
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+
+const WT = process.env.WT!;
+const SP = process.env.SP!;
+const imp = (p: string) => import(`${WT}/${p}`);
+
+const cal = await imp("src/services/macro/release-calendar-records.ts");
+const rel = await imp("src/services/macro/release-calendar.ts");
+const alfred = await imp("src/services/context/alfred.ts");
+const prov = await imp("src/services/macro/actualProvenance.ts");
+const exp = await imp("src/services/expectations/index.ts");
+const nq = await imp("src/services/market/nqArchive/index.ts");
+const rm = await imp("src/services/events/reactionMeasurement.ts");
+const vol = await imp("src/services/context/volatility.ts");
+const metrics = await imp("src/services/macro/metrics.ts");
+const sb = await imp("src/services/market/sessionBasis.ts");
+
+const sha = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex");
+const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8"));
+
+const RECORDS = `${SP}/calendar-replay/records.json`;
+const DBSNAP = `${SP}/evidence/20-db-snapshot.json`;
+const MSNAP = `${WT}/docs/audits/2026-11-05-phase-0.5/measurement-snapshot.json`;
+const FIX = `${WT}/tests/fixtures`;
+
+const inputs: Record<string, string> = { RECORDS, DBSNAP, MSNAP };
+const records = readJson(RECORDS);
+const calendar = cal.createRecordCalendarProvider(records);
+const dbsnap = readJson(DBSNAP);
+const msnap = readJson(MSNAP);
+
+const expFixtures: Record<string, unknown[]> = {};
+for (const f of ["archived-news", "cleveland", "gdpnow", "spf", "market-implied"]) {
+  const p = `${FIX}/expectations/${f}.json`;
+  inputs[`fixture:expectations/${f}`] = p;
+  expFixtures[f] = readJson(p);
+}
+
+let nqAdapter: any = null;
+let nqInitError: string | null = null;
+try {
+  nqAdapter = await nq.createNqArchiveAdapter();
+} catch (e) {
+  nqInitError = `${(e as Error).name}: ${(e as Error).message}`;
+}
+
+type Stage = { status: "AVAILABLE" | "PARTIAL" | "UNAVAILABLE" | "REFUSED"; source: string; detail: Record<string, unknown> | string };
+
+interface Case {
+  family: string;
+  label: string;
+  releaseAt: string;
+  metricKey: string;
+  referencePeriodStart: string; // calendar key (FOMC: release date)
+  releaseStage: string;
+  dbEventKeyPrefix: string | null;
+  alfredFixture: { file: string; seriesId: string; mode: string } | null;
+}
+
+const CASES: Case[] = [
+  { family: "CPI", label: "June 2022 CPI", releaseAt: "2022-07-13T12:30:00Z", metricKey: "CPI_HEADLINE", referencePeriodStart: "2022-06-01", releaseStage: "INITIAL", dbEventKeyPrefix: "curated:CPI:June CPI", alfredFixture: { file: "cpiaucns-june2022-initial.json", seriesId: "CPIAUCNS", mode: "initial_release_only" } },
+  { family: "NFP", label: "January 2023 NFP", releaseAt: "2023-02-03T13:30:00Z", metricKey: "PAYROLLS", referencePeriodStart: "2023-01-01", releaseStage: "INITIAL", dbEventKeyPrefix: "curated:NFP:January 2023", alfredFixture: { file: "payems-initial-jan2023.json", seriesId: "PAYEMS", mode: "initial_release_only" } },
+  { family: "GDP", label: "Q1 2023 GDP advance", releaseAt: "2023-04-27T12:30:00Z", metricKey: "GDP_REAL", referencePeriodStart: "2023-01-01", releaseStage: "ADVANCE", dbEventKeyPrefix: null, alfredFixture: { file: "gdpc1-q1-2023-vintages.json", seriesId: "GDPC1", mode: "revision_history" } },
+  { family: "PCE", label: "August 2023 PCE", releaseAt: "2023-09-29T12:30:00Z", metricKey: "PCE_CORE", referencePeriodStart: "2023-08-01", releaseStage: "INITIAL", dbEventKeyPrefix: null, alfredFixture: null },
+  { family: "FOMC", label: "Sept 2024 FOMC (DB event)", releaseAt: "2024-09-18T18:00:00Z", metricKey: "FED_TARGET_UPPER", referencePeriodStart: "2024-09-18", releaseStage: "INITIAL", dbEventKeyPrefix: "curated:FED_DECISION:Fed cuts 50bps", alfredFixture: null },
+  { family: "FOMC", label: "Sept 2026 FOMC (NQ strict session)", releaseAt: "2026-09-16T18:00:00Z", metricKey: "FED_TARGET_UPPER", referencePeriodStart: "2026-09-16", releaseStage: "INITIAL", dbEventKeyPrefix: null, alfredFixture: null },
+];
+
+const EXP_SOURCES: [string, string][] = [
+  ["archived-news", "SURVEY_CONSENSUS"],
+  ["cleveland", "MODEL_NOWCAST"],
+  ["gdpnow", "MODEL_NOWCAST"],
+  ["spf", "PROFESSIONAL_SURVEY"],
+];
+
+const results: unknown[] = [];
+for (const c of CASES) {
+  const releaseAt = new Date(c.releaseAt);
+  const stages: Record<string, Stage> = {};
+
+  // 1. Timing — release calendar
+  try {
+    const r = await rel.resolveHistoricalRelease(calendar, { metricKey: c.metricKey, referencePeriodStart: c.referencePeriodStart, releaseStage: c.releaseStage });
+    if (!r) stages.timingCalendar = { status: "UNAVAILABLE", source: "release-calendar records (offline replay)", detail: `no record for ${c.metricKey}|${c.referencePeriodStart}|${c.releaseStage}` };
+    else {
+      const t = r.timing;
+      const matches = t.releaseAt ? t.releaseAt.toISOString() === releaseAt.toISOString() : null;
+      stages.timingCalendar = {
+        status: t.timingStatus === "VERIFIED" ? "AVAILABLE" : "PARTIAL",
+        source: "release-calendar records (offline replay)",
+        detail: { timingStatus: t.timingStatus, releaseAt: t.releaseAt?.toISOString() ?? null, sourceKind: t.provenance?.sourceKind, matchesCaseReleaseAt: matches },
+      };
+    }
+  } catch (e) {
+    stages.timingCalendar = { status: "UNAVAILABLE", source: "release-calendar", detail: `error ${(e as Error).message}` };
+  }
+
+  // 1b. Timing — DB event (captured snapshot)
+  const ev = c.dbEventKeyPrefix ? dbsnap.targetEvents.find((e: any) => e.event_key?.startsWith(c.dbEventKeyPrefix)) : null;
+  stages.timingDb = ev
+    ? { status: ev.timing_status === "VERIFIED" ? "AVAILABLE" : "PARTIAL", source: "DB snapshot (events)", detail: { timingStatus: ev.timing_status, releaseAt: ev.release_at, timingSource: ev.timing_source } }
+    : { status: "UNAVAILABLE", source: "DB snapshot (events)", detail: "no Event row for this release" };
+
+  // 2. First-print actual — ALFRED fixture + provenance gate
+  if (c.alfredFixture) {
+    const p = `${FIX}/alfred/${c.alfredFixture.file}`;
+    inputs[`fixture:alfred/${c.alfredFixture.file}`] = p;
+    const url = alfred.redactFredUrl(alfred.buildAlfredObservationsUrl({ seriesId: c.alfredFixture.seriesId, observationStart: "2022-01-01", observationEnd: "2023-12-31", mode: c.alfredFixture.mode }, "REDACTED"));
+    // Vintage-map fixtures ({ "<vintage date>": payload }) are parsed per vintage
+    // with mode "as_of_vintage", exactly as tests/contextTransforms.test.ts does;
+    // the first print is the vintage dated on the release day.
+    const raw = JSON.parse(readFileSync(p, "utf8"));
+    const isVintageMap = !("observations" in raw);
+    const releaseDay = c.releaseAt.slice(0, 10);
+    const payload = isVintageMap ? JSON.stringify(raw[releaseDay] ?? { observations: [] }) : readFileSync(p, "utf8");
+    const mode = isVintageMap ? "as_of_vintage" : c.alfredFixture.mode;
+    const obs = alfred.parseAlfredObservationsPayload(payload, { seriesId: c.alfredFixture.seriesId, mode, fetchedAt: new Date("2026-11-27T00:00:00Z"), sourceUrlRedacted: url });
+    const first = obs.find((o: any) => o.observationPeriodStart === c.referencePeriodStart) ?? obs[0];
+    let gate: { eligible: boolean; reasons: string[] } | null = null;
+    if (first) {
+      const evd = { sourceUrl: first.sourceUrl, payloadSha256: first.payloadHash };
+      gate = prov.qualifyHistoricalActual(
+        { id: first.id, seriesKey: first.seriesKey, metricKey: c.metricKey, unit: first.unit, referencePeriodStart: new Date(first.observationPeriodStart), referencePeriodEnd: new Date(first.observationPeriodStart), value: first.value, valueKind: first.valueKind, provider: "fred-alfred", providerRevisionKey: first.vintageKey, vintageDate: first.vintageDate, revisionEvidence: evd, initialReleaseEvidence: evd, publishedAt: null, publicationDate: first.publicationDate, availableAt: first.availableAt, availabilityQuality: first.availabilityQuality, availabilityPolicyVersion: first.availabilityPolicyVersion, availabilityEvidence: evd, fetchedAt: first.fetchedAt, recordedAt: first.recordedAt },
+        { cutoff: new Date(releaseAt.getTime() + 86_400_000), recordedThrough: new Date("2027-01-01T00:00:00Z"), knowledgeMode: "PUBLIC_INFORMATION_RECONSTRUCTION" },
+      );
+    }
+    stages.firstPrintActual = {
+      status: first ? "PARTIAL" : "UNAVAILABLE",
+      source: `FIXTURE tests/fixtures/alfred/${c.alfredFixture.file} (raw level, not research input)`,
+      detail: first
+        ? { observations: obs.length, period: first.observationPeriodStart, vintage: first.vintageDate ?? first.realtimeStart, releaseStage: first.releaseStage, valueKind: first.valueKind, unit: first.unit, availableAt: first.availableAt?.toISOString?.() ?? null, availabilityQuality: first.availabilityQuality, provenanceGate: gate, canonicalTransformApplied: false, note: "raw index/level; canonical-unit headline needs a multi-period vintage panel not present for this event" }
+        : "fixture parsed to 0 observations",
+    };
+  } else {
+    stages.firstPrintActual = { status: "UNAVAILABLE", source: "ALFRED", detail: c.family === "PCE" ? "no PCE/PCEPILFE vintage fixture or local capture; context/definitions.ts defines no PCE series" : "no vintage capture for this release (FOMC target is a policy decision; DFEDTARU fixture covers 2024-01-01..03 only)" };
+  }
+  const dr = ev ? dbsnap.releasesDetail.find((r: any) => r.event_key === ev.event_key) : null;
+  stages.legacyActualDb = dr
+    ? { status: "PARTIAL", source: "DB snapshot (data_releases)", detail: { metricName: dr.metric_name, resolves: Boolean(metrics.metricByCanonicalName(dr.metric_name)), actual: dr.actual_value, metricKey: dr.metric_key, actualSource: dr.actual_source, legacyGate: prov.qualifyLegacyActual(dr.actual_value) } }
+    : { status: "UNAVAILABLE", source: "DB snapshot (data_releases)", detail: "no DataRelease row" };
+
+  // 3. Expectation — fixture adapters + DB consensus
+  const found: Record<string, unknown>[] = [];
+  for (const [file, kind] of EXP_SOURCES) {
+    const o = exp.selectFixtureExpectation(expFixtures[file], { kind, metricKey: c.metricKey, referencePeriodStart: c.referencePeriodStart, releaseAt }, new Date("2026-11-27T00:00:00Z"));
+    if (o) {
+      const canonicalUnit = metrics.METRICS[c.metricKey]?.unit ?? null;
+      found.push({ fixture: file, kind, value: o.value, unit: o.unit, canonicalUnit, unitMatchesCanonical: o.unit === canonicalUnit, asOfQuality: o.asOfQuality ?? o.asOf?.quality, eligibleAtRelease: exp.isExpectationTimingEligibleAtRelease ? exp.isExpectationTimingEligibleAtRelease(o, releaseAt) : "n/a", streetSurpriseEligible: exp.isEligibleStreetSurpriseInput ? exp.isEligibleStreetSurpriseInput(o) : "n/a", consensusEstimate: exp.toConsensusEstimate(o, releaseAt) });
+    }
+  }
+  stages.expectationFixtures = found.length
+    ? { status: "PARTIAL", source: "FIXTURE tests/fixtures/expectations/* (not research input)", detail: { matches: found } }
+    : { status: "UNAVAILABLE", source: "FIXTURE tests/fixtures/expectations/*", detail: `no fixture row for ${c.metricKey} ref ${c.referencePeriodStart}` };
+  stages.expectationDb = dr
+    ? { status: dr.consensus_status === "VERIFIED" ? "AVAILABLE" : "PARTIAL", source: "DB snapshot (data_releases)", detail: { expected: dr.expected_value, consensusStatus: dr.consensus_status, consensusSource: dr.consensus_source } }
+    : { status: "UNAVAILABLE", source: "DB snapshot (data_releases)", detail: "no DataRelease row" };
+
+  // 4. Market — NQ archive window
+  if (!nqAdapter) stages.nqWindow = { status: "UNAVAILABLE", source: "local NQ archive", detail: nqInitError ?? "adapter not created" };
+  else {
+    try {
+      const w = await nqAdapter.extractEventWindow({ releaseAt, beforeMs: 30 * 60_000, afterMs: 60 * 60_000 });
+      stages.nqWindow = {
+        status: w.reactionQualification === "strict" ? "AVAILABLE" : w.reactionQualification === "exploratory" ? "PARTIAL" : "REFUSED",
+        source: "local NQ archive (Databento 1m outright)",
+        detail: { tradingDate: w.tradingDate, contract: w.contractSelection.contract, tier: w.eligibility.tier, reasonCode: w.eligibility.reasonCode, qualification: w.reactionQualification, bars: w.bars.length, expectedBars: w.coverage.expectedBars, complete: w.coverage.complete },
+      };
+      // 6b. Reaction engine on NQ bars (no symbol substitution)
+      const intraday = w.bars.map((b: any) => ({ barAt: b.openAt, open: b.open, priceBasis: "AS_TRADED" }));
+      const out = rm.resolveIntradayMeasurement({ symbol: "NQ", releaseAt, intraday, releaseSessionDay: w.tradingDate });
+      stages.reactionEngineOnNq = { status: out.status === "refused" ? "REFUSED" : "AVAILABLE", source: "reactionMeasurement.resolveIntradayMeasurement(symbol=NQ)", detail: { outcome: out.status, reason: out.reason ?? null, sessionBasisForNQ: sb.sessionBasisFor("NQ") } };
+    } catch (e) {
+      stages.nqWindow = { status: "UNAVAILABLE", source: "local NQ archive", detail: `${(e as Error).name}: ${(e as Error).message}` };
+    }
+  }
+
+  // 4b. DB candles (captured ranges)
+  const inCandles = dbsnap.candlesBySeries.filter((s: any) => releaseAt >= new Date(s.first) && releaseAt <= new Date(s.last)).map((s: any) => `${s.symbol}/${s.interval}/${s.price_basis}`);
+  stages.dbCandles = inCandles.length
+    ? { status: "PARTIAL", source: "DB snapshot (candles ranges)", detail: { seriesCoveringRange: inCandles, note: "range check only; ONE_HOUR AS_TRADED; no eligibility label; not read by measurement backfill" } }
+    : { status: "UNAVAILABLE", source: "DB snapshot (candles ranges)", detail: "release outside stored SPY/QQQ 1h range 2024-09-09..2025-07-03" };
+
+  // 5. Context — no persisted observations exist; run the feature with what exists (nothing)
+  const vix = vol.computeVixLevel({ cutoff: releaseAt, knowledgeMode: "PUBLIC_INFORMATION_RECONSTRUCTION", observations: [] });
+  stages.contextVix = { status: "UNAVAILABLE", source: "computeVixLevel(observations=[]) — no persisted/local VIX history (fixture covers 2024-01-02..05 only)", detail: { value: vix.value ?? null, missingReason: vix.missingReason ?? vix.reason ?? vix.status ?? null } };
+
+  // 6. Reaction measurements — committed v3 snapshot
+  const snapEvent = msnap.events.find((e: any) => e.releaseAt && new Date(e.releaseAt).getTime() === releaseAt.getTime());
+  const rows = snapEvent ? msnap.rows.filter((r: any) => r.eventId === snapEvent.id) : [];
+  const byMeasure: Record<string, number> = {};
+  for (const r of rows) byMeasure[r.measure] = (byMeasure[r.measure] ?? 0) + 1;
+  stages.v3Measurements = rows.length
+    ? { status: "PARTIAL", source: "committed measurement-snapshot.json (v3, Yahoo proxies)", detail: { rows: rows.length, byMeasure, symbols: [...new Set(rows.map((r: any) => r.symbol))].length, pointInTimeCertified: false } }
+    : { status: "UNAVAILABLE", source: "committed measurement-snapshot.json", detail: "no v3 rows for this release" };
+
+  // 7. Surprise — only from qualified actual AND qualified pre-release expectation
+  const actualOk = (stages.firstPrintActual.detail as any)?.provenanceGate?.eligible === true;
+  const expOk = stages.expectationDb.status === "AVAILABLE" || found.some((f: any) => f.streetSurpriseEligible === true && f.unitMatchesCanonical && f.eligibleAtRelease === true);
+  stages.surprise = actualOk && expOk
+    ? { status: "AVAILABLE", source: "derived", detail: "qualified inputs present" }
+    : { status: "UNAVAILABLE", source: "derived", detail: { qualifiedFirstPrintActual: actualOk, qualifiedPreReleaseExpectation: expOk } };
+
+  const verdict = Object.values(stages).some((s) => s.status === "UNAVAILABLE" || s.status === "REFUSED") ? "NOT_RESEARCH_ELIGIBLE" : "ELIGIBLE";
+  results.push({ family: c.family, label: c.label, releaseAt: c.releaseAt, metricKey: c.metricKey, stages, verdict });
+}
+
+const inputHashes = Object.fromEntries(Object.entries(inputs).map(([k, p]) => [k, sha(p)]));
+const report = { generatedAt: new Date().toISOString(), mainCommit: process.env.MAIN_SHA, network: "none", database: "none (captured snapshot file only)", nqArchiveRoot: process.env.NQ_ARCHIVE_ROOT ? "set (external local path)" : "unset", nqProvenance: nqAdapter ? { acceptance: nqAdapter.provenance.acceptanceStatus, certification: nqAdapter.provenance.certificationStatus, version: nqAdapter.provenance.certificationVersion } : null, inputHashes, results };
+writeFileSync(`${SP}/evidence/50-e2e-dryrun.json`, JSON.stringify(report, null, 2));
+for (const r of results as any[]) {
+  console.log(`\n### ${r.family} — ${r.label} (${r.releaseAt}) → ${r.verdict}`);
+  for (const [k, s] of Object.entries(r.stages) as [string, Stage][]) console.log(`  ${k.padEnd(20)} ${s.status.padEnd(11)} ${typeof s.detail === "string" ? s.detail : JSON.stringify(s.detail)}`);
+}

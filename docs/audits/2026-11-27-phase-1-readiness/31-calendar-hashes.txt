@@ -1,0 +1,3 @@
+e96798760e3c840baa3d8edef9b5663529a1e295896f622470b5fbb505b826e9  $SCRATCH/calendar-replay/records.json
+45431b112d26590015b60ef343a1591f98e05feb128f3298c289e9b96e6cbd73  $SCRATCH/calendar-replay/observations.json
+e96798760e3c840baa3d8edef9b5663529a1e295896f622470b5fbb505b826e9  $CALENDAR_WORKTREE/data/release-calendar/records.json

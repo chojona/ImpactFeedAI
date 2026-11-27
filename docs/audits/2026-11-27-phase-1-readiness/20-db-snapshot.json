@@ -1,0 +1,1576 @@
+{
+  "capturedAt": "2026-11-27T16:56:07.062Z",
+  "readOnlySetting": [
+    {
+      "default_transaction_read_only": "on"
+    }
+  ],
+  "txReadOnly": [
+    {
+      "transaction_read_only": "on"
+    }
+  ],
+  "tables": [
+    {
+      "table_name": "_prisma_migrations"
+    },
+    {
+      "table_name": "asset_reactions"
+    },
+    {
+      "table_name": "candles"
+    },
+    {
+      "table_name": "data_releases"
+    },
+    {
+      "table_name": "events"
+    },
+    {
+      "table_name": "reaction_measurements"
+    }
+  ],
+  "migrations": [
+    {
+      "migration_name": "20260512194452_init",
+      "finished_at": "2026-08-07T17:37:16.414Z",
+      "rolled_back_at": null,
+      "checksum": "8e1646c92dc75236fad8f0ef7d66e923c560c0f32b2d38126a5370111c70f7c0"
+    },
+    {
+      "migration_name": "20260810231105_add_event_timing_provenance",
+      "finished_at": "2026-08-20T17:41:08.424Z",
+      "rolled_back_at": null,
+      "checksum": "63ff8071a69f28d8402d1251c982d4b2d6c61d9bc0156b9bc49865933d8022ef"
+    },
+    {
+      "migration_name": "20260820185236_add_candle_storage",
+      "finished_at": "2026-08-20T18:52:50.045Z",
+      "rolled_back_at": null,
+      "checksum": "d64f3f34db513c500405e5dcff866debf684574a24cc2a62d7b487b076d32e15"
+    },
+    {
+      "migration_name": "20260912175823_add_reaction_measurements",
+      "finished_at": "2026-09-12T18:25:34.027Z",
+      "rolled_back_at": null,
+      "checksum": "2a796b6762b0dc468b281948a6299702014370069f92bfc822f6f5c4127bb9f3"
+    }
+  ],
+  "rowCounts": [
+    {
+      "t": "events",
+      "n": 50
+    },
+    {
+      "t": "data_releases",
+      "n": 21
+    },
+    {
+      "t": "asset_reactions",
+      "n": 597
+    },
+    {
+      "t": "candles",
+      "n": 1276
+    },
+    {
+      "t": "reaction_measurements",
+      "n": 828
+    }
+  ],
+  "eventsByTypeTiming": [
+    {
+      "event_type": "TARIFF",
+      "timing_status": "UNVERIFIED",
+      "n": 11,
+      "first": "2025-02-10T22:00:00.000Z",
+      "last": "2025-08-29T20:00:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "timing_status": "SCHEDULED",
+      "n": 6,
+      "first": "2022-11-02T18:00:00.000Z",
+      "last": "2025-05-07T18:00:00.000Z",
+      "with_release_at": 6,
+      "with_release_date": 6
+    },
+    {
+      "event_type": "FED_DECISION",
+      "timing_status": "UNVERIFIED",
+      "n": 1,
+      "first": "2025-08-22T14:00:00.000Z",
+      "last": "2025-08-22T14:00:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    },
+    {
+      "event_type": "CPI",
+      "timing_status": "SCHEDULED",
+      "n": 7,
+      "first": "2022-07-13T12:30:00.000Z",
+      "last": "2025-06-11T12:30:00.000Z",
+      "with_release_at": 7,
+      "with_release_date": 7
+    },
+    {
+      "event_type": "PPI",
+      "timing_status": "SCHEDULED",
+      "n": 2,
+      "first": "2024-04-11T12:30:00.000Z",
+      "last": "2025-02-13T13:30:00.000Z",
+      "with_release_at": 2,
+      "with_release_date": 2
+    },
+    {
+      "event_type": "NFP",
+      "timing_status": "SCHEDULED",
+      "n": 5,
+      "first": "2023-02-03T13:30:00.000Z",
+      "last": "2025-07-03T12:30:00.000Z",
+      "with_release_at": 5,
+      "with_release_date": 5
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "timing_status": "UNVERIFIED",
+      "n": 8,
+      "first": "2022-02-24T10:00:00.000Z",
+      "last": "2026-02-24T15:00:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "timing_status": "UNVERIFIED",
+      "n": 7,
+      "first": "2024-07-30T20:05:00.000Z",
+      "last": "2025-05-28T20:20:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    },
+    {
+      "event_type": "MACRO_DATA",
+      "timing_status": "UNVERIFIED",
+      "n": 3,
+      "first": "2024-04-25T12:30:00.000Z",
+      "last": "2025-07-30T12:30:00.000Z",
+      "with_release_at": 0,
+      "with_release_date": 0
+    }
+  ],
+  "eventTimingSources": [
+    {
+      "src": "<null>",
+      "timing_status": "UNVERIFIED",
+      "n": 30
+    },
+    {
+      "src": "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
+      "timing_status": "SCHEDULED",
+      "n": 7
+    },
+    {
+      "src": "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
+      "timing_status": "SCHEDULED",
+      "n": 6
+    },
+    {
+      "src": "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
+      "timing_status": "SCHEDULED",
+      "n": 5
+    },
+    {
+      "src": "BLS Producer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/ppi.htm)",
+      "timing_status": "SCHEDULED",
+      "n": 2
+    }
+  ],
+  "dataReleasesByMetric": [
+    {
+      "metric_name": "CPI (headline, YoY)",
+      "metric_key": "<null>",
+      "n": 7,
+      "actual": 7,
+      "expected": 7,
+      "surprise": 7,
+      "prior": 7,
+      "ref_period": 0,
+      "first_ref": null,
+      "last_ref": null,
+      "consensus_statuses": "UNVERIFIED",
+      "actual_sources": "<null>"
+    },
+    {
+      "metric_name": "Fed funds target rate (upper bound)",
+      "metric_key": "<null>",
+      "n": 7,
+      "actual": 7,
+      "expected": 6,
+      "surprise": 6,
+      "prior": 7,
+      "ref_period": 0,
+      "first_ref": null,
+      "last_ref": null,
+      "consensus_statuses": "MISSING,UNVERIFIED",
+      "actual_sources": "<null>"
+    },
+    {
+      "metric_name": "Nonfarm payrolls (MoM change)",
+      "metric_key": "<null>",
+      "n": 5,
+      "actual": 5,
+      "expected": 5,
+      "surprise": 5,
+      "prior": 5,
+      "ref_period": 0,
+      "first_ref": null,
+      "last_ref": null,
+      "consensus_statuses": "UNVERIFIED",
+      "actual_sources": "<null>"
+    },
+    {
+      "metric_name": "PPI (final demand, YoY)",
+      "metric_key": "<null>",
+      "n": 2,
+      "actual": 2,
+      "expected": 2,
+      "surprise": 2,
+      "prior": 2,
+      "ref_period": 0,
+      "first_ref": null,
+      "last_ref": null,
+      "consensus_statuses": "UNVERIFIED",
+      "actual_sources": "<null>"
+    }
+  ],
+  "consensusSources": [
+    {
+      "consensus_status": "UNVERIFIED",
+      "src": "<null>",
+      "n": 20
+    },
+    {
+      "consensus_status": "MISSING",
+      "src": "<null>",
+      "n": 1
+    }
+  ],
+  "candlesBySeries": [
+    {
+      "symbol": "QQQ",
+      "interval": "ONE_HOUR",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "ingestion_version": 1,
+      "n": 638,
+      "first": "2024-09-09T13:00:00.000Z",
+      "last": "2025-07-03T20:00:00.000Z",
+      "with_volume": 275,
+      "sessions": "EXTENDED,REGULAR"
+    },
+    {
+      "symbol": "SPY",
+      "interval": "ONE_HOUR",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "ingestion_version": 1,
+      "n": 638,
+      "first": "2024-09-09T13:00:00.000Z",
+      "last": "2025-07-03T20:00:00.000Z",
+      "with_volume": 275,
+      "sessions": "EXTENDED,REGULAR"
+    }
+  ],
+  "measurementsByVersionMeasure": [
+    {
+      "calculation_version": 3,
+      "measure": "INTRADAY_60M",
+      "n": 108,
+      "events": 9,
+      "symbols": 12,
+      "first": "2024-11-07T00:00:00.000Z",
+      "last": "2025-07-03T00:00:00.000Z"
+    },
+    {
+      "calculation_version": 3,
+      "measure": "RELEASE_SESSION",
+      "n": 240,
+      "events": 20,
+      "symbols": 12,
+      "first": "2022-07-13T00:00:00.000Z",
+      "last": "2025-07-03T00:00:00.000Z"
+    },
+    {
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_1",
+      "n": 240,
+      "events": 20,
+      "symbols": 12,
+      "first": "2022-07-13T00:00:00.000Z",
+      "last": "2025-07-03T00:00:00.000Z"
+    },
+    {
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_5",
+      "n": 240,
+      "events": 20,
+      "symbols": 12,
+      "first": "2022-07-13T00:00:00.000Z",
+      "last": "2025-07-03T00:00:00.000Z"
+    }
+  ],
+  "measurementsBySymbol": [
+    {
+      "symbol": "BTC-USD",
+      "calculation_version": 3,
+      "session_basis": "CONTINUOUS_24_7",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "BTC-USD",
+      "calculation_version": 3,
+      "session_basis": "CONTINUOUS_24_7",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "CL=F",
+      "calculation_version": 3,
+      "session_basis": "EXTENDED_FUTURES",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "CL=F",
+      "calculation_version": 3,
+      "session_basis": "EXTENDED_FUTURES",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "DX-Y.NYB",
+      "calculation_version": 3,
+      "session_basis": "EXTENDED_FUTURES",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "DX-Y.NYB",
+      "calculation_version": 3,
+      "session_basis": "EXTENDED_FUTURES",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "GC=F",
+      "calculation_version": 3,
+      "session_basis": "EXTENDED_FUTURES",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "GC=F",
+      "calculation_version": 3,
+      "session_basis": "EXTENDED_FUTURES",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "GLD",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "GLD",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "IWM",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "IWM",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "QQQ",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "QQQ",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "SPY",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "SPY",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "TLT",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "TLT",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "XLE",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "XLE",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "XLF",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "XLF",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    },
+    {
+      "symbol": "XLK",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "SPLIT_ADJUSTED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 60
+    },
+    {
+      "symbol": "XLK",
+      "calculation_version": 3,
+      "session_basis": "US_EQUITY_RTH",
+      "price_basis": "AS_TRADED",
+      "provider": "yahoo-finance2@3.14.0",
+      "n": 9
+    }
+  ],
+  "measurementsByEventType": [
+    {
+      "event_type": "FED_DECISION",
+      "calculation_version": 3,
+      "measure": "INTRADAY_60M",
+      "n": 36,
+      "events": 3
+    },
+    {
+      "event_type": "FED_DECISION",
+      "calculation_version": 3,
+      "measure": "RELEASE_SESSION",
+      "n": 72,
+      "events": 6
+    },
+    {
+      "event_type": "FED_DECISION",
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_1",
+      "n": 72,
+      "events": 6
+    },
+    {
+      "event_type": "FED_DECISION",
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_5",
+      "n": 72,
+      "events": 6
+    },
+    {
+      "event_type": "CPI",
+      "calculation_version": 3,
+      "measure": "INTRADAY_60M",
+      "n": 36,
+      "events": 3
+    },
+    {
+      "event_type": "CPI",
+      "calculation_version": 3,
+      "measure": "RELEASE_SESSION",
+      "n": 84,
+      "events": 7
+    },
+    {
+      "event_type": "CPI",
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_1",
+      "n": 84,
+      "events": 7
+    },
+    {
+      "event_type": "CPI",
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_5",
+      "n": 84,
+      "events": 7
+    },
+    {
+      "event_type": "PPI",
+      "calculation_version": 3,
+      "measure": "INTRADAY_60M",
+      "n": 12,
+      "events": 1
+    },
+    {
+      "event_type": "PPI",
+      "calculation_version": 3,
+      "measure": "RELEASE_SESSION",
+      "n": 24,
+      "events": 2
+    },
+    {
+      "event_type": "PPI",
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_1",
+      "n": 24,
+      "events": 2
+    },
+    {
+      "event_type": "PPI",
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_5",
+      "n": 24,
+      "events": 2
+    },
+    {
+      "event_type": "NFP",
+      "calculation_version": 3,
+      "measure": "INTRADAY_60M",
+      "n": 24,
+      "events": 2
+    },
+    {
+      "event_type": "NFP",
+      "calculation_version": 3,
+      "measure": "RELEASE_SESSION",
+      "n": 60,
+      "events": 5
+    },
+    {
+      "event_type": "NFP",
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_1",
+      "n": 60,
+      "events": 5
+    },
+    {
+      "event_type": "NFP",
+      "calculation_version": 3,
+      "measure": "SESSION_PLUS_5",
+      "n": 60,
+      "events": 5
+    }
+  ],
+  "assetReactionsByVersion": [
+    {
+      "v": -1,
+      "n": 357,
+      "h1": 251,
+      "d1": 345,
+      "w1": 351
+    },
+    {
+      "v": 2,
+      "n": 240,
+      "h1": 110,
+      "d1": 240,
+      "w1": 240
+    }
+  ],
+  "targetEvents": [
+    {
+      "event_type": "GEOPOLITICAL",
+      "event_key": null,
+      "headline": "Russia invades Ukraine — markets open in freefall",
+      "occurred_at": "2022-02-24T10:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "CPI",
+      "event_key": "curated:CPI:June CPI hits 9.1% YoY — highest in 40 years",
+      "headline": "June CPI hits 9.1% YoY — highest in 40 years",
+      "occurred_at": "2022-07-13T12:30:00.000Z",
+      "release_at": "2022-07-13T12:30:00.000Z",
+      "release_date": "2022-07-13T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "event_key": "curated:FED_DECISION:Fed hikes 75bps — fourth consecutive jumbo hike",
+      "headline": "Fed hikes 75bps — fourth consecutive jumbo hike",
+      "occurred_at": "2022-11-02T18:00:00.000Z",
+      "release_at": "2022-11-02T18:00:00.000Z",
+      "release_date": "2022-11-02T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "CPI",
+      "event_key": "curated:CPI:October CPI cools to 7.7% YoY, biggest miss since 2008",
+      "headline": "October CPI cools to 7.7% YoY, biggest miss since 2008",
+      "occurred_at": "2022-11-10T13:30:00.000Z",
+      "release_at": "2022-11-10T13:30:00.000Z",
+      "release_date": "2022-11-10T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "NFP",
+      "event_key": "curated:NFP:January 2023 NFP shocks at +517k, unemployment 3.4%",
+      "headline": "January 2023 NFP shocks at +517k, unemployment 3.4%",
+      "occurred_at": "2023-02-03T13:30:00.000Z",
+      "release_at": "2023-02-03T13:30:00.000Z",
+      "release_date": "2023-02-03T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "event_key": null,
+      "headline": "Silicon Valley Bank seized by FDIC, contagion fears spread",
+      "occurred_at": "2023-03-10T16:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "event_key": null,
+      "headline": "Credit Suisse rescue forces $17B AT1 wipeout",
+      "occurred_at": "2023-03-19T20:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "event_key": "curated:FED_DECISION:Fed pauses hiking cycle after ten consecutive hikes",
+      "headline": "Fed pauses hiking cycle after ten consecutive hikes",
+      "occurred_at": "2023-06-14T18:00:00.000Z",
+      "release_at": "2023-06-14T18:00:00.000Z",
+      "release_date": "2023-06-14T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "event_key": null,
+      "headline": "Hamas launches surprise attack on Israel; oil gaps higher",
+      "occurred_at": "2023-10-07T10:30:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "NFP",
+      "event_key": "curated:NFP:January 2024 NFP +353k crushes consensus",
+      "headline": "January 2024 NFP +353k crushes consensus",
+      "occurred_at": "2024-02-02T13:30:00.000Z",
+      "release_at": "2024-02-02T13:30:00.000Z",
+      "release_date": "2024-02-02T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "CPI",
+      "event_key": "curated:CPI:January CPI prints hotter at 3.1% YoY",
+      "headline": "January CPI prints hotter at 3.1% YoY",
+      "occurred_at": "2024-02-13T13:30:00.000Z",
+      "release_at": "2024-02-13T13:30:00.000Z",
+      "release_date": "2024-02-13T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "PPI",
+      "event_key": "curated:PPI:March 2024 PPI hotter at 2.1% YoY, services lead",
+      "headline": "March 2024 PPI hotter at 2.1% YoY, services lead",
+      "occurred_at": "2024-04-11T12:30:00.000Z",
+      "release_at": "2024-04-11T12:30:00.000Z",
+      "release_date": "2024-04-11T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Producer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/ppi.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "MACRO_DATA",
+      "event_key": null,
+      "headline": "Q1 2024 US GDP grows just 1.6%, stagflation talk returns",
+      "occurred_at": "2024-04-25T12:30:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "event_key": null,
+      "headline": "Trump survives assassination attempt at PA rally",
+      "occurred_at": "2024-07-13T22:11:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "event_key": null,
+      "headline": "Microsoft FY24 Q4 Azure decelerates, AI capex spooks investors",
+      "occurred_at": "2024-07-30T20:05:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "MACRO_DATA",
+      "event_key": null,
+      "headline": "ISM Manufacturing PMI plunges to 46.7, contraction deepens",
+      "occurred_at": "2024-08-01T14:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "NFP",
+      "event_key": "curated:NFP:July 2024 NFP misses at +114k, unemployment up to 4.3%",
+      "headline": "July 2024 NFP misses at +114k, unemployment up to 4.3%",
+      "occurred_at": "2024-08-02T12:30:00.000Z",
+      "release_at": "2024-08-02T12:30:00.000Z",
+      "release_date": "2024-08-02T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "CPI",
+      "event_key": "curated:CPI:August CPI cools to 2.5% YoY — lowest since Feb 2021",
+      "headline": "August CPI cools to 2.5% YoY — lowest since Feb 2021",
+      "occurred_at": "2024-09-11T12:30:00.000Z",
+      "release_at": "2024-09-11T12:30:00.000Z",
+      "release_date": "2024-09-11T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "event_key": null,
+      "headline": "Hezbollah pager attacks trigger Mideast escalation fears",
+      "occurred_at": "2024-09-17T19:30:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "event_key": "curated:FED_DECISION:Fed cuts 50bps — first cut of the cycle, jumbo-sized",
+      "headline": "Fed cuts 50bps — first cut of the cycle, jumbo-sized",
+      "occurred_at": "2024-09-18T18:00:00.000Z",
+      "release_at": "2024-09-18T18:00:00.000Z",
+      "release_date": "2024-09-18T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
+      "releases": 1,
+      "v3_measurements": 36,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "event_key": null,
+      "headline": "Google Q3 2024 beats, Cloud accelerates to 35% YoY",
+      "occurred_at": "2024-10-29T20:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "event_key": "curated:FED_DECISION:Fed cuts 25bps as expected post-election",
+      "headline": "Fed cuts 25bps as expected post-election",
+      "occurred_at": "2024-11-07T19:00:00.000Z",
+      "release_at": "2024-11-07T19:00:00.000Z",
+      "release_date": "2024-11-07T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "event_key": null,
+      "headline": "NVIDIA Q3 FY25 beats but guidance light, AI hype cools",
+      "occurred_at": "2024-11-20T21:20:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "event_key": "curated:FED_DECISION:Fed cuts 25bps, dot plot signals fewer 2025 cuts",
+      "headline": "Fed cuts 25bps, dot plot signals fewer 2025 cuts",
+      "occurred_at": "2024-12-18T19:00:00.000Z",
+      "release_at": "2024-12-18T19:00:00.000Z",
+      "release_date": "2024-12-18T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "NFP",
+      "event_key": "curated:NFP:December 2024 NFP +256k, unemployment falls to 4.1%",
+      "headline": "December 2024 NFP +256k, unemployment falls to 4.1%",
+      "occurred_at": "2025-01-10T13:30:00.000Z",
+      "release_at": "2025-01-10T13:30:00.000Z",
+      "release_date": "2025-01-10T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "CPI",
+      "event_key": "curated:CPI:December CPI prints 2.9% YoY in line with expectations",
+      "headline": "December CPI prints 2.9% YoY in line with expectations",
+      "occurred_at": "2025-01-15T13:30:00.000Z",
+      "release_at": "2025-01-15T13:30:00.000Z",
+      "release_date": "2025-01-15T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "event_key": null,
+      "headline": "Meta Q4 2024 beats, capex guide jolts AI infra trade",
+      "occurred_at": "2025-01-29T21:05:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "event_key": null,
+      "headline": "Apple Q1 FY25 services strength offsets China weakness",
+      "occurred_at": "2025-01-30T21:30:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "Trump announces 25% tariffs on steel and aluminum imports",
+      "occurred_at": "2025-02-10T22:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "PPI",
+      "event_key": "curated:PPI:January 2025 PPI prints 3.5% YoY, tariff impact begins",
+      "headline": "January 2025 PPI prints 3.5% YoY, tariff impact begins",
+      "occurred_at": "2025-02-13T13:30:00.000Z",
+      "release_at": "2025-02-13T13:30:00.000Z",
+      "release_date": "2025-02-13T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Producer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/ppi.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "Trump 25% tariffs on Mexico and Canada take effect; 10% on China",
+      "occurred_at": "2025-03-04T05:01:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "Trump signs Section 232 25% tariffs on imported autos",
+      "occurred_at": "2025-03-26T20:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "Trump announces 10% baseline tariff on all imports plus reciprocal rates",
+      "occurred_at": "2025-04-02T20:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "China announces 34% retaliatory tariffs on all US imports",
+      "occurred_at": "2025-04-04T12:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "Trump pauses reciprocal tariffs 90 days for non-China countries",
+      "occurred_at": "2025-04-09T17:18:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "US-China tariffs escalate to 145% / 125%",
+      "occurred_at": "2025-04-11T12:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "event_key": null,
+      "headline": "Tesla Q1 2025 misses big as auto margins collapse",
+      "occurred_at": "2025-04-22T20:05:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "event_key": "curated:FED_DECISION:Fed holds rates, Powell signals extended pause through Q3",
+      "headline": "Fed holds rates, Powell signals extended pause through Q3",
+      "occurred_at": "2025-05-07T18:00:00.000Z",
+      "release_at": "2025-05-07T18:00:00.000Z",
+      "release_date": "2025-05-07T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "CPI",
+      "event_key": "curated:CPI:April CPI surprises cool at 2.3% YoY",
+      "headline": "April CPI surprises cool at 2.3% YoY",
+      "occurred_at": "2025-05-13T12:30:00.000Z",
+      "release_at": "2025-05-13T12:30:00.000Z",
+      "release_date": "2025-05-13T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "Trump threatens 50% tariff on European Union imports",
+      "occurred_at": "2025-05-23T12:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "EARNINGS_SURPRISE",
+      "event_key": null,
+      "headline": "NVIDIA Q1 FY26 crushes estimates, data center hits $39B",
+      "occurred_at": "2025-05-28T20:20:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "US Court of International Trade rules IEEPA tariffs unlawful",
+      "occurred_at": "2025-05-28T20:30:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "Trump doubles steel tariff to 50% effective immediately",
+      "occurred_at": "2025-06-04T04:01:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "CPI",
+      "event_key": "curated:CPI:May CPI prints 2.4% YoY, tariffs yet to flow through",
+      "headline": "May CPI prints 2.4% YoY, tariffs yet to flow through",
+      "occurred_at": "2025-06-11T12:30:00.000Z",
+      "release_at": "2025-06-11T12:30:00.000Z",
+      "release_date": "2025-06-11T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "event_key": null,
+      "headline": "Israel strikes Iranian nuclear sites, oil spikes 7%",
+      "occurred_at": "2025-06-13T06:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "NFP",
+      "event_key": "curated:NFP:June 2025 NFP +147k, June revisions cut prior 110k",
+      "headline": "June 2025 NFP +147k, June revisions cut prior 110k",
+      "occurred_at": "2025-07-03T12:30:00.000Z",
+      "release_at": "2025-07-03T12:30:00.000Z",
+      "release_date": "2025-07-03T00:00:00.000Z",
+      "timing_status": "SCHEDULED",
+      "timing_source": "BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)",
+      "releases": 1,
+      "v3_measurements": 48,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "MACRO_DATA",
+      "event_key": null,
+      "headline": "Q2 2025 GDP advance reading +2.8%, beats consensus",
+      "occurred_at": "2025-07-30T12:30:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "FED_DECISION",
+      "event_key": null,
+      "headline": "Powell Jackson Hole speech reinforces data-dependent stance",
+      "occurred_at": "2025-08-22T14:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 1,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "TARIFF",
+      "event_key": null,
+      "headline": "Federal Circuit upholds CIT ruling against IEEPA tariffs",
+      "occurred_at": "2025-08-29T20:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    },
+    {
+      "event_type": "GEOPOLITICAL",
+      "event_key": null,
+      "headline": "Supreme Court strikes down IEEPA tariffs 6-3",
+      "occurred_at": "2026-02-24T15:00:00.000Z",
+      "release_at": null,
+      "release_date": null,
+      "timing_status": "UNVERIFIED",
+      "timing_source": null,
+      "releases": 0,
+      "v3_measurements": 0,
+      "v4_measurements": 0
+    }
+  ],
+  "releasesDetail": [
+    {
+      "event_key": "curated:CPI:June CPI hits 9.1% YoY — highest in 40 years",
+      "metric_name": "CPI (headline, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 9.1,
+      "expected_value": 8.8,
+      "prior_value": 8.6,
+      "surprise_magnitude": 0.3,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:FED_DECISION:Fed hikes 75bps — fourth consecutive jumbo hike",
+      "metric_name": "Fed funds target rate (upper bound)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 4,
+      "expected_value": 4,
+      "prior_value": 3.25,
+      "surprise_magnitude": 0,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:CPI:October CPI cools to 7.7% YoY, biggest miss since 2008",
+      "metric_name": "CPI (headline, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 7.7,
+      "expected_value": 7.9,
+      "prior_value": 8.2,
+      "surprise_magnitude": -0.2,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:NFP:January 2023 NFP shocks at +517k, unemployment 3.4%",
+      "metric_name": "Nonfarm payrolls (MoM change)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 517,
+      "expected_value": 187,
+      "prior_value": 260,
+      "surprise_magnitude": 330,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:FED_DECISION:Fed pauses hiking cycle after ten consecutive hikes",
+      "metric_name": "Fed funds target rate (upper bound)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 5.25,
+      "expected_value": 5.25,
+      "prior_value": 5.25,
+      "surprise_magnitude": 0,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:NFP:January 2024 NFP +353k crushes consensus",
+      "metric_name": "Nonfarm payrolls (MoM change)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 353,
+      "expected_value": 185,
+      "prior_value": 333,
+      "surprise_magnitude": 168,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:CPI:January CPI prints hotter at 3.1% YoY",
+      "metric_name": "CPI (headline, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 3.1,
+      "expected_value": 2.9,
+      "prior_value": 3.4,
+      "surprise_magnitude": 0.2,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:PPI:March 2024 PPI hotter at 2.1% YoY, services lead",
+      "metric_name": "PPI (final demand, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 2.1,
+      "expected_value": 2.2,
+      "prior_value": 1.6,
+      "surprise_magnitude": -0.1,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:NFP:July 2024 NFP misses at +114k, unemployment up to 4.3%",
+      "metric_name": "Nonfarm payrolls (MoM change)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 114,
+      "expected_value": 175,
+      "prior_value": 179,
+      "surprise_magnitude": -61,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:CPI:August CPI cools to 2.5% YoY — lowest since Feb 2021",
+      "metric_name": "CPI (headline, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 2.5,
+      "expected_value": 2.6,
+      "prior_value": 2.9,
+      "surprise_magnitude": -0.1,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:FED_DECISION:Fed cuts 50bps — first cut of the cycle, jumbo-sized",
+      "metric_name": "Fed funds target rate (upper bound)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 5,
+      "expected_value": 5.25,
+      "prior_value": 5.5,
+      "surprise_magnitude": -0.25,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:FED_DECISION:Fed cuts 25bps as expected post-election",
+      "metric_name": "Fed funds target rate (upper bound)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 4.75,
+      "expected_value": 4.75,
+      "prior_value": 5,
+      "surprise_magnitude": 0,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:FED_DECISION:Fed cuts 25bps, dot plot signals fewer 2025 cuts",
+      "metric_name": "Fed funds target rate (upper bound)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 4.5,
+      "expected_value": 4.5,
+      "prior_value": 4.75,
+      "surprise_magnitude": 0,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:NFP:December 2024 NFP +256k, unemployment falls to 4.1%",
+      "metric_name": "Nonfarm payrolls (MoM change)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 256,
+      "expected_value": 165,
+      "prior_value": 212,
+      "surprise_magnitude": 91,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:CPI:December CPI prints 2.9% YoY in line with expectations",
+      "metric_name": "CPI (headline, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 2.9,
+      "expected_value": 2.9,
+      "prior_value": 2.7,
+      "surprise_magnitude": 0,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:PPI:January 2025 PPI prints 3.5% YoY, tariff impact begins",
+      "metric_name": "PPI (final demand, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 3.5,
+      "expected_value": 3.2,
+      "prior_value": 3.5,
+      "surprise_magnitude": 0.3,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:FED_DECISION:Fed holds rates, Powell signals extended pause through Q3",
+      "metric_name": "Fed funds target rate (upper bound)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 4.5,
+      "expected_value": 4.5,
+      "prior_value": 4.5,
+      "surprise_magnitude": 0,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:CPI:April CPI surprises cool at 2.3% YoY",
+      "metric_name": "CPI (headline, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 2.3,
+      "expected_value": 2.4,
+      "prior_value": 2.4,
+      "surprise_magnitude": -0.1,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:CPI:May CPI prints 2.4% YoY, tariffs yet to flow through",
+      "metric_name": "CPI (headline, YoY)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 2.4,
+      "expected_value": 2.5,
+      "prior_value": 2.3,
+      "surprise_magnitude": -0.1,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": "curated:NFP:June 2025 NFP +147k, June revisions cut prior 110k",
+      "metric_name": "Nonfarm payrolls (MoM change)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 147,
+      "expected_value": 110,
+      "prior_value": 144,
+      "surprise_magnitude": 37,
+      "actual_source": null,
+      "consensus_status": "UNVERIFIED",
+      "consensus_source": null
+    },
+    {
+      "event_key": null,
+      "metric_name": "Fed funds target rate (upper bound)",
+      "metric_key": null,
+      "reference_period_start": null,
+      "actual_value": 4.5,
+      "expected_value": null,
+      "prior_value": 4.5,
+      "surprise_magnitude": null,
+      "actual_source": null,
+      "consensus_status": "MISSING",
+      "consensus_source": null
+    }
+  ]
+}

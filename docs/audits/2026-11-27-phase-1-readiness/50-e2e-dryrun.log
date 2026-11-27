@@ -1,0 +1,84 @@
+
+### CPI — June 2022 CPI (2022-07-13T12:30:00Z) → NOT_RESEARCH_ELIGIBLE
+  timingCalendar       UNAVAILABLE no record for CPI_HEADLINE|2022-06-01|INITIAL
+  timingDb             PARTIAL     {"timingStatus":"SCHEDULED","releaseAt":"2022-07-13T12:30:00.000Z","timingSource":"BLS Consumer Price Index release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/cpi.htm)"}
+  firstPrintActual     PARTIAL     {"observations":1,"period":"2022-06-01","vintage":"2022-07-13","releaseStage":"INITIAL","valueKind":"INITIAL_REPORTED","unit":"index_points","availableAt":"2022-07-14T04:00:00.000Z","availabilityQuality":"CONSERVATIVE_DATE_BOUND","provenanceGate":{"eligible":false,"reasons":["missing_revision_evidence","missing_initial_release_evidence","unverified_availability"],"valueKind":"INITIAL_REPORTED","availabilityQuality":"CONSERVATIVE_DATE_BOUND"},"canonicalTransformApplied":false,"note":"raw index/level; canonical-unit headline needs a multi-period vintage panel not present for this event"}
+  legacyActualDb       PARTIAL     {"metricName":"CPI (headline, YoY)","resolves":true,"actual":9.1,"metricKey":null,"actualSource":null,"legacyGate":{"valueKind":"CURRENT_DATABASE","descriptiveEligible":true,"pointInTimeEligible":false,"reason":"legacy_actual_has_no_immutable_vintage_or_availability_evidence"}}
+  expectationFixtures  UNAVAILABLE no fixture row for CPI_HEADLINE ref 2022-06-01
+  expectationDb        PARTIAL     {"expected":8.8,"consensusStatus":"UNVERIFIED","consensusSource":null}
+  nqWindow             PARTIAL     {"tradingDate":"2022-07-13","contract":"NQU22","tier":"B","reasonCode":"B_REGULAR_REGIME_FULL_ACTIVE_GRID","qualification":"exploratory","bars":91,"expectedBars":91,"complete":true}
+  reactionEngineOnNq   REFUSED     {"outcome":"refused","reason":"undeclared_symbol","sessionBasisForNQ":null}
+  dbCandles            UNAVAILABLE release outside stored SPY/QQQ 1h range 2024-09-09..2025-07-03
+  contextVix           UNAVAILABLE {"value":null,"missingReason":"unavailable"}
+  v3Measurements       PARTIAL     {"rows":36,"byMeasure":{"RELEASE_SESSION":12,"SESSION_PLUS_1":12,"SESSION_PLUS_5":12},"symbols":12,"pointInTimeCertified":false}
+  surprise             UNAVAILABLE {"qualifiedFirstPrintActual":false,"qualifiedPreReleaseExpectation":false}
+
+### NFP — January 2023 NFP (2023-02-03T13:30:00Z) → NOT_RESEARCH_ELIGIBLE
+  timingCalendar       UNAVAILABLE no record for PAYROLLS|2023-01-01|INITIAL
+  timingDb             PARTIAL     {"timingStatus":"SCHEDULED","releaseAt":"2023-02-03T13:30:00.000Z","timingSource":"BLS Employment Situation release schedule — 8:30 a.m. ET (https://www.bls.gov/schedule/news_release/empsit.htm)"}
+  firstPrintActual     PARTIAL     {"observations":1,"period":"2023-01-01","vintage":"2023-02-03","releaseStage":"INITIAL","valueKind":"INITIAL_REPORTED","unit":"thousands_level","availableAt":"2023-02-04T05:00:00.000Z","availabilityQuality":"CONSERVATIVE_DATE_BOUND","provenanceGate":{"eligible":false,"reasons":["missing_revision_evidence","missing_initial_release_evidence","unverified_availability"],"valueKind":"INITIAL_REPORTED","availabilityQuality":"CONSERVATIVE_DATE_BOUND"},"canonicalTransformApplied":false,"note":"raw index/level; canonical-unit headline needs a multi-period vintage panel not present for this event"}
+  legacyActualDb       PARTIAL     {"metricName":"Nonfarm payrolls (MoM change)","resolves":true,"actual":517,"metricKey":null,"actualSource":null,"legacyGate":{"valueKind":"CURRENT_DATABASE","descriptiveEligible":true,"pointInTimeEligible":false,"reason":"legacy_actual_has_no_immutable_vintage_or_availability_evidence"}}
+  expectationFixtures  UNAVAILABLE no fixture row for PAYROLLS ref 2023-01-01
+  expectationDb        PARTIAL     {"expected":187,"consensusStatus":"UNVERIFIED","consensusSource":null}
+  nqWindow             PARTIAL     {"tradingDate":"2023-02-03","contract":"NQH23","tier":"B","reasonCode":"B_REGULAR_REGIME_FULL_ACTIVE_GRID","qualification":"exploratory","bars":91,"expectedBars":91,"complete":true}
+  reactionEngineOnNq   REFUSED     {"outcome":"refused","reason":"undeclared_symbol","sessionBasisForNQ":null}
+  dbCandles            UNAVAILABLE release outside stored SPY/QQQ 1h range 2024-09-09..2025-07-03
+  contextVix           UNAVAILABLE {"value":null,"missingReason":"unavailable"}
+  v3Measurements       PARTIAL     {"rows":36,"byMeasure":{"RELEASE_SESSION":12,"SESSION_PLUS_1":12,"SESSION_PLUS_5":12},"symbols":12,"pointInTimeCertified":false}
+  surprise             UNAVAILABLE {"qualifiedFirstPrintActual":false,"qualifiedPreReleaseExpectation":false}
+
+### GDP — Q1 2023 GDP advance (2023-04-27T12:30:00Z) → NOT_RESEARCH_ELIGIBLE
+  timingCalendar       AVAILABLE   {"timingStatus":"VERIFIED","releaseAt":"2023-04-27T12:30:00.000Z","sourceKind":"OFFICIAL_RELEASE_RECORD","matchesCaseReleaseAt":true}
+  timingDb             UNAVAILABLE no Event row for this release
+  firstPrintActual     PARTIAL     {"observations":2,"period":"2023-01-01","vintage":"2023-04-27","releaseStage":"INITIAL","valueKind":"INITIAL_REPORTED","unit":"billions_chained_2017","availableAt":"2023-04-28T04:00:00.000Z","availabilityQuality":"CONSERVATIVE_DATE_BOUND","provenanceGate":{"eligible":false,"reasons":["missing_revision_evidence","missing_initial_release_evidence","unverified_availability"],"valueKind":"INITIAL_REPORTED","availabilityQuality":"CONSERVATIVE_DATE_BOUND"},"canonicalTransformApplied":false,"note":"raw index/level; canonical-unit headline needs a multi-period vintage panel not present for this event"}
+  legacyActualDb       UNAVAILABLE no DataRelease row
+  expectationFixtures  UNAVAILABLE no fixture row for GDP_REAL ref 2023-01-01
+  expectationDb        UNAVAILABLE no DataRelease row
+  nqWindow             PARTIAL     {"tradingDate":"2023-04-27","contract":"NQM23","tier":"B","reasonCode":"B_REGULAR_REGIME_FULL_ACTIVE_GRID","qualification":"exploratory","bars":91,"expectedBars":91,"complete":true}
+  reactionEngineOnNq   REFUSED     {"outcome":"refused","reason":"undeclared_symbol","sessionBasisForNQ":null}
+  dbCandles            UNAVAILABLE release outside stored SPY/QQQ 1h range 2024-09-09..2025-07-03
+  contextVix           UNAVAILABLE {"value":null,"missingReason":"unavailable"}
+  v3Measurements       UNAVAILABLE no v3 rows for this release
+  surprise             UNAVAILABLE {"qualifiedFirstPrintActual":false,"qualifiedPreReleaseExpectation":false}
+
+### PCE — August 2023 PCE (2023-09-29T12:30:00Z) → NOT_RESEARCH_ELIGIBLE
+  timingCalendar       AVAILABLE   {"timingStatus":"VERIFIED","releaseAt":"2023-09-29T12:30:00.000Z","sourceKind":"OFFICIAL_RELEASE_RECORD","matchesCaseReleaseAt":true}
+  timingDb             UNAVAILABLE no Event row for this release
+  firstPrintActual     UNAVAILABLE no PCE/PCEPILFE vintage fixture or local capture; context/definitions.ts defines no PCE series
+  legacyActualDb       UNAVAILABLE no DataRelease row
+  expectationFixtures  PARTIAL     {"matches":[{"fixture":"cleveland","kind":"MODEL_NOWCAST","value":0.2,"unit":"pct_level","canonicalUnit":"pct_yoy","unitMatchesCanonical":false,"asOfQuality":"DATE_ONLY","eligibleAtRelease":true,"streetSurpriseEligible":false,"consensusEstimate":null}]}
+  expectationDb        UNAVAILABLE no DataRelease row
+  nqWindow             PARTIAL     {"tradingDate":"2023-09-29","contract":"NQZ23","tier":"B","reasonCode":"B_REGULAR_REGIME_FULL_ACTIVE_GRID","qualification":"exploratory","bars":91,"expectedBars":91,"complete":true}
+  reactionEngineOnNq   REFUSED     {"outcome":"refused","reason":"undeclared_symbol","sessionBasisForNQ":null}
+  dbCandles            UNAVAILABLE release outside stored SPY/QQQ 1h range 2024-09-09..2025-07-03
+  contextVix           UNAVAILABLE {"value":null,"missingReason":"unavailable"}
+  v3Measurements       UNAVAILABLE no v3 rows for this release
+  surprise             UNAVAILABLE {"qualifiedFirstPrintActual":false,"qualifiedPreReleaseExpectation":false}
+
+### FOMC — Sept 2024 FOMC (DB event) (2024-09-18T18:00:00Z) → NOT_RESEARCH_ELIGIBLE
+  timingCalendar       AVAILABLE   {"timingStatus":"VERIFIED","releaseAt":"2024-09-18T18:00:00.000Z","sourceKind":"OFFICIAL_RELEASE_RECORD","matchesCaseReleaseAt":true}
+  timingDb             PARTIAL     {"timingStatus":"SCHEDULED","releaseAt":"2024-09-18T18:00:00.000Z","timingSource":"Federal Reserve FOMC calendar; statement released 2:00 p.m. ET (https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm)"}
+  firstPrintActual     UNAVAILABLE no vintage capture for this release (FOMC target is a policy decision; DFEDTARU fixture covers 2024-01-01..03 only)
+  legacyActualDb       PARTIAL     {"metricName":"Fed funds target rate (upper bound)","resolves":true,"actual":5,"metricKey":null,"actualSource":null,"legacyGate":{"valueKind":"CURRENT_DATABASE","descriptiveEligible":true,"pointInTimeEligible":false,"reason":"legacy_actual_has_no_immutable_vintage_or_availability_evidence"}}
+  expectationFixtures  UNAVAILABLE no fixture row for FED_TARGET_UPPER ref 2024-09-18
+  expectationDb        PARTIAL     {"expected":5.25,"consensusStatus":"UNVERIFIED","consensusSource":null}
+  nqWindow             REFUSED     {"tradingDate":"2024-09-18","contract":"NQZ24","tier":"UNKNOWN","reasonCode":"NOT_ON_ALLOWLIST","qualification":"refused","bars":91,"expectedBars":91,"complete":true}
+  reactionEngineOnNq   REFUSED     {"outcome":"refused","reason":"undeclared_symbol","sessionBasisForNQ":null}
+  dbCandles            PARTIAL     {"seriesCoveringRange":["QQQ/ONE_HOUR/AS_TRADED","SPY/ONE_HOUR/AS_TRADED"],"note":"range check only; ONE_HOUR AS_TRADED; no eligibility label; not read by measurement backfill"}
+  contextVix           UNAVAILABLE {"value":null,"missingReason":"unavailable"}
+  v3Measurements       PARTIAL     {"rows":36,"byMeasure":{"RELEASE_SESSION":12,"SESSION_PLUS_1":12,"SESSION_PLUS_5":12},"symbols":12,"pointInTimeCertified":false}
+  surprise             UNAVAILABLE {"qualifiedFirstPrintActual":false,"qualifiedPreReleaseExpectation":false}
+
+### FOMC — Sept 2026 FOMC (NQ strict session) (2026-09-16T18:00:00Z) → NOT_RESEARCH_ELIGIBLE
+  timingCalendar       AVAILABLE   {"timingStatus":"VERIFIED","releaseAt":"2026-09-16T18:00:00.000Z","sourceKind":"OFFICIAL_RELEASE_RECORD","matchesCaseReleaseAt":true}
+  timingDb             UNAVAILABLE no Event row for this release
+  firstPrintActual     UNAVAILABLE no vintage capture for this release (FOMC target is a policy decision; DFEDTARU fixture covers 2024-01-01..03 only)
+  legacyActualDb       UNAVAILABLE no DataRelease row
+  expectationFixtures  UNAVAILABLE no fixture row for FED_TARGET_UPPER ref 2026-09-16
+  expectationDb        UNAVAILABLE no DataRelease row
+  nqWindow             AVAILABLE   {"tradingDate":"2026-09-16","contract":"NQZ26","tier":"A","reasonCode":"A_SOURCE_REVIEWED_COMPLETE","qualification":"strict","bars":91,"expectedBars":91,"complete":true}
+  reactionEngineOnNq   REFUSED     {"outcome":"refused","reason":"undeclared_symbol","sessionBasisForNQ":null}
+  dbCandles            UNAVAILABLE release outside stored SPY/QQQ 1h range 2024-09-09..2025-07-03
+  contextVix           UNAVAILABLE {"value":null,"missingReason":"unavailable"}
+  v3Measurements       UNAVAILABLE no v3 rows for this release
+  surprise             UNAVAILABLE {"qualifiedFirstPrintActual":false,"qualifiedPreReleaseExpectation":false}
