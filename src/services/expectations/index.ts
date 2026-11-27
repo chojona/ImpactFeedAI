@@ -23,5 +23,10 @@ export {
   validateExpectationObservation,
   isEligibleStreetSurpriseInput,
 } from "@/services/expectations/validate";
+export {
+  isExpectationTimingEligibleAtRelease,
+  isFixtureRowEligibleAtRelease,
+} from "@/services/expectations/eligibility";
+export { selectFixtureExpectation } from "@/services/expectations/fixtureStore";
 export { toConsensusEstimate } from "@/services/expectations/toConsensusEstimate";
 export type { ExpectationFixtureRow } from "@/services/expectations/fixtureTypes";

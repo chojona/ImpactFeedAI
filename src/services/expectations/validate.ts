@@ -49,12 +49,22 @@ export function validateExpectationObservation(
   const asOfQuality = observation.asOfQuality;
   assertAsOfConsistency(observation.asOf, observation.asOfDate, asOfQuality);
 
-  if (
-    observation.asOf &&
-    releaseAt &&
-    observation.asOf.getTime() > releaseAt.getTime()
-  ) {
-    throw new Error("Expectation asOf cannot be after the release instant.");
+  if (observation.asOf && releaseAt) {
+    const asOfMs = observation.asOf.getTime();
+    const releaseMs = releaseAt.getTime();
+    // Street survey consensus must be strictly pre-release (asOf < releaseAt).
+    if (
+      observation.kind === "SURVEY_CONSENSUS" &&
+      asOfQuality === "VERIFIED" &&
+      asOfMs >= releaseMs
+    ) {
+      throw new Error(
+        "SURVEY_CONSENSUS asOf must be strictly before the release instant.",
+      );
+    }
+    if (asOfMs > releaseMs) {
+      throw new Error("Expectation asOf cannot be after the release instant.");
+    }
   }
 
   if (
@@ -108,7 +118,8 @@ function assertAsOfConsistency(
 
 /**
  * Street-style surprise may use SURVEY_CONSENSUS only when as-of is exact and
- * pre-release. Nowcasts and SPF never qualify.
+ * strictly before release (`asOf < releaseAt`). Equality is not pre-release.
+ * Nowcasts and SPF never qualify.
  */
 export function isEligibleStreetSurpriseInput(
   observation: ExpectationObservation,
@@ -118,5 +129,5 @@ export function isEligibleStreetSurpriseInput(
   if (observation.value === null) return false;
   if (observation.asOfQuality !== "VERIFIED" || !observation.asOf) return false;
   if (!releaseAt) return false;
-  return observation.asOf.getTime() <= releaseAt.getTime();
+  return observation.asOf.getTime() < releaseAt.getTime();
 }

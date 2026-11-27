@@ -13,11 +13,13 @@ import {
   FREE_EXPECTATION_SOURCES,
   isEligibleStreetSurpriseInput,
   ProspectiveConsensusCollector,
+  selectFixtureExpectation,
   spfGrowthRowToFixture,
   toConsensusEstimate,
   validateExpectationObservation,
   type ExpectationFixtureRow,
 } from "@/services/expectations";
+import { validateConsensusEstimate } from "@/services/macro/consensus";
 import type { ExpectationObservation } from "@/types/expectations";
 
 const fixtureDir = join(
@@ -93,7 +95,24 @@ describe("validateExpectationObservation", () => {
         },
         releaseAt,
       ),
-    ).toThrow(/after the release/i);
+    ).toThrow(/strictly before the release/i);
+  });
+
+  it("rejects SURVEY_CONSENSUS asOf equal to releaseAt", () => {
+    const releaseAt = new Date("2023-08-10T12:30:00Z");
+    expect(() =>
+      validateExpectationObservation(
+        {
+          ...base,
+          kind: "SURVEY_CONSENSUS",
+          asOfQuality: "VERIFIED",
+          asOfDate: null,
+          asOf: new Date(releaseAt),
+          sourceUrl: "https://www.cnbc.com/example",
+        },
+        releaseAt,
+      ),
+    ).toThrow(/strictly before the release/i);
   });
 });
 
@@ -102,19 +121,20 @@ describe("Atlanta Fed GDPNow adapter", () => {
   const provider = createGdpNowProvider(rows, { now: fixedNow });
 
   it("returns a dated model nowcast and never claims survey consensus", async () => {
+    // DATE_ONLY asOfDate 2023-07-27 is eligible only when the release calendar
+    // day is strictly later — same-day remains uncertain without inventing a clock.
+    const releaseAt = new Date("2023-07-28T12:30:00Z");
     const got = await provider.getExpectation({
       kind: "MODEL_NOWCAST",
       metricKey: "GDP_REAL",
       referencePeriodStart: "2023-04-01",
-      releaseAt: new Date("2023-07-27T12:30:00Z"),
+      releaseAt,
     });
     expect(got?.kind).toBe("MODEL_NOWCAST");
     expect(got?.value).toBe(2.4);
     expect(got?.asOfQuality).toBe("DATE_ONLY");
     expect(got?.asOf).toBeNull();
-    expect(isEligibleStreetSurpriseInput(got!, new Date("2023-07-27T12:30:00Z"))).toBe(
-      false,
-    );
+    expect(isEligibleStreetSurpriseInput(got!, releaseAt)).toBe(false);
   });
 
   it("returns null when the quarter is absent (missing stays missing)", async () => {
@@ -286,5 +306,156 @@ describe("kind isolation", () => {
     expect(() =>
       createArchivedNewsConsensusProvider(loadFixture("gdpnow.json")),
     ).toThrow(/SURVEY_CONSENSUS/i);
+  });
+});
+
+describe("point-in-time fixture selection", () => {
+  const releaseAt = new Date("2023-08-10T12:30:00.000Z");
+  const baseNews = {
+    kind: "SURVEY_CONSENSUS" as const,
+    metricKey: "CPI_HEADLINE",
+    referencePeriodStart: "2023-07-01",
+    horizon: "release_print" as const,
+    unit: "pct_yoy",
+    source: "CNBC (archived public citation)",
+    sourceUrl: "https://www.cnbc.com/example-pit",
+    licenseNote: "personal research citation",
+    providerRecordId: null,
+  };
+
+  const preRelease: ExpectationFixtureRow = {
+    ...baseNews,
+    id: "news:pre",
+    value: 3.3,
+    asOf: "2023-08-09T19:35:00.000Z",
+    asOfQuality: "VERIFIED",
+    asOfDate: null,
+  };
+
+  const postRelease: ExpectationFixtureRow = {
+    ...baseNews,
+    id: "news:post",
+    value: 3.9,
+    asOf: "2023-08-10T13:00:00.000Z",
+    asOfQuality: "VERIFIED",
+    asOfDate: null,
+  };
+
+  const atReleaseInstant: ExpectationFixtureRow = {
+    ...baseNews,
+    id: "news:equal",
+    value: 3.5,
+    asOf: "2023-08-10T12:30:00.000Z",
+    asOfQuality: "VERIFIED",
+    asOfDate: null,
+  };
+
+  it("does not let a later post-release row displace an eligible earlier one", () => {
+    const got = selectFixtureExpectation(
+      [preRelease, postRelease],
+      {
+        kind: "SURVEY_CONSENSUS",
+        metricKey: "CPI_HEADLINE",
+        referencePeriodStart: "2023-07-01",
+        releaseAt,
+      },
+      fixedNow(),
+    );
+    expect(got?.id).toBe("news:pre");
+    expect(got?.value).toBe(3.3);
+  });
+
+  it("returns null when only post-release or equal-instant rows exist", () => {
+    const onlyPost = selectFixtureExpectation(
+      [postRelease, atReleaseInstant],
+      {
+        kind: "SURVEY_CONSENSUS",
+        metricKey: "CPI_HEADLINE",
+        referencePeriodStart: "2023-07-01",
+        releaseAt,
+      },
+      fixedNow(),
+    );
+    expect(onlyPost).toBeNull();
+  });
+
+  it("keeps DATE_ONLY same-day rows ineligible without inventing a clock", () => {
+    const sameDay: ExpectationFixtureRow = {
+      ...baseNews,
+      id: "news:date-only-same-day",
+      value: 3.2,
+      asOf: null,
+      asOfQuality: "DATE_ONLY",
+      asOfDate: "2023-08-10",
+    };
+    const got = selectFixtureExpectation(
+      [sameDay, preRelease],
+      {
+        kind: "SURVEY_CONSENSUS",
+        metricKey: "CPI_HEADLINE",
+        referencePeriodStart: "2023-07-01",
+        releaseAt,
+      },
+      fixedNow(),
+    );
+    expect(got?.id).toBe("news:pre");
+    expect(got?.asOfQuality).toBe("VERIFIED");
+  });
+
+  it("is invariant under a frozen cutoff when later rows are appended", () => {
+    const query = {
+      kind: "SURVEY_CONSENSUS" as const,
+      metricKey: "CPI_HEADLINE",
+      referencePeriodStart: "2023-07-01",
+      releaseAt,
+    };
+    const first = selectFixtureExpectation([preRelease], query, fixedNow());
+    const afterAppend = selectFixtureExpectation(
+      [preRelease, postRelease, atReleaseInstant],
+      query,
+      fixedNow(),
+    );
+    expect(first?.id).toBe("news:pre");
+    expect(afterAppend?.id).toBe(first?.id);
+    expect(afterAppend?.value).toBe(first?.value);
+    expect(afterAppend?.payloadHash).toBe(first?.payloadHash);
+  });
+});
+
+describe("strict street consensus asOf < releaseAt", () => {
+  const releaseAt = new Date("2023-08-10T12:30:00.000Z");
+
+  it("rejects equality in street eligibility and the legacy consensus bridge", () => {
+    const atInstant: ExpectationObservation = {
+      id: "eq",
+      kind: "SURVEY_CONSENSUS",
+      metricKey: "CPI_HEADLINE",
+      referencePeriodStart: "2023-07-01",
+      horizon: "release_print",
+      value: 3.3,
+      unit: "pct_yoy",
+      asOf: new Date(releaseAt),
+      asOfQuality: "VERIFIED",
+      asOfDate: null,
+      source: "example",
+      sourceUrl: "https://www.cnbc.com/example",
+      licenseNote: "test",
+      providerRecordId: null,
+      fetchedAt: fixedNow(),
+      payloadHash: "x",
+    };
+    expect(isEligibleStreetSurpriseInput(atInstant, releaseAt)).toBe(false);
+    expect(toConsensusEstimate(atInstant, releaseAt)).toBeNull();
+    expect(() =>
+      validateConsensusEstimate(
+        {
+          value: 3.3,
+          asOf: new Date(releaseAt),
+          source: "example",
+          sourceUrl: "https://www.cnbc.com/example",
+        },
+        releaseAt,
+      ),
+    ).toThrow(/strictly before the release/i);
   });
 });

@@ -26,6 +26,14 @@ Missing consensus stays **missing** (`null` / no row). Never coerce to `0`.
 
 Never invent `asOf`. Prefer `DATE_ONLY` or `MISSING` over fabricated clocks.
 
+Point-in-time selection (`selectFixtureExpectation`) filters by timing
+eligibility **before** picking the latest row: a later post-release record
+cannot displace an earlier eligible one. Street surprise and the legacy
+`ConsensusEstimate` bridge require strict `asOf < releaseAt` (equality is not
+pre-release). `DATE_ONLY` rows are eligible only when `asOfDate` is strictly
+before the release calendar day — same-day dates stay out without inventing a
+clock.
+
 ---
 
 ## Source verification summary

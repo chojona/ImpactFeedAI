@@ -1,3 +1,4 @@
+import { isFixtureRowEligibleAtRelease } from "@/services/expectations/eligibility";
 import type { ExpectationFixtureRow } from "@/services/expectations/fixtureTypes";
 import { sha256Hex } from "@/services/expectations/hash";
 import { validateExpectationObservation } from "@/services/expectations/validate";
@@ -34,9 +35,15 @@ export function fixtureRowToObservation(
   );
 }
 
+function rankKey(row: ExpectationFixtureRow): string {
+  return row.asOf ?? row.asOfDate ?? "";
+}
+
 /**
- * Select the latest eligible fixture row for a query without inventing values.
- * Returns null when nothing matches (missing stays missing).
+ * Select the latest *point-in-time eligible* fixture row for a query.
+ * Post-release (or same-instant / same-day uncertain) rows are excluded before
+ * ranking so they cannot displace an earlier eligible snapshot. Returns null
+ * when nothing eligible matches — missing stays missing.
  */
 export function selectFixtureExpectation(
   rows: readonly ExpectationFixtureRow[],
@@ -53,14 +60,14 @@ export function selectFixtureExpectation(
       return false;
     }
     if (query.horizon && row.horizon !== query.horizon) return false;
-    return true;
+    return isFixtureRowEligibleAtRelease(row, query.releaseAt);
   });
 
   if (matches.length === 0) return null;
 
   const ranked = [...matches].sort((a, b) => {
-    const aKey = a.asOf ?? a.asOfDate ?? "";
-    const bKey = b.asOf ?? b.asOfDate ?? "";
+    const aKey = rankKey(a);
+    const bKey = rankKey(b);
     return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
   });
   const chosen = ranked[ranked.length - 1];
