@@ -1,8 +1,9 @@
 /**
  * Coverage reporting for an extracted event window.
  *
- * Missing minutes between the first and last observed bar are listed explicitly.
- * They are never filled with fabricated OHLCV.
+ * Completeness is measured against the entire requested UTC minute grid
+ * (inclusive), including leading and trailing gaps and empty windows. Missing
+ * minutes are listed explicitly and never imputed.
  */
 import { contiguousUtcMinuteOpens, utcMinuteOpen } from "./tradingDate";
 import type { NqCoverageReport, NqMinuteBar } from "./types";
@@ -31,21 +32,23 @@ export function buildCoverageReport(args: {
   const observedOpenAts = sorted.map((bar) => utcMinuteOpen(bar.openAt));
   const seen = new Set(observedOpenAts.map((d) => d.getTime()));
 
-  let missingOpenAts: Date[] = [];
-  if (observedOpenAts.length >= 2) {
-    const grid = contiguousUtcMinuteOpens(
-      observedOpenAts[0]!,
-      observedOpenAts[observedOpenAts.length - 1]!,
-    );
-    missingOpenAts = grid.filter((open) => !seen.has(open.getTime()));
-  }
+  const expectedOpenAts = contiguousUtcMinuteOpens(
+    utcMinuteOpen(windowStart),
+    utcMinuteOpen(windowEnd),
+  );
+  const missingOpenAts = expectedOpenAts.filter(
+    (open) => !seen.has(open.getTime()),
+  );
 
   return {
-    windowStart,
-    windowEnd,
+    windowStart: utcMinuteOpen(windowStart),
+    windowEnd: utcMinuteOpen(windowEnd),
+    expectedBars: expectedOpenAts.length,
     observedBars: sorted.length,
+    expectedOpenAts,
     observedOpenAts,
     missingOpenAts,
+    complete: expectedOpenAts.length > 0 && missingOpenAts.length === 0,
     foreignContractBars,
   };
 }

@@ -30,7 +30,7 @@ export const NQ_ARCHIVE_PROVIDER: DataProviderEntry = {
     termsUrl: "https://databento.com/terms",
     basis: "UNVERIFIED",
   },
-  implementations: [{ status: "OPEN_PR", path: "src/services/market/nqArchive/index.ts", pullRequest: 22 }],
+  implementations: [{ status: "MAIN", path: "src/services/market/nqArchive/index.ts" }],
   lastSuccessfulValidation: TESTED_ON,
   series: [
     {

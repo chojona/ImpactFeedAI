@@ -78,19 +78,24 @@ export interface NqSessionEligibility {
 }
 
 export interface NqCoverageReport {
-  /** Inclusive window requested by the caller. */
+  /** Inclusive window requested by the caller (minute-aligned). */
   readonly windowStart: Date;
   readonly windowEnd: Date;
+  /** Contiguous UTC minute opens expected across the full requested window. */
+  readonly expectedBars: number;
   readonly observedBars: number;
+  readonly expectedOpenAts: readonly Date[];
   /** Minute opens present for the selected contract inside the window. */
   readonly observedOpenAts: readonly Date[];
   /**
-   * Minute opens expected on a contiguous 1-minute grid from the first to the
-   * last *observed* bar that are missing. Absence is unknown (no-trade vs
-   * provider gap) — never imputed.
+   * Expected minute opens with no selected-contract bar. Includes leading and
+   * trailing gaps and the entire window when empty. Absence is unknown
+   * (no-trade vs provider gap) — never imputed.
    */
   readonly missingOpenAts: readonly Date[];
-  /** True when any other contract appears inside the window. */
+  /** True when every expected minute has a selected-contract bar. */
+  readonly complete: boolean;
+  /** Count of bars for a different contract inside the window. */
   readonly foreignContractBars: number;
 }
 

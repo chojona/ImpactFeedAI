@@ -14,7 +14,10 @@ export {
 } from "./adapter";
 export { buildCoverageReport, releaseMinuteOpen } from "./coverage";
 export {
+  createEligibilityIndex,
   loadEligibilityIndex,
+  qualificationFromEvidence,
+  type AllowlistRow,
   type NqEligibilityIndex,
 } from "./eligibility";
 export { extractEventWindow } from "./extract";
