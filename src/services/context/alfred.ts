@@ -19,7 +19,12 @@ import {
   FRED_VINTAGE_DATES_ENDPOINT,
   type ContextSeriesDefinition,
 } from "@/services/context/definitions";
-import type { ActualValueKind } from "@/services/macro/actualProvenance";
+import {
+  isValidEvidenceReference,
+  type ActualValueKind,
+  type EvidenceReference,
+} from "@/services/macro/actualProvenance";
+import { utcDateOnly } from "@/services/macro/time";
 import type {
   ContextObservation,
   ContextReleaseStage,
@@ -43,15 +48,36 @@ export interface AlfredObservationsRequest {
 
 export interface AlfredRawObservation {
   readonly date: string;
-  readonly value: string;
+  readonly value: string | null;
   readonly realtime_start: string;
   readonly realtime_end: string;
 }
 
 export interface AlfredObservationsResponse {
   readonly observations?: AlfredRawObservation[];
+  readonly realtime_start?: string;
+  readonly realtime_end?: string;
+  readonly output_type?: number;
+  readonly count?: number;
+  readonly offset?: number;
   readonly error_code?: number;
   readonly error_message?: string;
+}
+
+/** Independently reviewed publication of this exact series, period and value. */
+export interface AlfredPublicationEvidence {
+  readonly seriesId: string;
+  readonly observationPeriodStart: string;
+  readonly publicationDate: string;
+  readonly value: number;
+  readonly releaseStage: "INITIAL" | "REVISION";
+  readonly reference: Readonly<EvidenceReference>;
+}
+
+export interface AlfredObservation extends ContextObservation {
+  /** Date of the provider's single-day information set, not a publication date. */
+  readonly snapshotAsOf: string | null;
+  readonly publicationEvidence: AlfredPublicationEvidence | null;
 }
 
 export interface AlfredFetchResult {
@@ -59,7 +85,7 @@ export interface AlfredFetchResult {
   readonly mode: AlfredFetchMode;
   readonly seriesId: string;
   readonly requestUrlRedacted: string;
-  readonly observations: readonly ContextObservation[];
+  readonly observations: readonly AlfredObservation[];
   readonly fetchedAt: Date;
   readonly detail?: string;
 }
@@ -71,6 +97,13 @@ export type AlfredHttpGet = (url: string) => Promise<{
 }>;
 
 const OPEN_ENDED_REALTIME_END = "9999-12-31";
+const DECIMAL_NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+const MS_PER_DAY = 86_400_000;
+const MAX_INITIAL_PUBLICATION_LAG_DAYS = {
+  daily: 7,
+  monthly: 31,
+  quarterly: 45,
+} as const satisfies Record<ContextSeriesDefinition["frequency"], number>;
 
 export function redactFredUrl(url: string): string {
   const parsed = new URL(url);
@@ -133,9 +166,11 @@ export function buildAlfredVintageDatesUrl(
   return url.toString();
 }
 
-function parseFloatOrNull(raw: string): number | null {
-  if (raw === "" || raw === ".") return null;
-  const n = Number(raw);
+function parseFloatOrNull(raw: unknown): number | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim();
+  if (!DECIMAL_NUMBER.test(value)) return null;
+  const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -156,92 +191,95 @@ function seriesDefinitionFor(
   return found ?? null;
 }
 
-function qualityForMode(mode: AlfredFetchMode): ObservationQuality {
-  switch (mode) {
-    case "revision_history":
-    case "initial_release_only":
-    case "as_of_vintage":
-      return "conservative_date_bound";
-    case "current_latest":
-      return "revised_latest";
-  }
-}
-
 function valueKindFor(
   mode: AlfredFetchMode,
   releaseStage: ContextReleaseStage,
 ): ActualValueKind {
   if (mode === "current_latest") return "CURRENT_DATABASE";
-  if (mode === "initial_release_only" || releaseStage === "INITIAL") {
-    return "INITIAL_REPORTED";
-  }
-  return "REVISED_HISTORICAL";
+  if (releaseStage === "INITIAL") return "INITIAL_REPORTED";
+  if (releaseStage === "REVISION") return "REVISED_HISTORICAL";
+  return "UNRESOLVED";
 }
 
 /**
- * Assign INITIAL to the earliest realtime_start for each period within a
- * revision_history batch; later intervals become REVISION. Does not invent
- * advance/second/third GDP stages without a separate stage map.
+ * Find the earliest numeric vintage in the archive for each period.
  */
-export function assignReleaseStages(
+function firstArchivedVintageByPeriod(
   rows: readonly AlfredRawObservation[],
-): ReadonlyMap<string, ContextReleaseStage> {
+): ReadonlyMap<string, string> {
   const firstStartByPeriod = new Map<string, string>();
   for (const row of rows) {
+    if (parseFloatOrNull(row.value) === null) continue;
     const existing = firstStartByPeriod.get(row.date);
     if (!existing || row.realtime_start < existing) {
       firstStartByPeriod.set(row.date, row.realtime_start);
     }
   }
-  const stages = new Map<string, ContextReleaseStage>();
-  for (const row of rows) {
-    const key = `${row.date}|${row.realtime_start}`;
-    const first = firstStartByPeriod.get(row.date);
-    stages.set(key, first === row.realtime_start ? "INITIAL" : "REVISION");
-  }
-  return stages;
+  return firstStartByPeriod;
 }
 
-export function mapAlfredObservation(input: {
+function hasPlausibleInitialPublicationDate(
+  row: AlfredRawObservation,
+  frequency: ContextSeriesDefinition["frequency"] | undefined,
+): boolean {
+  if (!frequency) return false;
+  const periodStart = utcDateOnly(row.date);
+  const vintageMs = utcDateOnly(row.realtime_start).getTime();
+  if (frequency === "daily") {
+    const lagDays = (vintageMs - periodStart.getTime()) / MS_PER_DAY;
+    return lagDays >= 0 && lagDays <= MAX_INITIAL_PUBLICATION_LAG_DAYS.daily;
+  }
+
+  const monthsInPeriod = frequency === "quarterly" ? 3 : 1;
+  const month = periodStart.getUTCMonth();
+  if (periodStart.getUTCDate() !== 1 || month % monthsInPeriod !== 0) return false;
+  const periodEndMs = Date.UTC(periodStart.getUTCFullYear(), month + monthsInPeriod, 0);
+  const lagDays = (vintageMs - periodEndMs) / MS_PER_DAY;
+  return lagDays >= 1 && lagDays <= MAX_INITIAL_PUBLICATION_LAG_DAYS[frequency];
+}
+
+function mapAlfredObservation(input: {
   row: AlfredRawObservation;
   seriesId: string;
   seriesKey: string;
   unit: string;
   mode: AlfredFetchMode;
+  value: number | null;
   releaseStage: ContextReleaseStage;
+  publicationEvidence: AlfredPublicationEvidence | null;
+  snapshotAsOf: string | null;
   fetchedAt: Date;
   recordedAt: Date;
   sourceUrlRedacted: string;
   payloadHash: string;
-}): ContextObservation {
-  const { row, mode } = input;
-  const publicationDate = row.realtime_start;
-  const bound =
-    mode === "current_latest"
-      ? {
-          availableAt: null as Date | null,
-          availabilityQuality: "UNRESOLVED" as const,
-          availabilityPolicyVersion: null as string | null,
-          publishedAt: null as null,
-          publicationPrecision: "unknown" as const,
-        }
-      : alfredDateBoundAvailability(publicationDate);
-
-  const quality = qualityForMode(mode);
-  const value = parseFloatOrNull(row.value);
+}): AlfredObservation {
+  const { row, mode, value, publicationEvidence, snapshotAsOf } = input;
+  const publicationDate = publicationEvidence?.publicationDate ?? null;
+  const bound = alfredDateBoundAvailability(publicationDate ?? "");
+  const quality: ObservationQuality = value === null
+    ? "missing"
+    : mode === "current_latest"
+      ? "revised_latest"
+      : bound.availableAt ? "conservative_date_bound" : "unknown_availability";
+  const dateIdentity = mode === "as_of_vintage" || mode === "current_latest"
+    ? `${mode}:${row.realtime_start}`
+    : row.realtime_start;
+  const vintageKey = `${input.seriesId}:${row.date}:${dateIdentity}`;
 
   return {
-    id: `${FRED_ALFRED_PROVIDER_ID}:${input.seriesId}:${row.date}:${row.realtime_start}`,
+    id: `${FRED_ALFRED_PROVIDER_ID}:${vintageKey}`,
     seriesKey: input.seriesKey,
     providerSeriesId: input.seriesId,
     observationPeriodStart: row.date,
     value,
-    rawValue: row.value === "." ? null : row.value,
+    rawValue: value === null ? null : row.value,
     unit: input.unit,
-    vintageKey: `${input.seriesId}:${row.date}:${row.realtime_start}`,
+    vintageKey,
     realtimeStart: row.realtime_start,
     realtimeEnd: normalizeRealtimeEnd(row.realtime_end),
-    vintageDate: publicationDate,
+    vintageDate: row.realtime_start,
+    snapshotAsOf,
+    publicationEvidence,
     releaseStage: input.releaseStage,
     valueKind: valueKindFor(mode, input.releaseStage),
     publishedAt: bound.publishedAt,
@@ -250,13 +288,34 @@ export function mapAlfredObservation(input: {
     availableAt: bound.availableAt,
     availabilityQuality: bound.availabilityQuality,
     availabilityPolicyVersion: bound.availabilityPolicyVersion,
-    quality: value === null ? "missing" : quality,
+    quality,
     fetchedAt: input.fetchedAt,
     recordedAt: input.recordedAt,
     sourceUrl: input.sourceUrlRedacted,
     payloadHash: input.payloadHash,
     ingestionVersion: CONTEXT_INGESTION_VERSION,
   };
+}
+
+function hasFullRealtimeWindow(json: AlfredObservationsResponse): boolean {
+  return json.realtime_start === ALFRED_FULL_REALTIME_START &&
+    json.realtime_end === ALFRED_FULL_REALTIME_END;
+}
+
+function hasCompleteRevisionHistory(json: AlfredObservationsResponse, rowCount: number): boolean {
+  return json.output_type === 1 && hasFullRealtimeWindow(json) &&
+    json.offset === 0 && json.count === rowCount;
+}
+
+function snapshotDateFor(
+  row: AlfredRawObservation,
+  expectedDates: readonly (string | undefined)[],
+): string | null {
+  return row.realtime_start === row.realtime_end &&
+    expectedDates.every((date) => date === undefined || date === row.realtime_start) &&
+    Number.isFinite(utcDateOnly(row.realtime_start).getTime())
+    ? row.realtime_start
+    : null;
 }
 
 export function parseAlfredObservationsPayload(
@@ -267,10 +326,12 @@ export function parseAlfredObservationsPayload(
     fetchedAt: Date;
     recordedAt?: Date;
     sourceUrlRedacted: string;
+    vintageDate?: string;
+    publicationEvidence?: readonly AlfredPublicationEvidence[];
     seriesKey?: string;
     unit?: string;
   },
-): ContextObservation[] {
+): AlfredObservation[] {
   const json = JSON.parse(payload) as AlfredObservationsResponse;
   if (json.error_code) {
     throw new Error(
@@ -283,17 +344,49 @@ export function parseAlfredObservationsPayload(
     meta.seriesKey ?? def?.seriesKey ?? `fred:${meta.seriesId}`;
   const unit = meta.unit ?? def?.unit ?? "raw";
   const recordedAt = meta.recordedAt ?? meta.fetchedAt;
-  const stages =
-    meta.mode === "initial_release_only"
-      ? null
-      : assignReleaseStages(rows);
+  const snapshotDates = [meta.vintageDate, json.realtime_start, json.realtime_end];
+  const firstArchivedVintage =
+    meta.mode === "revision_history" && hasCompleteRevisionHistory(json, rows.length)
+      ? firstArchivedVintageByPeriod(rows)
+      : null;
+  const isInitialReleaseResponse =
+    meta.mode === "initial_release_only" &&
+    json.output_type === 4 && hasFullRealtimeWindow(json);
 
   return rows.map((row) => {
-    const stageKey = `${row.date}|${row.realtime_start}`;
-    const releaseStage: ContextReleaseStage =
-      meta.mode === "initial_release_only"
-        ? "INITIAL"
-        : (stages?.get(stageKey) ?? "UNKNOWN");
+    const value = parseFloatOrNull(row.value);
+    const snapshotAsOf = meta.mode === "as_of_vintage" || meta.mode === "current_latest"
+      ? snapshotDateFor(row, snapshotDates)
+      : null;
+    let providerStage: ContextReleaseStage = "UNKNOWN";
+    const firstVintage = firstArchivedVintage?.get(row.date);
+    if (value !== null) {
+      if (firstVintage && row.realtime_start > firstVintage) {
+        providerStage = "REVISION";
+      } else if (
+        (isInitialReleaseResponse || firstVintage === row.realtime_start) &&
+        hasPlausibleInitialPublicationDate(row, def?.frequency)
+      ) {
+        providerStage = "INITIAL";
+      }
+    }
+    const matchingEvidence = meta.mode === "current_latest" ||
+      (meta.mode === "as_of_vintage" && snapshotAsOf === null)
+      ? []
+      : meta.publicationEvidence?.filter((evidence) =>
+          evidence.seriesId === meta.seriesId &&
+          evidence.observationPeriodStart === row.date &&
+          evidence.publicationDate === row.realtime_start &&
+          evidence.value === value &&
+          isValidEvidenceReference(evidence.reference)) ?? [];
+    const evidence = matchingEvidence[0];
+    const hasStageConflict = matchingEvidence.some((match) =>
+      match.releaseStage !== evidence.releaseStage ||
+      (providerStage !== "UNKNOWN" && match.releaseStage !== providerStage));
+    const publicationEvidence = evidence && !hasStageConflict &&
+      Number.isFinite(utcDateOnly(evidence.publicationDate).getTime())
+      ? evidence
+      : null;
     const canonicalRow = {
       date: row.date,
       value: row.value,
@@ -306,7 +399,10 @@ export function parseAlfredObservationsPayload(
       seriesKey,
       unit,
       mode: meta.mode,
-      releaseStage,
+      value,
+      releaseStage: hasStageConflict ? "UNKNOWN" : publicationEvidence?.releaseStage ?? providerStage,
+      publicationEvidence,
+      snapshotAsOf,
       fetchedAt: meta.fetchedAt,
       recordedAt,
       sourceUrlRedacted: meta.sourceUrlRedacted,
@@ -324,6 +420,7 @@ export async function fetchAlfredObservations(options: {
   apiKey: string;
   httpGet: AlfredHttpGet;
   now?: Date;
+  publicationEvidence?: readonly AlfredPublicationEvidence[];
   seriesKey?: string;
   unit?: string;
 }): Promise<AlfredFetchResult> {
@@ -350,6 +447,8 @@ export async function fetchAlfredObservations(options: {
       mode: options.request.mode,
       fetchedAt,
       sourceUrlRedacted: redacted,
+      vintageDate: options.request.mode === "as_of_vintage" ? options.request.vintageDate : undefined,
+      publicationEvidence: options.publicationEvidence,
       seriesKey: options.seriesKey,
       unit: options.unit,
     });

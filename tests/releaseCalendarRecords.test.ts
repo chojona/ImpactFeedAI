@@ -17,8 +17,10 @@ const ev = (over: Partial<TimingEvidence>): TimingEvidence => ({
   releaseDate: "2024-01-31",
   releaseAt: "2024-01-31T19:00:00.000Z",
   statedZone: "EST",
-  evidenceText: "For release at 2:00 p.m. EST",
+  evidenceText: "The statement was made public at 2:00 p.m. EST",
   contentSha256: null,
+  ...((over.sourceKind === undefined || over.sourceKind === "OFFICIAL_RELEASE_RECORD") && over.releaseAt !== null
+    ? { clockKind: "DOCUMENTED_PUBLICATION" as const } : {}),
   ...over,
 });
 
@@ -60,6 +62,35 @@ describe("release-calendar record merging", () => {
     const [r] = mergeObservations([fomc(ev({})), sffed("2024-01-31", "2024-01-31T19:00:00.000Z")]);
     expect(r).toMatchObject({ timingStatus: "VERIFIED", releaseAt: "2024-01-31T19:00:00.000Z", timePrecision: "MINUTE" });
     expect(r.flags).not.toContain("TIME_CONFLICT");
+  });
+
+  it("keeps publication evidence distinct when the intended clock disagrees", async () => {
+    const intended = fomc(ev({ clockKind: "INTENDED_EMBARGO", evidenceText: "For release at 2:00 p.m. EST" }));
+    const documented = fomc(ev({
+      releaseAt: "2024-01-31T19:04:00.000Z",
+      evidenceText: "The statement was made public at 2:04 p.m. EST",
+      sourceUrl: "https://www.federalreserve.gov/newsevents/pressreleases/statement-timing.htm",
+    }));
+    const records = mergeObservations([intended, documented]);
+    expect(records[0].flags).not.toContain("TIME_CONFLICT");
+    const result = await resolveHistoricalRelease(createRecordCalendarProvider(records), FOMC_ID("2024-01-31"));
+    expect(result?.timing).toMatchObject({
+      releaseAt: new Date("2024-01-31T19:04:00.000Z"),
+      releaseAtKind: "DOCUMENTED_PUBLICATION",
+      timingFacts: {
+        intendedEmbargo: { at: new Date("2024-01-31T19:00:00.000Z") },
+        earliestEvidencedAvailability: null,
+      },
+      provenance: { sourceUrl: documented.evidence.sourceUrl },
+    });
+  });
+
+  it("leaves an unclassified archive clock unresolved during a replay", async () => {
+    const legacy = fomc(ev({ clockKind: undefined, evidenceText: "For release at 2:00 p.m. EST" }));
+    const result = await resolveHistoricalRelease(createRecordCalendarProvider(mergeObservations([legacy])), FOMC_ID("2024-01-31"));
+    expect(result?.timing).toMatchObject({ timingStatus: "DATE_ONLY", releaseAt: null, timingFacts: {
+      intendedEmbargo: null, documentedPublication: null, earliestEvidencedAvailability: null,
+    } });
   });
 
   it("never projects research-only timing onto the contract", async () => {
@@ -116,11 +147,11 @@ const beaSchedule = (releaseDate: string, releaseAt: string): CalendarObservatio
     releaseDate, releaseAt, statedZone: "UTC", evidenceText: `DTSTART:${releaseAt}` }) });
 const beaRecord = (releaseDate: string, releaseAt: string | null, slug = "gdp-advance-estimate-3rd-quarter-2025"): CalendarObservation => ({ ...gdpBase,
   evidence: ev({ providerId: "bea-news-release", sourceUrl: `https://www.bea.gov/news/2025/${slug}`,
-    releaseDate, releaseAt, statedZone: releaseAt ? "EST" : null, evidenceText: `EMBARGOED UNTIL RELEASE AT … ${releaseDate}` }) });
+    releaseDate, releaseAt, statedZone: releaseAt ? "EST" : null, evidenceText: `The release was published on ${releaseDate}${releaseAt ? ` at ${releaseAt}` : ""}` }) });
 
 describe("release-calendar conflict policy", () => {
   it("lets the publication determine a rescheduled BEA release; the schedule mismatch is informational", async () => {
-    // Q3-2025 GDP: scheduled for 2025-10-30, published 2025-12-23 after the shutdown.
+    // A same-stage reschedule, separate from the actual Q3 2025 replacement fixture.
     const records = mergeObservations([beaSchedule("2025-10-30", "2025-10-30T12:30:00.000Z"),
       beaRecord("2025-12-23", "2025-12-23T13:30:00.000Z")]);
     expect(records).toHaveLength(1);
