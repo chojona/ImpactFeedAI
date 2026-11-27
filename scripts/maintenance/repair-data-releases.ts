@@ -35,7 +35,9 @@ import {
   CURATED_SERIES_BY_EVENT_TYPE,
   type CanonicalMetric,
   type MetricUnit,
+  type SeasonalAdjustment,
 } from "@/services/macro/metrics";
+import { forecastBasisAllowsSurprise } from "../ingest/fetch-macro";
 import { createScriptPrismaClient } from "../lib/prisma";
 import { createDryRunPrismaClient } from "../lib/readonly-prisma";
 
@@ -104,6 +106,7 @@ interface Row {
   headline: string;
   eventType: string;
   metric: CanonicalMetric;
+  expectedSeasonalAdjustment: SeasonalAdjustment | null;
   old: ReleaseValues;
   next: ReleaseValues | null;
   classification: Classification;
@@ -127,6 +130,44 @@ export function repairWriteData(next: ReleaseValues): {
     actualSource: next.actualSource,
     actualSourceUrl: next.actualSourceUrl,
   };
+}
+
+/**
+ * Surprise rules for repair validation.
+ *
+ * - Null surprise is valid when the forecast basis is unknown/incompatible
+ *   for an SA/NSA-sensitive metric (no fabricated comparison).
+ * - Non-null surprise must equal actual − expected.
+ * - Metrics with basis `na` always require a defined surprise when expected
+ *   exists (handled via forecastBasisAllowsSurprise).
+ */
+export function validateSurpriseConsistency(args: {
+  metric: CanonicalMetric;
+  expectedValue: number;
+  actualValue: number;
+  surpriseMagnitude: number | null;
+  expectedSeasonalAdjustment: SeasonalAdjustment | null | undefined;
+}): string[] {
+  const want =
+    Math.round((args.actualValue - args.expectedValue) * 1e4) / 1e4;
+  const basisOk = forecastBasisAllowsSurprise(
+    args.metric.seasonalAdjustment,
+    args.expectedSeasonalAdjustment,
+  );
+  if (args.surpriseMagnitude === null) {
+    if (basisOk) {
+      return [
+        `surprise null ≠ actual − expected (${want}) — basis allows a surprise`,
+      ];
+    }
+    return [];
+  }
+  if (Math.abs(args.surpriseMagnitude - want) > 1e-9) {
+    return [
+      `surprise ${fmt(args.surpriseMagnitude)} ≠ actual − expected (${want})`,
+    ];
+  }
+  return [];
 }
 
 const fmt = (v: number | null): string => (v === null ? "null" : String(v));
@@ -166,13 +207,15 @@ function validate(row: Row): string[] {
         `unit mismatch: |actual/expected| = ${ratio.toFixed(2)} (expected 0.05–20)`,
       );
     }
-    // surprise must be exactly actual − expected in the canonical unit.
-    const want = Math.round((actualValue - expectedValue) * 1e4) / 1e4;
-    if (surpriseMagnitude === null || Math.abs(surpriseMagnitude - want) > 1e-9) {
-      problems.push(
-        `surprise ${fmt(surpriseMagnitude)} ≠ actual − expected (${want})`,
-      );
-    }
+    problems.push(
+      ...validateSurpriseConsistency({
+        metric: row.metric,
+        expectedValue,
+        actualValue,
+        surpriseMagnitude,
+        expectedSeasonalAdjustment: row.expectedSeasonalAdjustment,
+      }),
+    );
   } else if (surpriseMagnitude !== null) {
     problems.push("surprise is non-null but there is no expectedValue");
   }
@@ -238,6 +281,7 @@ async function main(): Promise<void> {
           occurredAt,
           expectedValue: seed.expectedValue ?? null,
           metricNameOverride: null,
+          expectedSeasonalAdjustment: seed.expectedSeasonalAdjustment ?? null,
         });
 
         const row: Row = {
@@ -246,6 +290,7 @@ async function main(): Promise<void> {
           headline: seed.headline,
           eventType: event.eventType,
           metric: binding.metric,
+          expectedSeasonalAdjustment: seed.expectedSeasonalAdjustment ?? null,
           old: {
             metricName: release.metricName,
             actualValue: release.actualValue,

@@ -33,6 +33,8 @@
  * percent sign, because nothing can tell what unit it is in.
  */
 
+import type { SeasonalAdjustment } from "@/services/macro/metrics";
+
 export type SeedEventType =
   | "TARIFF"
   | "FED_DECISION"
@@ -65,21 +67,36 @@ export interface SeedEvent {
   sourceUrl?: string;
   /** Manually-curated consensus value, if known. Used to populate DataRelease.expectedValue. */
   expectedValue?: number;
+  /**
+   * Seasonal-adjustment basis of `expectedValue`, set ONLY when verified.
+   * Required for SA/NSA-sensitive metrics before a surprise is computed;
+   * omit (unknown) rather than guess. Ignored for metrics with basis `na`.
+   */
+  expectedSeasonalAdjustment?: SeasonalAdjustment;
   /** Source for expectedValue. Existing values have no citation and stay unverified. */
   consensusSource?: string;
   consensusSourceUrl?: string;
   consensusAsOf?: string;
   /** Manually-curated metric name, if you want to override the default. */
   metricName?: string;
+  /**
+   * Prior headlines this seed used to carry. Used only for idempotent re-ingest
+   * after a wording/value correction (e.g. GDP +2.8% → +3.0%).
+   */
+  previousHeadlines?: readonly string[];
 }
 
 /**
  * Stable curated event identity — independent of headline text so a later
  * wording/value correction does not insert a duplicate.
+ *
+ * Includes metricName when set so co-timed releases under one eventType
+ * (headline CPI vs Core CPI) stay distinct.
  */
 export function curatedEventKey(seed: SeedEvent): string {
   const ref = seed.referencePeriodStart ?? "none";
-  return `curated:${seed.eventType}:${seed.occurredAt}:${ref}`;
+  const metric = seed.metricName ?? "_";
+  return `curated:${seed.eventType}:${seed.occurredAt}:${ref}:${metric}`;
 }
 
 /** Pre-correction key that included the headline (kept for dedup lookups). */
@@ -89,25 +106,32 @@ export function legacyCuratedEventKey(
   return `curated:${seed.eventType}:${seed.headline.trim().replace(/\s+/g, " ")}`;
 }
 
+/** Legacy headline-based keys this seed may still match after a rename. */
+export function legacyHeadlineAliases(seed: SeedEvent): readonly string[] {
+  return [seed.headline, ...(seed.previousHeadlines ?? [])];
+}
+
 /** Pure form of the ingest dedup check — unit-testable without a DB. */
 export function curatedSeedMatchesExisting(
   seed: SeedEvent,
   existing: {
     eventKey: string | null;
     headline: string;
-    eventType: string;
-    occurredAt: string | Date;
+    eventType?: string;
+    occurredAt?: string | Date;
   },
 ): boolean {
-  const seedOccurred = new Date(seed.occurredAt).getTime();
-  const existingOccurred = new Date(existing.occurredAt).getTime();
-  return (
-    existing.eventKey === curatedEventKey(seed) ||
-    existing.eventKey === legacyCuratedEventKey(seed) ||
-    existing.headline === seed.headline ||
-    (existing.eventType === seed.eventType &&
-      existingOccurred === seedOccurred)
-  );
+  if (existing.eventKey === curatedEventKey(seed)) return true;
+  for (const headline of legacyHeadlineAliases(seed)) {
+    if (existing.headline === headline) return true;
+    if (
+      existing.eventKey ===
+      legacyCuratedEventKey({ eventType: seed.eventType, headline })
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export const SEED_EVENTS: SeedEvent[] = [
@@ -515,6 +539,10 @@ export const SEED_EVENTS: SeedEvent[] = [
     eventType: "MACRO_DATA",
     occurredAt: "2025-07-30T08:30:00-04:00",
     referencePeriodStart: "2025-04-01",
+    // Prior seed wording; kept so re-ingest matches the legacy row (U9).
+    previousHeadlines: [
+      "Q2 2025 GDP advance reading +2.8%, beats consensus",
+    ],
   },
 ];
 

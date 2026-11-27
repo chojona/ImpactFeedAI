@@ -34,14 +34,18 @@ import { validateConsensusEstimate } from "@/services/macro/consensus";
 import type { MacroRelease } from "./types";
 
 /**
- * A surprise is only defined when the forecast's seasonal-adjustment basis is
- * known and matches the metric's declared basis. An SA forecast vs an NSA
- * actual (or an unknown basis) must not produce a VERIFIED surprise.
+ * Whether a forecast may be compared with an actual for surprise.
+ *
+ * Metrics with no SA/NSA dimension (`na` — Fed target, sentiment, …) always
+ * allow a surprise: a policy-rate forecast has no seasonal-adjustment basis to
+ * mismatch. SA/NSA-sensitive metrics (CPI, PPI, payrolls, …) require a known
+ * forecast basis that matches the metric; unknown or mismatched → no surprise.
  */
 export function forecastBasisAllowsSurprise(
   metricBasis: SeasonalAdjustment,
   forecastBasis: SeasonalAdjustment | null | undefined,
 ): boolean {
+  if (metricBasis === "na") return true;
   return forecastBasis != null && forecastBasis === metricBasis;
 }
 

@@ -29,6 +29,7 @@ import {
   SEED_EVENTS,
   curatedEventKey,
   legacyCuratedEventKey,
+  legacyHeadlineAliases,
   type SeedEvent,
   type SeedEventType,
 } from "./events-seed";
@@ -41,23 +42,31 @@ export {
   curatedEventKey,
   curatedSeedMatchesExisting,
   legacyCuratedEventKey,
+  legacyHeadlineAliases,
 } from "./events-seed";
 
 /**
- * Idempotency predicates for a curated seed. Headline text is NOT the primary
- * identity — a corrected GDP headline must still match the existing row.
+ * Idempotency predicates for a curated seed.
+ *
+ * Identity is the stable curated key, plus exact legacy headline keys/titles
+ * (including explicit `previousHeadlines` aliases). Do NOT match on type +
+ * occurredAt alone — that merges distinct co-timed releases (Fed vs FOMC
+ * auto-ingest, headline CPI vs Core CPI).
  */
 export function curatedEventDedupWhere(seed: SeedEvent): {
   OR: Array<Record<string, unknown>>;
 } {
-  const occurredAt = new Date(seed.occurredAt);
+  const aliases = legacyHeadlineAliases(seed);
   return {
     OR: [
       { eventKey: curatedEventKey(seed) },
-      { eventKey: legacyCuratedEventKey(seed) },
-      { headline: seed.headline },
-      // Headline may have changed; type + occurredAt still identify the seed.
-      { AND: [{ eventType: seed.eventType }, { occurredAt }] },
+      ...aliases.map((headline) => ({
+        eventKey: legacyCuratedEventKey({
+          eventType: seed.eventType,
+          headline,
+        }),
+      })),
+      ...aliases.map((headline) => ({ headline })),
     ],
   };
 }
@@ -212,6 +221,7 @@ async function ingestEvent(
     consensusSource: seed.consensusSource ?? null,
     consensusSourceUrl: seed.consensusSourceUrl ?? null,
     consensusAsOf: optionalDate(seed.consensusAsOf),
+    expectedSeasonalAdjustment: seed.expectedSeasonalAdjustment ?? null,
   });
 
   if (dryRun) {
