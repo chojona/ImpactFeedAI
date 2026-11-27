@@ -11,26 +11,29 @@
  * which is the only path by which a record may become a reaction anchor.
  *
  * Timing rules (no fallback clock, ever):
- *   VERIFIED       — an official release record states the clock time.
+ *   VERIFIED       — an official source documents that publication occurred.
  *   SCHEDULED      — only an official schedule states the clock time.
  *   DATE_ONLY      — an official document proves the date, not the time.
  *   SECONDARY_ONLY — only non-official evidence (e.g. a peer-reviewed research
  *                    dataset) supports the timing. Never projected onto the
  *                    contract; kept for research use and cross-checking.
  *
- * Conflicts: only official publication evidence can conflict fatally
- * (DATE_CONFLICT / TIME_CONFLICT → withheld). Schedules and research data that
- * disagree with the publication are informational flags; the publication wins.
+ * Conflicting publication evidence is withheld, as are conflicting
+ * schedules with no publication. Differences between roles are retained.
  */
 
 import {
   RELEASE_STAGES,
   type HistoricalReleaseCalendarProvider,
   type HistoricalReleaseTiming,
+  type ReleaseAtKind,
+  type ReleaseClockFact,
+  type ReleaseClockFacts,
   type ReleaseIdentity,
   type ReleaseStage,
   type ReleaseTimingSourceKind,
 } from "@/services/macro/release-calendar";
+import { utcDateOnly } from "@/services/macro/time";
 
 export const RELEASE_FAMILIES = [
   "BLS_CPI",
@@ -78,16 +81,34 @@ export interface TimingEvidence {
   readonly releaseDate: string;
   /** ISO UTC instant, when the evidence states a clock time. */
   readonly releaseAt: string | null;
+  /** A release archive can state an embargo without documenting publication. */
+  readonly clockKind?: "INTENDED_EMBARGO" | "DOCUMENTED_PUBLICATION" | "EVIDENCED_AVAILABILITY";
+  readonly precision?: ReleaseClockFact<string>["precision"];
+  readonly scope?: ReleaseClockFact<string>["scope"];
+  readonly scheduleStatus?: "CANCELLED";
+  readonly scheduleUid?: string;
   readonly statedZone: StatedZone | null;
-  /** Verbatim text the timing was parsed from (embargo line, ICS DTSTART…). */
+  /** Source excerpt or a description of the cited evidence. */
   readonly evidenceText: string;
   /** sha256 of the source payload, for reproducibility. */
   readonly contentSha256: string | null;
 }
 
+/** An official publication explicitly replaced a scheduled estimate for the same period. */
+export interface ScheduleChange {
+  readonly releaseStage: ReleaseStage;
+  readonly disposition: "SUPERSEDED";
+  readonly sourceUrl: string;
+  readonly retrievedAt: string;
+  readonly evidenceText: string;
+  readonly contentSha256: string;
+}
+
 export type RecordFlag =
   | "ZONE_LABEL_MISMATCH" // printed EST/EDT disagrees with America/New_York at that instant
   | "TIME_CONFLICT" // official publications state different instants (fatal: withheld)
+  | "EMBARGO_CONFLICT" // intended embargo times disagree
+  | "SCHEDULE_CONFLICT" // official schedules disagree without a publication (withheld)
   | "DATE_CONFLICT" // official publications state different days (fatal: withheld)
   | "SCHEDULE_DIFFERS_FROM_RECORD" // schedule ≠ publication, e.g. a reschedule (informational)
   | "SECONDARY_DIFFERS_FROM_OFFICIAL" // research timing ≠ official timing (informational)
@@ -100,18 +121,22 @@ export type RecordFlag =
 export interface ReleaseCalendarRecord {
   readonly family: ReleaseFamily;
   readonly metricKeys: readonly string[];
-  /** YYYY-MM-DD start of the period measured; FOMC uses the announcement day. */
+  readonly identities: readonly ReleaseIdentity[];
+  /** Primary reference period from the title (FOMC uses the announcement day). */
   readonly referencePeriodStart: string | null;
   readonly releaseStage: ReleaseStage;
   /** Publisher's own stage wording, e.g. "Advance Estimate", "preliminary". */
   readonly stageLabel: string | null;
   readonly releaseDate: string;
   readonly releaseAt: string | null;
+  readonly releaseAtKind: ReleaseAtKind | "SECONDARY_RESEARCH";
+  readonly timingFacts: ReleaseClockFacts<string>;
   readonly timePrecision: "MINUTE" | "DATE";
   readonly timingStatus: CalendarTimingStatus;
   /** FOMC only: true for intermeeting actions; null when unknown/not applicable. */
   readonly unscheduled: boolean | null;
   readonly evidence: readonly TimingEvidence[];
+  readonly scheduleChanges: readonly ScheduleChange[];
   readonly flags: readonly RecordFlag[];
 }
 
@@ -123,12 +148,18 @@ export interface CalendarObservation {
   readonly stageLabel: string | null;
   readonly unscheduled: boolean | null;
   readonly evidence: TimingEvidence;
+  /** Explicit metric/period/stage tuples override the family defaults. */
+  readonly identities?: readonly ReleaseIdentity[];
+  readonly supplementalEvidence?: readonly TimingEvidence[];
+  readonly scheduleChanges?: readonly ScheduleChange[];
   readonly flags: readonly RecordFlag[];
 }
 
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const stages = new Set<string>(RELEASE_STAGES);
 const families = new Set<string>(RELEASE_FAMILIES);
+
+const isIsoDay = (day: string): boolean => Number.isFinite(utcDateOnly(day).getTime());
 
 const nyDay = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/New_York",
@@ -157,11 +188,25 @@ export function validateEvidence(e: TimingEvidence): TimingEvidence {
   if (!isHttpsCitation(e.sourceUrl)) {
     throw new TypeError(`evidence sourceUrl must be credential-free HTTPS: ${e.sourceUrl}`);
   }
-  if (!ISO_DAY.test(e.releaseDate)) throw new TypeError("evidence releaseDate must be YYYY-MM-DD");
+  if (!isIsoDay(e.releaseDate)) throw new TypeError("evidence releaseDate must be a valid YYYY-MM-DD");
   if (Number.isNaN(Date.parse(e.retrievedAt))) throw new TypeError("evidence retrievedAt invalid");
+  if (e.clockKind && (e.sourceKind !== "OFFICIAL_RELEASE_RECORD" ||
+    (e.clockKind !== "INTENDED_EMBARGO" && e.releaseAt === null))) {
+    throw new TypeError("clock evidence requires an official release record and a supported instant");
+  }
+  if (e.clockKind === "DOCUMENTED_PUBLICATION" &&
+    (e.scope === "RELATED_FILES" || e.precision === "APPROXIMATE_MINUTE")) {
+    throw new TypeError("documented publication requires a precise clock for the release");
+  }
+  if (e.scheduleStatus && e.sourceKind !== "OFFICIAL_SCHEDULE") {
+    throw new TypeError("schedule status requires an official schedule");
+  }
   if (e.releaseAt !== null) {
     const at = new Date(e.releaseAt);
-    if (Number.isNaN(at.getTime())) throw new TypeError("evidence releaseAt invalid");
+    if (!ISO_UTC_INSTANT.test(e.releaseAt) || !Number.isFinite(at.getTime()) ||
+      at.toISOString() !== e.releaseAt.replace(/(\d\d:\d\d:\d\d)Z$/, "$1.000Z")) {
+      throw new TypeError("evidence releaseAt must be a valid UTC instant");
+    }
     if (newYorkDayOf(at) !== e.releaseDate) {
       throw new TypeError(`evidence releaseAt ${e.releaseAt} is not on ${e.releaseDate} in New York`);
     }
@@ -173,10 +218,25 @@ export function validateEvidence(e: TimingEvidence): TimingEvidence {
 function validateObservation(o: CalendarObservation): CalendarObservation {
   if (!families.has(o.family)) throw new TypeError(`unknown family ${o.family}`);
   if (!stages.has(o.releaseStage)) throw new TypeError(`unknown stage ${o.releaseStage}`);
-  if (o.referencePeriodStart !== null && !ISO_DAY.test(o.referencePeriodStart)) {
+  if (o.referencePeriodStart !== null && !isIsoDay(o.referencePeriodStart)) {
     throw new TypeError("referencePeriodStart must be YYYY-MM-DD or null");
   }
   validateEvidence(o.evidence);
+  for (const e of o.supplementalEvidence ?? []) validateEvidence(e);
+  for (const id of o.identities ?? []) {
+    if (!FAMILY_METRIC_KEYS[o.family].includes(id.metricKey) ||
+      !isIsoDay(id.referencePeriodStart) || !stages.has(id.releaseStage)) {
+      throw new TypeError(`invalid identity for ${o.family}`);
+    }
+  }
+  for (const change of o.scheduleChanges ?? []) {
+    if (o.evidence.sourceKind !== "OFFICIAL_RELEASE_RECORD" || !o.referencePeriodStart ||
+      !stages.has(change.releaseStage) || change.releaseStage === o.releaseStage ||
+      !isHttpsCitation(change.sourceUrl) || !Number.isFinite(Date.parse(change.retrievedAt)) ||
+      !change.evidenceText.trim() || !change.contentSha256) {
+      throw new TypeError("invalid evidence for replaced schedule");
+    }
+  }
   return o;
 }
 
@@ -187,6 +247,18 @@ const KIND_RANK: Record<EvidenceSourceKind, number> = {
   SECONDARY_RESEARCH_DATASET: 3,
 };
 const isOfficial = (e: TimingEvidence): boolean => e.sourceKind !== "SECONDARY_RESEARCH_DATASET";
+const isPublication = (e: TimingEvidence): boolean =>
+  e.sourceKind === "OFFICIAL_RELEASE_RECORD" || e.sourceKind === "OFFICIAL_DATE_METADATA";
+
+function identityKey(id: ReleaseIdentity): string {
+  return `${id.metricKey}|${id.referencePeriodStart}|${id.releaseStage}`;
+}
+
+function familyIdentities(family: ReleaseFamily, referencePeriodStart: string | null, releaseStage: ReleaseStage): ReleaseIdentity[] {
+  return referencePeriodStart === null ? [] : FAMILY_METRIC_KEYS[family].map((metricKey) => ({
+    metricKey, referencePeriodStart, releaseStage,
+  }));
+}
 
 /**
  * Group key. FOMC statements are one per announcement day; data releases are
@@ -205,62 +277,82 @@ function pickFirst<T>(values: readonly (T | null)[]): T | null {
   return null;
 }
 
-function mergeGroup(group: readonly CalendarObservation[]): ReleaseCalendarRecord {
-  const sorted = [...group].sort(
-    (a, b) => KIND_RANK[a.evidence.sourceKind] - KIND_RANK[b.evidence.sourceKind] ||
-      a.evidence.sourceUrl.localeCompare(b.evidence.sourceUrl),
-  );
-  const flags = new Set<RecordFlag>(sorted.flatMap((o) => o.flags));
-  const ev = sorted.map((o) => o.evidence);
+function clockFact(e: TimingEvidence | undefined): ReleaseClockFact<string> | null {
+  if (!e?.releaseAt) return null;
+  return { at: e.releaseAt, sourceUrl: e.sourceUrl, precision: e.precision ?? "MINUTE", scope: e.scope ?? "RELEASE" };
+}
 
-  // Conflict policy. Only official PUBLICATION evidence (a release record, or
-  // official date metadata about the publication) can conflict fatally. A
-  // schedule is a plan and a research dataset is a reconstruction: when either
-  // disagrees with the publication, the publication determines the timing and
-  // the disagreement is recorded as an informational flag.
-  const publications = ev.filter(
-    (e) => e.sourceKind === "OFFICIAL_RELEASE_RECORD" || e.sourceKind === "OFFICIAL_DATE_METADATA",
-  );
+function evidenceOrder(a: TimingEvidence, b: TimingEvidence): number {
+  return KIND_RANK[a.sourceKind] - KIND_RANK[b.sourceKind] ||
+    a.sourceUrl.localeCompare(b.sourceUrl) || a.releaseDate.localeCompare(b.releaseDate) ||
+    (a.releaseAt ?? "").localeCompare(b.releaseAt ?? "") || a.evidenceText.localeCompare(b.evidenceText) ||
+    a.retrievedAt.localeCompare(b.retrievedAt) || (a.contentSha256 ?? "").localeCompare(b.contentSha256 ?? "");
+}
+
+function mergeGroup(group: readonly CalendarObservation[]): ReleaseCalendarRecord {
+  const sorted = [...group].sort((a, b) => evidenceOrder(a.evidence, b.evidence));
+  const flags = new Set<RecordFlag>(sorted.flatMap((o) => o.flags));
+  const ev = sorted.flatMap((o) => [o.evidence, ...(o.supplementalEvidence ?? [])]).sort(evidenceOrder);
+
+  // Compare publication, plans and research separately. An embargo clock
+  // and a documented publication can differ for the same release.
+  const publications = ev.filter((e) => isPublication(e) && e.clockKind !== "EVIDENCED_AVAILABILITY");
   const schedules = ev.filter((e) => e.sourceKind === "OFFICIAL_SCHEDULE");
   const secondaries = ev.filter((e) => !isOfficial(e));
 
   if (new Set(publications.map((e) => e.releaseDate)).size > 1) flags.add("DATE_CONFLICT");
-  const publishedInstants = new Set(publications.filter((e) => e.releaseAt).map((e) => e.releaseAt));
-  if (publishedInstants.size > 1) flags.add("TIME_CONFLICT");
+  const documented = publications.filter((e) => e.clockKind === "DOCUMENTED_PUBLICATION" && e.releaseAt);
+  const embargoes = publications.filter((e) => e.clockKind === "INTENDED_EMBARGO" && e.releaseAt);
+  if (new Set(documented.map((e) => Date.parse(e.releaseAt ?? ""))).size > 1) flags.add("TIME_CONFLICT");
+  if (new Set(embargoes.map((e) => Date.parse(e.releaseAt ?? ""))).size > 1) flags.add("EMBARGO_CONFLICT");
+  const scheduledInstants = new Set(schedules.flatMap((e) => e.releaseAt ? [Date.parse(e.releaseAt)] : []));
+  if (!publications.length && (scheduledInstants.size > 1 || new Set(schedules.map((e) => e.releaseDate)).size > 1)) {
+    flags.add("SCHEDULE_CONFLICT");
+  }
 
-  const timedRecord = publications.find((e) => e.sourceKind === "OFFICIAL_RELEASE_RECORD" && e.releaseAt);
+  const publicationConflict = flags.has("DATE_CONFLICT") || flags.has("TIME_CONFLICT");
+  const timedRecord = publicationConflict ? undefined : documented[0];
   const publication = timedRecord ?? publications[0];
   const schedule = schedules.find((e) => e.releaseAt) ?? schedules[0];
+  const availability = ev.filter((e) => e.clockKind === "EVIDENCED_AVAILABILITY" && e.releaseAt !== null)
+    .sort((a, b) => Date.parse(a.releaseAt ?? "") - Date.parse(b.releaseAt ?? ""))[0];
 
   let timingStatus: CalendarTimingStatus;
+  let releaseAtKind: ReleaseCalendarRecord["releaseAtKind"];
   let chosen: TimingEvidence;
   if (timedRecord) {
     timingStatus = "VERIFIED";
+    releaseAtKind = "DOCUMENTED_PUBLICATION";
     chosen = timedRecord;
   } else if (publication) {
     // A published date beats any scheduled clock time for the same release.
     timingStatus = "DATE_ONLY";
+    releaseAtKind = "DATE_ONLY";
     chosen = publication;
-  } else if (schedule?.releaseAt) {
+  } else if (schedule?.releaseAt && !flags.has("SCHEDULE_CONFLICT")) {
     timingStatus = "SCHEDULED";
+    releaseAtKind = "OFFICIAL_SCHEDULE";
     chosen = schedule;
   } else if (schedule) {
     timingStatus = "DATE_ONLY";
+    releaseAtKind = "DATE_ONLY";
     chosen = schedule;
   } else {
     timingStatus = "SECONDARY_ONLY";
+    releaseAtKind = "SECONDARY_RESEARCH";
     chosen = ev[0];
   }
 
+  const publicationClock = timedRecord?.releaseAt ?? (flags.has("EMBARGO_CONFLICT") ? null : embargoes[0]?.releaseAt);
   if (publication && schedules.some((s) =>
     s.releaseDate !== publication.releaseDate ||
-    (publication.releaseAt !== null && s.releaseAt !== null && s.releaseAt !== publication.releaseAt))) {
+    (publicationClock && s.releaseAt && Date.parse(s.releaseAt) !== Date.parse(publicationClock)))) {
     flags.add("SCHEDULE_DIFFERS_FROM_RECORD");
   }
-  const anchor = publication ?? (schedule?.releaseAt ? schedule : null);
+  const anchor = timedRecord ?? (publication ? { releaseDate: publication.releaseDate, releaseAt: null } : schedule);
   if (anchor && secondaries.some((s) =>
     s.releaseDate !== anchor.releaseDate ||
-    (anchor.releaseAt !== null && s.releaseAt !== null && s.releaseAt !== anchor.releaseAt))) {
+    (anchor.releaseAt !== null && s.releaseAt !== null && Date.parse(s.releaseAt) !== Date.parse(anchor.releaseAt)))) {
     flags.add("SECONDARY_DIFFERS_FROM_OFFICIAL");
   }
   if (timingStatus === "DATE_ONLY" && secondaries.some((s) => s.releaseAt)) flags.add("SECONDARY_TIME_ONLY");
@@ -273,19 +365,33 @@ function mergeGroup(group: readonly CalendarObservation[]): ReleaseCalendarRecor
   const referencePeriodStart = pickFirst(sorted.map((o) => o.referencePeriodStart));
   if (referencePeriodStart === null) flags.add("REFERENCE_PERIOD_UNKNOWN");
   else flags.delete("REFERENCE_PERIOD_UNKNOWN");
+  const explicit = sorted.filter((o) => o.identities !== undefined &&
+    (publications.length ? isPublication(o.evidence) : o.evidence.sourceKind === "OFFICIAL_SCHEDULE"));
+  const identities = explicit.length
+    ? [...new Map(explicit.flatMap((o) => o.identities ?? []).map((id) => [identityKey(id), id])).values()]
+        .sort((a, b) => identityKey(a).localeCompare(identityKey(b)))
+    : familyIdentities(first.family, referencePeriodStart, first.releaseStage);
 
   return {
     family: first.family,
-    metricKeys: FAMILY_METRIC_KEYS[first.family],
+    metricKeys: referencePeriodStart === null ? FAMILY_METRIC_KEYS[first.family] : [...new Set(identities.map((id) => id.metricKey))],
+    identities,
     referencePeriodStart,
     releaseStage: first.releaseStage,
     stageLabel: pickFirst(sorted.map((o) => o.stageLabel)),
     releaseDate: chosen.releaseDate,
     releaseAt,
+    releaseAtKind,
+    timingFacts: {
+      intendedEmbargo: flags.has("DATE_CONFLICT") || flags.has("EMBARGO_CONFLICT") ? null : clockFact(embargoes[0]),
+      documentedPublication: clockFact(timedRecord),
+      earliestEvidencedAvailability: flags.has("DATE_CONFLICT") ? null : clockFact(availability),
+    },
     timePrecision: releaseAt ? "MINUTE" : "DATE",
     timingStatus,
     unscheduled,
     evidence: ev,
+    scheduleChanges: sorted.flatMap((o) => o.scheduleChanges ?? []),
     flags: [...flags].sort(),
   };
 }
@@ -297,10 +403,39 @@ function mergeGroup(group: readonly CalendarObservation[]): ReleaseCalendarRecor
 export function mergeObservations(
   observations: readonly CalendarObservation[],
 ): ReleaseCalendarRecord[] {
-  const groups = new Map<string, CalendarObservation[]>();
+  const superseded = new Set<string>();
+  const cancelled = new Set<string>();
+  const publicationGroupsByIdentity = new Map<string, Set<string>>();
+  const scheduleKey = (o: CalendarObservation): string =>
+    `${o.evidence.providerId}|${o.evidence.scheduleUid ?? `${observationKey(o)}|${o.evidence.releaseDate}`}`;
   for (const o of observations) {
     validateObservation(o);
-    const k = observationKey(o);
+    if (o.evidence.scheduleStatus === "CANCELLED") cancelled.add(scheduleKey(o));
+    for (const change of o.scheduleChanges ?? []) {
+      superseded.add(observationKey({ ...o, releaseStage: change.releaseStage }));
+    }
+    if (isPublication(o.evidence)) {
+      for (const identity of o.identities ?? familyIdentities(o.family, o.referencePeriodStart, o.releaseStage)) {
+        const key = identityKey(identity);
+        const owners = publicationGroupsByIdentity.get(key) ?? new Set<string>();
+        owners.add(observationKey(o));
+        publicationGroupsByIdentity.set(key, owners);
+      }
+    }
+  }
+
+  const groups = new Map<string, CalendarObservation[]>();
+  for (const o of observations) {
+    let k = observationKey(o);
+    if (o.evidence.sourceKind === "OFFICIAL_SCHEDULE") {
+      if (cancelled.has(scheduleKey(o)) || superseded.has(k)) continue;
+      // Keep retained schedules as evidence with the bundle if a single
+      // publication covers every metric and period named by the schedule.
+      const ids = o.identities ?? familyIdentities(o.family, o.referencePeriodStart, o.releaseStage);
+      const owners = ids.map((id) => publicationGroupsByIdentity.get(identityKey(id)));
+      const targets = new Set(owners.flatMap((group) => [...(group ?? [])]));
+      if (targets.size === 1 && owners.every((group) => group?.size === 1)) k = [...targets][0];
+    }
     const g = groups.get(k);
     if (g) g.push(o);
     else groups.set(k, [o]);
@@ -309,45 +444,42 @@ export function mergeObservations(
   // same family and day, so a schedule entry and a record of one release merge.
   for (const [k, g] of [...groups]) {
     if (!k.includes("|day:") || g[0].family === "FOMC_STATEMENT") continue;
-    const target = [...groups.entries()].find(
+    const targets = [...groups.entries()].filter(
       ([k2, g2]) => k2 !== k && !k2.includes("|day:") && g2[0].family === g[0].family &&
         g2.some((o) => o.evidence.releaseDate === g[0].evidence.releaseDate),
     );
-    if (target) {
-      target[1].push(...g);
+    if (targets.length === 1) {
+      targets[0][1].push(...g);
       groups.delete(k);
     }
   }
   return [...groups.values()]
     .map(mergeGroup)
     .sort((a, b) => a.releaseDate.localeCompare(b.releaseDate) ||
-      a.family.localeCompare(b.family) || a.releaseStage.localeCompare(b.releaseStage));
+      a.family.localeCompare(b.family) || a.releaseStage.localeCompare(b.releaseStage) ||
+      (a.referencePeriodStart ?? "").localeCompare(b.referencePeriodStart ?? ""));
 }
 
 export const RECORD_PROVIDER_ID = "impactfeed-release-calendar-records";
 
-/** The identity a record answers for one metric. FOMC uses the announcement day. */
+/** All lookup identities for the release. Rebuild snapshots that predate this array. */
 export function recordIdentities(r: ReleaseCalendarRecord): ReleaseIdentity[] {
-  const period = r.family === "FOMC_STATEMENT" ? r.releaseDate : r.referencePeriodStart;
-  if (period === null) return [];
-  return r.metricKeys.map((metricKey) => ({
-    metricKey,
-    referencePeriodStart: period,
-    releaseStage: r.releaseStage,
-  }));
+  return [...(r.identities ?? [])];
 }
 
-/** Project a record onto the contract; SECONDARY_ONLY yields null. */
+/** Project a record with supported evidence onto the contract. */
 export function toHistoricalReleaseTiming(
   r: ReleaseCalendarRecord,
 ): HistoricalReleaseTiming | null {
-  if (r.timingStatus === "SECONDARY_ONLY") return null;
+  if (r.timingStatus === "SECONDARY_ONLY" || r.releaseAtKind === "SECONDARY_RESEARCH" ||
+    r.releaseAtKind === undefined || r.timingFacts === undefined ||
+    r.flags.some((flag) => flag === "DATE_CONFLICT" || flag === "TIME_CONFLICT" || flag === "SCHEDULE_CONFLICT")) return null;
   const chosen = r.evidence.find((e) =>
     r.timingStatus === "VERIFIED"
-      ? e.sourceKind === "OFFICIAL_RELEASE_RECORD" && e.releaseAt === r.releaseAt
+      ? e.clockKind === "DOCUMENTED_PUBLICATION" && e.releaseAt === r.releaseAt
       : r.timingStatus === "SCHEDULED"
         ? e.sourceKind === "OFFICIAL_SCHEDULE" && e.releaseAt === r.releaseAt
-        : e.sourceKind !== "SECONDARY_RESEARCH_DATASET" && e.releaseDate === r.releaseDate,
+        : isOfficial(e) && e.clockKind !== "EVIDENCED_AVAILABILITY" && e.releaseDate === r.releaseDate,
   );
   if (!chosen || chosen.sourceKind === "SECONDARY_RESEARCH_DATASET") return null;
   const provenance = {
@@ -357,14 +489,25 @@ export function toHistoricalReleaseTiming(
     sourceUrl: chosen.sourceUrl,
     retrievedAt: new Date(chosen.retrievedAt),
   };
+  const toDate = (fact: ReleaseClockFact<string> | null): ReleaseClockFact<Date> | null =>
+    fact === null ? null : { ...fact, at: new Date(fact.at) };
+  const metadata = {
+    releaseAtKind: r.releaseAtKind,
+    timingFacts: {
+      intendedEmbargo: toDate(r.timingFacts.intendedEmbargo),
+      documentedPublication: toDate(r.timingFacts.documentedPublication),
+      earliestEvidencedAvailability: toDate(r.timingFacts.earliestEvidencedAvailability),
+    },
+  };
   if (r.timingStatus === "DATE_ONLY" || r.releaseAt === null) {
-    return { timingStatus: "DATE_ONLY", releaseDate: r.releaseDate, releaseAt: null, provenance };
+    return { timingStatus: "DATE_ONLY", releaseDate: r.releaseDate, releaseAt: null, provenance, ...metadata };
   }
   return {
     timingStatus: r.timingStatus,
     releaseDate: r.releaseDate,
     releaseAt: new Date(r.releaseAt),
     provenance,
+    ...metadata,
   };
 }
 
@@ -379,7 +522,7 @@ export function createRecordCalendarProvider(
   const ambiguous = new Set<string>();
   for (const r of records) {
     for (const id of recordIdentities(r)) {
-      const k = `${id.metricKey}|${id.referencePeriodStart}|${id.releaseStage}`;
+      const k = identityKey(id);
       if (index.has(k)) ambiguous.add(k);
       index.set(k, r);
     }
@@ -387,10 +530,9 @@ export function createRecordCalendarProvider(
   return {
     id: RECORD_PROVIDER_ID,
     async resolve(identity) {
-      const k = `${identity.metricKey}|${identity.referencePeriodStart}|${identity.releaseStage}`;
+      const k = identityKey(identity);
       const r = index.get(k);
       if (!r || ambiguous.has(k)) return null;
-      if (r.flags.includes("DATE_CONFLICT") || r.flags.includes("TIME_CONFLICT")) return null;
       return toHistoricalReleaseTiming(r);
     },
   };

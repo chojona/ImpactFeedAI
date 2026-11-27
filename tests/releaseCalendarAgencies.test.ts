@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { mergeObservations } from "@/services/macro/release-calendar-records";
+import { resolveHistoricalRelease, type ReleaseIdentity } from "@/services/macro/release-calendar";
+import { createRecordCalendarProvider, mergeObservations, recordIdentities } from "@/services/macro/release-calendar-records";
 
 import {
   beaReleaseTitle,
+  beaReleaseObservation,
   beaTextAttachments,
   classifyBeaTitle,
   parseBeaArchivePage,
@@ -48,10 +50,10 @@ describe("BEA timing", () => {
   it("parses modern embargo lines and pre-2009 wire-transmission lines", () => {
     const modern = parseBeaEmbargo("Contacts EMBARGOED UNTIL RELEASE AT 8:30 a.m. EDT, Thursday, October 29, 2026 BEA 26—45 GDP");
     expect(modern).toMatchObject({ releaseDate: "2026-10-29", statedZone: "EDT", zoneLabelMismatch: false });
-    expect(modern?.releaseAt.toISOString()).toBe("2026-10-29T12:30:00.000Z");
+    expect(modern?.releaseAt?.toISOString()).toBe("2026-10-29T12:30:00.000Z");
     expect(modern?.text).toBe("EMBARGOED UNTIL RELEASE AT 8:30 a.m. EDT, Thursday, October 29, 2026");
     const wire = parseBeaEmbargo(" FOR WIRE TRANSMISSION: 8:30 A.M. EDT, THURSDAY, AUGUST 1, 1996 Christian Ehemann");
-    expect(wire?.releaseAt.toISOString()).toBe("1996-08-01T12:30:00.000Z");
+    expect(wire?.releaseAt?.toISOString()).toBe("1996-08-01T12:30:00.000Z");
     expect(parseBeaEmbargo("Next release: November 25, 2026, at 8:30 a.m. EST")).toBeNull();
   });
 
@@ -76,12 +78,73 @@ describe("BEA timing", () => {
       "END:VCALENDAR",
     ].join("\r\n");
     const res = parseBeaIcs(ics, meta);
-    expect(res.observations.map((o) => [o.family, o.releaseStage, o.referencePeriodStart, o.evidence.releaseDate, o.evidence.releaseAt])).toEqual([
+    expect(res.observations.filter((o) => o.evidence.scheduleStatus !== "CANCELLED").map((o) => [o.family, o.releaseStage, o.referencePeriodStart, o.evidence.releaseDate, o.evidence.releaseAt])).toEqual([
       ["BEA_GDP", "ADVANCE", "2024-10-01", "2025-01-30", "2025-01-30T13:30:00.000Z"],
       ["BEA_PERSONAL_INCOME_OUTLAYS", "INITIAL", "2025-02-01", "2025-03-28", "2025-03-28T12:30:00.000Z"],
     ]);
     expect(res.observations[0].evidence.sourceKind).toBe("OFFICIAL_SCHEDULE");
+    expect(res.observations[2].evidence).toMatchObject({ scheduleStatus: "CANCELLED", releaseAt: null });
     expect(res.skipped).toEqual([{ summary: "Personal Income and Outlays, September 2025", reason: "cancelled" }]);
+  });
+
+  it("keeps the Q3 2025 initial GDP publication and retires its superseded schedules", async () => {
+    // https://www.bea.gov/news/blog/2025-12-10/economic-release-schedule-updates
+    const sourceUrl = "https://www.bea.gov/news/2025/gross-domestic-product-3rd-quarter-2025-initial-estimate-and-corporate-profits";
+    const identity = classifyBeaTitle("Gross Domestic Product, 3rd Quarter 2025 (Initial Estimate) and Corporate Profits (Preliminary)");
+    const body = "EMBARGOED UNTIL RELEASE AT 8:30 a.m. EST, Tuesday, December 23, 2025. " +
+      "This initial report replaces the release of the advance estimate originally scheduled for October 30 and the second estimate originally scheduled for November 26.";
+    const embargo = parseBeaEmbargo(body);
+    if (!identity || !embargo) throw new Error("invalid BEA fixture");
+    const publication = beaReleaseObservation(identity, embargo, { ...meta, sourceUrl }, body);
+    const schedules = parseBeaIcs([
+      "BEGIN:VEVENT", "SUMMARY:GDP (Advance Estimate), 3rd Quarter 2025", "DTSTART:20251030T123000Z", "END:VEVENT",
+      "BEGIN:VEVENT", "SUMMARY:GDP (Second Estimate), 3rd Quarter 2025", "DTSTART:20251126T133000Z", "END:VEVENT",
+      "BEGIN:VEVENT", "SUMMARY:GDP (Advance Estimate), 4th Quarter 2025", "DTSTART:20260129T133000Z", "END:VEVENT",
+    ].join("\n"), meta).observations;
+    const records = mergeObservations([...schedules, publication]);
+    expect(records.map((r) => [r.referencePeriodStart, r.releaseStage])).toEqual([
+      ["2025-07-01", "INITIAL"], ["2025-10-01", "ADVANCE"],
+    ]);
+    expect(records[0]).toMatchObject({ scheduleChanges: [
+      { releaseStage: "ADVANCE", disposition: "SUPERSEDED", sourceUrl },
+      { releaseStage: "SECOND_ESTIMATE", disposition: "SUPERSEDED", sourceUrl },
+    ] });
+    const provider = createRecordCalendarProvider(records);
+    const key = { metricKey: "GDP_REAL", referencePeriodStart: "2025-07-01" };
+    expect(await provider.resolve({ ...key, releaseStage: "ADVANCE" })).toBeNull();
+    expect(await provider.resolve({ ...key, releaseStage: "SECOND_ESTIMATE" })).toBeNull();
+    expect(await provider.resolve({ ...key, releaseStage: "INITIAL" })).toMatchObject({ releaseDate: "2025-12-23" });
+    expect(mergeObservations([publication, ...schedules].reverse())).toEqual(records);
+  });
+
+  it("withholds a retained schedule when the same event has an official cancellation", () => {
+    const events = [
+      "BEGIN:VEVENT", "SUMMARY:GDP (Advance Estimate), 3rd Quarter 2025", "DTSTART:20251030T123000Z", "UID:gdp-3q25-advance", "END:VEVENT",
+      "BEGIN:VEVENT", "SUMMARY:GDP (Advance Estimate), 3rd Quarter 2025", "DTSTART:20251030T123000Z", "UID:gdp-3q25-advance", "STATUS:CANCELLED", "END:VEVENT",
+    ].join("\n");
+    expect(mergeObservations(parseBeaIcs(events, meta).observations)).toEqual([]);
+  });
+
+  it("resolves both PCE metrics for both periods in the bundled October and November 2025 release", async () => {
+    const sourceUrl = "https://www.bea.gov/news/2026/personal-income-and-outlays-october-and-november-2025";
+    const identity = classifyBeaTitle("Personal Income and Outlays, October and November 2025");
+    const embargo = parseBeaEmbargo("EMBARGOED UNTIL RELEASE AT 10:00 a.m. EST, Thursday, January 22, 2026");
+    if (!identity || !embargo) throw new Error("invalid BEA fixture");
+    const publication = beaReleaseObservation(identity, embargo, { ...meta, sourceUrl });
+    const schedules = parseBeaIcs([
+      "BEGIN:VEVENT", "SUMMARY:Personal Income and Outlays, October 2025", "DTSTART:20251126T133000Z", "END:VEVENT",
+      "BEGIN:VEVENT", "SUMMARY:Personal Income and Outlays, November 2025", "DTSTART:20251219T133000Z", "END:VEVENT",
+    ].join("\n"), meta).observations;
+    const records = mergeObservations([...schedules, publication]);
+    expect(records).toHaveLength(1);
+    expect(recordIdentities(records[0])).toHaveLength(4);
+    const provider = createRecordCalendarProvider(records);
+    for (const metricKey of ["PCE_HEADLINE", "PCE_CORE"]) {
+      for (const referencePeriodStart of ["2025-10-01", "2025-11-01"]) {
+        expect(await provider.resolve({ metricKey, referencePeriodStart, releaseStage: "INITIAL" }))
+          .toMatchObject({ releaseDate: "2026-01-22", timingStatus: "DATE_ONLY" });
+      }
+    }
   });
 });
 
@@ -96,11 +159,11 @@ describe("BLS operator-saved archive documents", () => {
 
   it("parses embargo variants seen in the archive", () => {
     expect(parseBlsEmbargo("Transmission of material in this release is embargoed until 8:30 a.m. (ET) Thursday, January 11, 2024 CPI")
-      ?.releaseAt.toISOString()).toBe("2024-01-11T13:30:00.000Z");
+      ?.releaseAt?.toISOString()).toBe("2024-01-11T13:30:00.000Z");
     expect(parseBlsEmbargo("is embargoed until USDL-24-0148 8:30 a.m. (ET) Friday, February 2, 2024")?.releaseDate).toBe("2024-02-02");
     const twoColumn = parseBlsEmbargo("INFORMATION: (202) 606-7828 RELEASE IS EMBARGOED MEDIA CONTACT: (202) 606-5902 UNTIL 8:30 A.M. (EDT) TDD: (202) 606-5897 Thursday, July 15, 1999");
     expect(twoColumn).toMatchObject({ releaseDate: "1999-07-15", statedZone: "EDT" });
-    expect(twoColumn?.releaseAt.toISOString()).toBe("1999-07-15T12:30:00.000Z");
+    expect(twoColumn?.releaseAt?.toISOString()).toBe("1999-07-15T12:30:00.000Z");
   });
 
   it("does not take the time from a 'next release' sentence", () => {
@@ -122,7 +185,68 @@ describe("BLS operator-saved archive documents", () => {
     expect(res.observation.evidence).toMatchObject({ releaseDate: "2025-11-20", releaseAt: "2025-11-20T13:30:00.000Z",
       sourceUrl: "https://www.bls.gov/news.release/archives/empsit_11202025.htm", sourceKind: "OFFICIAL_RELEASE_RECORD" });
     const [rec] = mergeObservations([res.observation]);
-    expect(rec).toMatchObject({ timingStatus: "VERIFIED", metricKeys: ["PAYROLLS", "UNEMPLOYMENT_RATE"] });
+    expect(rec).toMatchObject({ timingStatus: "DATE_ONLY", releaseAt: null, metricKeys: ["PAYROLLS", "UNEMPLOYMENT_RATE"],
+      timingFacts: { intendedEmbargo: { at: "2025-11-20T13:30:00.000Z" }, documentedPublication: null, earliestEvidencedAvailability: null } });
+  });
+
+  it("keeps the May 2024 CPI embargo, formal publication and earlier file availability separate", async () => {
+    const res = parseBlsDocument({ fileName: "cpi_05152024.htm", savedAt: meta.retrievedAt, contentSha256: "h",
+      content: `<title>Consumer Price Index News Release - 2024 M04 Results</title>
+        <pre>Transmission of material in this release is embargoed until 8:30 a.m. (ET) Wednesday, May 15, 2024</pre>` });
+    if (res.kind !== "observation") throw new Error(res.reason);
+    const incidentUrl = "https://www.bls.gov/bls/teamofexperts60dayreport202411.pdf";
+    const records = mergeObservations([res.observation]);
+    expect(records[0]).toMatchObject({ releaseAtKind: "DOCUMENTED_PUBLICATION", timingFacts: {
+      intendedEmbargo: { at: "2024-05-15T12:30:00.000Z", sourceUrl: "https://www.bls.gov/news.release/archives/cpi_05152024.htm" },
+      documentedPublication: { at: "2024-05-15T12:30:00.000Z", sourceUrl: incidentUrl },
+      earliestEvidencedAvailability: { at: "2024-05-15T11:58:00.000Z", precision: "APPROXIMATE_MINUTE", scope: "RELATED_FILES", sourceUrl: incidentUrl },
+    } });
+    const resolved = await resolveHistoricalRelease(createRecordCalendarProvider(records), {
+      metricKey: "CPI_HEADLINE", referencePeriodStart: "2024-04-01", releaseStage: "INITIAL",
+    });
+    expect(resolved?.timing).toMatchObject({ timingStatus: "VERIFIED", releaseAtKind: "DOCUMENTED_PUBLICATION",
+      releaseAt: new Date("2024-05-15T12:30:00.000Z"), timingFacts: {
+        intendedEmbargo: { at: new Date("2024-05-15T12:30:00.000Z") },
+        documentedPublication: { at: new Date("2024-05-15T12:30:00.000Z") },
+        earliestEvidencedAvailability: { at: new Date("2024-05-15T11:58:00.000Z"), scope: "RELATED_FILES" },
+      },
+    });
+  });
+
+  it("indexes both bundled payroll first prints and only the evidenced unemployment month", async () => {
+    // https://www.bls.gov/news.release/archives/empsit_12162025.htm
+    const res = parseBlsDocument({ fileName: "empsit_12162025.htm", savedAt: meta.retrievedAt, contentSha256: "h",
+      content: `<title>Employment Situation News Release - 2025 M11 Results</title>
+        <pre>Transmission of material in this release is embargoed until 8:30 a.m. (ET) Tuesday, December 16, 2025
+        Household survey data for October 2025 were not collected.
+        This news release includes the initial establishment survey estimates for both October and
+        November; therefore, there are no revisions to report for October estimates.</pre>` });
+    if (res.kind !== "observation") throw new Error(res.reason);
+    const records = mergeObservations([res.observation]);
+    expect(records).toHaveLength(1);
+    const id = (metricKey: string, referencePeriodStart: string): ReleaseIdentity => ({ metricKey, referencePeriodStart, releaseStage: "INITIAL" });
+    const expected = [id("PAYROLLS", "2025-10-01"), id("PAYROLLS", "2025-11-01"), id("UNEMPLOYMENT_RATE", "2025-11-01")];
+    expect(recordIdentities(records[0])).toEqual(expected);
+    const provider = createRecordCalendarProvider(records);
+    for (const identity of expected) {
+      expect(await provider.resolve(identity)).toMatchObject({ releaseDate: "2025-12-16" });
+    }
+    expect(await provider.resolve(id("UNEMPLOYMENT_RATE", "2025-10-01"))).toBeNull();
+    expect(await provider.resolve(id("PAYROLLS", "2025-09-01"))).toBeNull();
+  });
+
+  it("indexes the October 2025 headline PPI carried in the November 2025 release", async () => {
+    // https://www.bls.gov/news.release/archives/ppi_01142026.htm
+    const res = parseBlsDocument({ fileName: "ppi_01142026.htm", savedAt: meta.retrievedAt, contentSha256: "h",
+      content: `<title>Producer Price Index News Release - 2025 M11 Results</title>
+        <pre>Embargoed until 8:30 a.m. (ET) Wednesday, January 14, 2026
+        The Producer Price Index for final demand increased 0.2 percent in November.
+        Final demand prices edged up 0.1 percent in October and advanced 0.6 percent in September.</pre>` });
+    if (res.kind !== "observation") throw new Error(res.reason);
+    const provider = createRecordCalendarProvider(mergeObservations([res.observation]));
+    const key = { metricKey: "PPI_HEADLINE", releaseStage: "INITIAL" as const };
+    expect(await provider.resolve({ ...key, referencePeriodStart: "2025-10-01" })).toMatchObject({ releaseDate: "2026-01-14" });
+    expect(await provider.resolve({ ...key, referencePeriodStart: "2025-09-01" })).toBeNull();
   });
 
   it("flags a file-name/embargo date conflict and skips error pages and PDFs", () => {
@@ -141,6 +265,19 @@ describe("BLS operator-saved archive documents", () => {
     if (res.kind !== "observation") throw new Error("expected observation");
     expect(res.observation.evidence.releaseAt).toBeNull();
     expect(mergeObservations([res.observation])[0].timingStatus).toBe("DATE_ONLY");
+  });
+
+  it("retains an unresolved DST embargo line and its independently evidenced date", () => {
+    const line = "Embargoed until 1:30 a.m. (ET) Sunday, November 3, 2024";
+    const res = parseBlsDocument({ fileName: "cpi_11032024.htm", savedAt: meta.retrievedAt, contentSha256: "h",
+      content: `<title>Consumer Price Index News Release - 2024 M10 Results</title><pre>${line}</pre>` });
+    if (res.kind !== "observation") throw new Error(res.reason);
+    expect(res.observation.evidence).toMatchObject({ releaseDate: "2024-11-03", releaseAt: null,
+      evidenceText: expect.stringContaining(line), clockKind: "INTENDED_EMBARGO" });
+    expect(mergeObservations([res.observation])[0]).toMatchObject({ releaseAt: null,
+      timingStatus: "DATE_ONLY", timingFacts: { intendedEmbargo: null } });
+    expect(parseBeaEmbargo("EMBARGOED UNTIL RELEASE AT 2:30 a.m. EDT, Sunday, March 10, 2024"))
+      .toMatchObject({ releaseDate: "2024-03-10", releaseAt: null });
   });
 
   it("parses archive index pages for a completeness check", () => {

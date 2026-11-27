@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { easternWallClock } from "@/services/macro/time";
 
 import {
   easternInstant,
@@ -50,5 +51,23 @@ describe("release-calendar text parsing", () => {
     expect(r?.releaseAt.toISOString()).toBe("2024-07-11T12:30:00.000Z");
     expect(r?.zoneLabelMismatch).toBe(true);
     expect(easternInstant("2024-07-11", 8, 30, "a", "ET")?.zoneLabelMismatch).toBe(false);
+  });
+
+  it("rejects a nonexistent spring-forward clock reading even with a printed abbreviation", () => {
+    expect(easternWallClock("2024-03-10", 2, 30).getTime()).toBeNaN();
+    expect(easternInstant("2024-03-10", 2, 30, "a", "EST")).toBeNull();
+    expect(easternInstant("2024-03-10", 2, 30, "a", "EDT")).toBeNull();
+  });
+
+  it("requires a matching abbreviation or offset to resolve a repeated clock reading", () => {
+    const day = "2024-11-03";
+    expect(easternWallClock(day, 1, 30).getTime()).toBeNaN();
+    expect(easternInstant(day, 1, 30, "a", "ET")).toBeNull();
+    expect(easternInstant(day, 1, 30, "a", "EDT")?.releaseAt.toISOString()).toBe("2024-11-03T05:30:00.000Z");
+    expect(easternInstant(day, 1, 30, "a", "EST")?.releaseAt.toISOString()).toBe("2024-11-03T06:30:00.000Z");
+    const clock = readClock("embargoed until 1:30 a.m. (-05:00) Sunday");
+    expect(clock?.zone).toBe("-05:00");
+    expect(easternInstant(day, 1, 30, "a", clock?.zone ?? null)?.releaseAt.toISOString()).toBe("2024-11-03T06:30:00.000Z");
+    expect(easternInstant(day, 1, 30, "a", "-0600")).toBeNull();
   });
 });
