@@ -5,6 +5,18 @@ releases and major news events into structured, searchable records of what
 markets actually did afterwards — so a trader can study precedent instead of
 guessing.
 
+**V2 audit — November 5, 2026:** the [repository audit](docs/audits/2026-11-05-repository-audit.md),
+[updated architecture](docs/architecture.md), [prioritized roadmap](docs/roadmap.md)
+and [Phase 1 implementation plan](docs/phase-1-market-context-plan.md) are the
+current planning baseline. Live reads use four v3 measures from
+`reaction_measurements`; `asset_reactions` is the v2 archive. The audit
+re-ran 518 tests and the existing verifier (zero violations over 828
+measurement rows, with the coverage gaps recorded in the audit), but found blocking calendar and
+verification defects plus missing point-in-time actual provenance. Phase 1
+implementation remains gated on those findings. Older operational sections
+below retain some v2 history; follow the audited architecture for current
+reaction semantics and the roadmap for next work.
+
 > **Status: early development.** The ingestion pipeline, the database schema and
 > the web UI are wired together: every data-backed page and `/api/events` read
 > Postgres.
@@ -46,7 +58,8 @@ the foundation everything else reads from.
 
 **Event reaction analysis** — for an event with a sourced exact release time,
 how a set of instruments moved over defined windows after the release. The
-current calculation supports 1 hour / 1 day / 1 week across 12 symbols. Events
+current calculation supports first hour / release session / next session /
+five sessions across 12 symbols. Events
 with only an inferred time, a publication date, a reference period, or an
 unverified timestamp deliberately show no reaction. A window that could not be
 measured is stored and displayed as *null*, never as 0.00% — see
@@ -133,7 +146,7 @@ Everything listed here is confirmed present in the repository.
 | Framework | Next.js 16.2.6 (App Router) |
 | UI | React 19.2, TypeScript 5 (`strict`) |
 | Styling | Tailwind CSS v4 (via `@tailwindcss/postcss`) |
-| Charts | Inline SVG, rendered on the server (see `src/components/reactions/`) |
+| Charts | SVG reaction observations and lightweight-charts persisted candles |
 | Animation | `framer-motion` 12 |
 | Icons | `lucide-react` |
 | Database | Neon PostgreSQL |
@@ -147,10 +160,8 @@ Everything listed here is confirmed present in the repository.
 | Deployment target | Vercel; local project-link metadata is not committed |
 
 **Declared but currently unused:** `@anthropic-ai/sdk` — no AI calls exist in
-the codebase yet — and `lightweight-charts`, retained for the planned intraday
-replay. The reaction visualizations are inline SVG because what the schema holds
-is three discrete observations per instrument, not a continuous series; a
-candle library is the right tool only once candle storage exists.
+the codebase yet. Reaction visualizations use four discrete measurement slots;
+lightweight-charts renders the separate persisted candle series.
 `axios` and `recharts` were declared but imported nowhere and have been removed.
 **Not present:** Docker, Python, tRPC, component tests or end-to-end tests.
 
@@ -176,8 +187,8 @@ impactfeedai/
 │   └── roadmap.md                 # phased plan
 │
 ├── prisma/
-│   ├── schema.prisma              # Event, AssetReaction, DataRelease
-│   └── migrations/                # baseline + timing/provenance migration
+│   ├── schema.prisma              # Event, DataRelease, AssetReaction (v2 archive), Candle, ReactionMeasurement
+│   └── migrations/                # init, timing/provenance, candles, reaction_measurements
 │
 ├── scripts/
 │   ├── lib/
@@ -363,6 +374,13 @@ REACTION_REPAIR_CONFIRM=DELETE_UNTRUSTED_OR_LEGACY_REACTIONS \
 npm run backfill:prices -- --event-id <uuid>
 ```
 
+> `backfill:prices` writes only the frozen v2 `asset_reactions` archive. The
+> live site reads v3 `reaction_measurements`. The measurement backfill now
+> computes v4 and its `--apply` is **frozen** until a qualified, explicitly
+> authorized v4 cutover is committed (`src/services/events/measurementWriteGate.ts`);
+> newly ingested events get no live reactions until then. Dry-runs still work:
+> `npm run backfill:reaction-measurements:dry-run -- --event-id <uuid>`.
+
 The 20 CPI / PPI / Employment Situation / FOMC seed entries are `SCHEDULED`:
 those releases have an official published schedule (BLS at 8:30 a.m. ET, FOMC
 statements at 2:00 p.m. ET), each date was checked against the issuing agency's
@@ -387,7 +405,7 @@ the failure model, and expected runtimes.
 
 ### Candle storage (trading charts)
 
-Reaction rows hold four prices per instrument. Real candlestick charts need
+Archived v2 reaction rows (`asset_reactions`) hold four prices per instrument. Real candlestick charts need
 bars, which live in a separate, provider-agnostic `candles` table.
 
 ```bash
@@ -569,9 +587,9 @@ Early development, pre-MVP.
   endpoints publish reference periods and actuals, not historical release
   instants or market consensus. Hand-entered expectations remain explicitly
   `UNVERIFIED`; bulk rows have `MISSING` consensus
-- **Animated intraday replay.** Four prices per asset are stored, not candles,
-  so there is no series to replay. The detail page shows the measured windows
-  instead
+- **Animated intraday replay.** Stored candles and a static candle chart exist;
+  animated replay is not implemented. Audited candle coverage is limited to
+  SPY/QQQ hourly event windows.
 - Market context (VIX, yields, trend, regime), similarity scoring, AI layer,
   authentication and payments
 
@@ -595,7 +613,7 @@ provider candle used as the baseline. `calculationVersion` identifies the
 calculation semantics; the app excludes legacy or mismatched versions from
 event views, pattern aggregates and “biggest move” ranking.
 
-**The denominator is strictly pre-release.** Calculation version 2 prefers the
+**The denominator is strictly pre-release.** In the frozen v2 archive, calculation version 2 prefers the
 most recent usable intraday open strictly before `releaseAt` (at most two hours
 old), then falls back to the immediately preceding session's close (provider
 bar at most four calendar days old). A first post-release candle is never the
@@ -650,6 +668,7 @@ REACTION_REPAIR_CONFIRM=DELETE_UNTRUSTED_OR_LEGACY_REACTIONS \
 After review, use the event-scoped command printed for each eligible event,
 `npm run backfill:prices -- --event-id <uuid>`. Rows on untrusted events stay
 absent until authoritative timing is added. Both operations are idempotent.
+Live reactions for new events wait on the v4 cutover noted above.
 
 ---
 

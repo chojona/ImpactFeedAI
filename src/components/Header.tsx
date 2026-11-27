@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Zap } from "lucide-react";
 
 /**
- * In-app navigation.
+ * In-app navigation for the personal research terminal.
  *
  * The active route is passed in by each page rather than read from
  * `usePathname()`, which would make the header — a component on every research
@@ -10,30 +10,37 @@ import { Zap } from "lucide-react";
  * hydration, and the current section is marked with `aria-current` as well as a
  * colour change, so "where am I" is answerable by a screen reader too.
  *
- * The selected tab is brand indigo: tinted fill, indigo border, indigo text.
- * Three signals rather than the previous single step of grey, because a nav
- * whose active state is "slightly lighter grey" is a nav with no active state at
- * a glance.
+ * Only shipped surfaces appear here. Regimes and notebooks stay off the nav
+ * until they have real data behind them.
  */
-type Section = "feed" | "patterns";
+export type HeaderSection =
+  | "brief"
+  | "calendar"
+  | "events"
+  | "patterns"
+  | "quality";
 
-const LINKS: readonly { href: string; label: string; section: Section }[] = [
-  { href: "/feed", label: "Event library", section: "feed" },
+const LINKS: readonly {
+  href: string;
+  label: string;
+  section: HeaderSection;
+}[] = [
+  { href: "/brief", label: "Brief", section: "brief" },
+  { href: "/calendar", label: "Calendar", section: "calendar" },
+  { href: "/feed", label: "Events", section: "events" },
   { href: "/patterns", label: "Patterns", section: "patterns" },
+  { href: "/quality", label: "Quality", section: "quality" },
 ];
 
-export function Header({ active }: { active?: Section }) {
+export function Header({ active }: { active?: HeaderSection }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-canvas/80 backdrop-blur-xl">
-      {/* A one-pixel brand line under the whole header. Almost subliminal, and
-          the cheapest way to make the chrome feel like part of a product rather
-          than a browser default. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand/45 to-transparent"
       />
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5 rounded">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5 sm:px-6">
+        <Link href="/brief" className="flex shrink-0 items-center gap-2.5 rounded">
           <span
             aria-hidden
             className="flex h-7 w-7 items-center justify-center rounded-md border border-brand/35 bg-brand-tint-strong text-brand-bright"
@@ -44,7 +51,10 @@ export function Header({ active }: { active?: Section }) {
             ImpactFeedAI
           </span>
         </Link>
-        <nav aria-label="Main" className="flex items-center gap-1">
+        <nav
+          aria-label="Main"
+          className="flex max-w-full items-center gap-1 overflow-x-auto"
+        >
           {LINKS.map((link) => {
             const current = link.section === active;
             return (
@@ -52,7 +62,7 @@ export function Header({ active }: { active?: Section }) {
                 key={link.href}
                 href={link.href}
                 aria-current={current ? "page" : undefined}
-                className={`rounded-md px-3 py-1.5 text-[13px] transition-colors ${
+                className={`shrink-0 rounded-md px-2.5 py-1.5 text-[13px] transition-colors sm:px-3 ${
                   current
                     ? "border border-brand/35 bg-brand-tint-strong font-medium text-brand-bright"
                     : "border border-transparent text-ink-3 hover:bg-brand-tint hover:text-ink"
