@@ -132,6 +132,10 @@ than either summary alone.
 The same event in two regimes is two different events. Regime tags are what
 make an analog more than an event-type match.
 
+Academic methods, point-in-time rules, proposed continuous features, and
+validation tests (no implementation yet):
+[regime-classification-research.md](regime-classification-research.md).
+
 Candidate classifications, all Phase 2:
 
 **Trend** — bullish / bearish / range. Definable from distance to an N-day
