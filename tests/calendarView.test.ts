@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_CALENDAR_TAKE,
   compareCalendarEvents,
   effectiveCalendarInstant,
   eventHasMeasuredReaction,
+  selectTopCalendarIds,
   sortCalendarEvents,
+  type CalendarSortCandidate,
 } from "@/services/events/calendarView";
 import type {
   AssetReaction,
@@ -222,5 +225,70 @@ describe("effectiveCalendarInstant / sortCalendarEvents", () => {
       "a-release-at",
     ]);
     expect(compareCalendarEvents(byOccurred, byReleaseDate)).toBeLessThan(0);
+  });
+});
+
+describe("selectTopCalendarIds — page before the library exceeds take", () => {
+  /**
+   * Builds >DEFAULT_CALENDAR_TAKE mixed-field candidates where lexical id order
+   * is the *opposite* of effective-time order. Taking the first 200 by id would
+   * keep the oldest rows and drop the newest — the bug `listCalendarEvents`
+   * must not reintroduce.
+   */
+  const buildMixedLibrary = (count: number): CalendarSortCandidate[] => {
+    const rows: CalendarSortCandidate[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const day = String(1 + (i % 28)).padStart(2, "0");
+      const month = String(1 + Math.floor(i / 28)).padStart(2, "0");
+      // Ascending ids, ascending effective times — oldest first by id.
+      const stamp = `2024-${month}-${day}`;
+      if (i % 3 === 0) {
+        rows.push({
+          id: `id-${String(i).padStart(4, "0")}`,
+          releaseAt: `${stamp}T14:30:00.000Z`,
+          releaseDate: stamp,
+          occurredAt: "2020-01-01T00:00:00.000Z",
+        });
+      } else if (i % 3 === 1) {
+        rows.push({
+          id: `id-${String(i).padStart(4, "0")}`,
+          releaseAt: null,
+          releaseDate: stamp,
+          occurredAt: "2020-01-01T00:00:00.000Z",
+        });
+      } else {
+        rows.push({
+          id: `id-${String(i).padStart(4, "0")}`,
+          releaseAt: null,
+          releaseDate: null,
+          occurredAt: `${stamp}T12:00:00.000Z`,
+        });
+      }
+    }
+    return rows;
+  };
+
+  it("keeps the newest 200 of 250 mixed-date events, not the first 200 by id", () => {
+    const library = buildMixedLibrary(250);
+    expect(library.length).toBeGreaterThan(DEFAULT_CALENDAR_TAKE);
+
+    const top = selectTopCalendarIds(library, DEFAULT_CALENDAR_TAKE);
+    expect(top).toHaveLength(DEFAULT_CALENDAR_TAKE);
+
+    const byIdPage = library.slice(0, DEFAULT_CALENDAR_TAKE).map((row) => row.id);
+    // The naive id+take page is exactly the oldest 200.
+    expect(byIdPage[0]).toBe("id-0000");
+    expect(byIdPage[byIdPage.length - 1]).toBe("id-0199");
+
+    // Effective-time ranking must prefer the newest ids instead.
+    expect(top).toContain("id-0249");
+    expect(top).toContain("id-0248");
+    expect(top).toContain("id-0200");
+    expect(top).not.toContain("id-0000");
+    expect(top).not.toContain("id-0049");
+
+    // Newest first.
+    expect(top[0]).toBe("id-0249");
+    expect(top[top.length - 1]).toBe("id-0050");
   });
 });

@@ -34,7 +34,10 @@ import {
   eventTypesForCategory,
 } from "@/lib/eventCategories";
 import type { ReactionObservation } from "@/services/analytics/patternAnalysis";
-import { sortCalendarEvents } from "@/services/events/calendarView";
+import {
+  DEFAULT_CALENDAR_TAKE,
+  sortCalendarEvents,
+} from "@/services/events/calendarView";
 import { mapEvent, type EventRow } from "@/services/events/mapEvent";
 import type {
   CategoryParam,
@@ -649,46 +652,81 @@ export async function listRecentMeasuredEvents(
 }
 
 /**
+ * Ids for one calendar page, ranked by effective display time *before* LIMIT.
+ *
+ * Ordering by `id` then taking N would drop the newest mixed-field events once
+ * the library exceeds the page size. The COALESCE must match
+ * `effectiveCalendarInstantFromFields` in `calendarView.ts`: `release_at`,
+ * else `release_date` at UTC noon, else `occurred_at`.
+ */
+async function idsByEffectiveCalendarTime(
+  from: Date,
+  to: Date,
+  take: number,
+): Promise<string[]> {
+  if (take <= 0) return [];
+  const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT e.id
+    FROM events e
+    WHERE (
+      (e.release_at IS NOT NULL AND e.release_at >= ${from} AND e.release_at <= ${to})
+      OR (
+        e.release_at IS NULL
+        AND e.release_date IS NOT NULL
+        AND e.release_date >= ${from}::date
+        AND e.release_date <= ${to}::date
+      )
+      OR (
+        e.release_at IS NULL
+        AND e.release_date IS NULL
+        AND e.occurred_at >= ${from}
+        AND e.occurred_at <= ${to}
+      )
+    )
+    ORDER BY COALESCE(
+      e.release_at,
+      CASE
+        WHEN e.release_date IS NULL THEN NULL
+        ELSE (e.release_date::timestamp AT TIME ZONE 'UTC' + INTERVAL '12 hours')
+      END,
+      e.occurred_at
+    ) DESC NULLS LAST,
+    e.id ASC
+    LIMIT ${take}
+  `);
+  return rows.map((row) => row.id);
+}
+
+/**
  * Events whose displayable release instant or date falls in `[from, to]`.
  *
  * Prefer `releaseAt`, then a calendar `releaseDate`, then `occurredAt`. Rows
  * without any of those are omitted rather than forced onto "today".
  *
- * Postgres `ORDER BY release_at, release_date, occurred_at` is not a COALESCE
- * across those columns, so the mapped result is re-sorted by the same
- * effective display instant the calendar UI uses (`calendarView.ts`).
+ * Ranking and LIMIT run in SQL on the coalesced effective instant so a page of
+ * 200 cannot omit newer events that would lose an `ORDER BY id` race. The
+ * mapped page is re-sorted with `sortCalendarEvents` so hydration order cannot
+ * drift from that ranking.
  */
 export async function listCalendarEvents(options: {
   from: Date;
   to: Date;
   take?: number;
 }): Promise<NewsEvent[]> {
-  const take = options.take ?? 200;
+  const take = options.take ?? DEFAULT_CALENDAR_TAKE;
+  const ids = await idsByEffectiveCalendarTime(options.from, options.to, take);
+  if (ids.length === 0) return [];
+
   const rows = await prisma.event.findMany({
-    where: {
-      OR: [
-        { releaseAt: { gte: options.from, lte: options.to } },
-        {
-          AND: [
-            { releaseAt: null },
-            { releaseDate: { gte: options.from, lte: options.to } },
-          ],
-        },
-        {
-          AND: [
-            { releaseAt: null },
-            { releaseDate: null },
-            { occurredAt: { gte: options.from, lte: options.to } },
-          ],
-        },
-      ],
-    },
-    // Fetch a stable page; chronological truth is applied after mapping.
-    orderBy: [{ id: "asc" }],
-    take,
+    where: { id: { in: ids } },
     include: EVENT_INCLUDE,
   });
-  return sortCalendarEvents(rows.map((row) => mapEvent(row as EventRow)));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const ordered = ids
+    .map((id) => byId.get(id))
+    .filter((row): row is (typeof rows)[number] => row !== undefined)
+    .map((row) => mapEvent(row as EventRow));
+  return sortCalendarEvents(ordered);
 }
 
 /**
