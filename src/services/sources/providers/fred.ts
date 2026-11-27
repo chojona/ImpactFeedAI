@@ -167,7 +167,8 @@ export const FRED_PROVIDER: DataProviderEntry = {
   series: [
     macroSeries("CPIAUCNS", "CPI-U all items, NSA", "Index 1982-1984=100", "CPI (headline, YoY)", "1mo", "1913-01-01", "2026-10-01"),
     macroSeries("CPILFENS", "CPI-U less food and energy, NSA", "Index 1982-1984=100", "Core CPI (ex food & energy, YoY)", "1mo", "1957-01-01", "2026-10-01"),
-    macroSeries("PPIFIS", "PPI final demand", "Index Nov 2009=100", "PPI (final demand, YoY)", "1mo", "2009-11-01", "2026-10-01"),
+    // NSA final-demand index: BLS headline YoY is unadjusted (PPIFIS is SA).
+    macroSeries("PPIFID", "PPI final demand, NSA", "Index Nov 2009=100", "PPI (final demand, YoY)", "1mo", "2009-11-01", "2026-10-01"),
     macroSeries("PAYEMS", "All employees, total nonfarm", "Thous. of Persons", "Nonfarm payrolls (MoM change)", "1mo", "1939-01-01", "2026-10-01"),
     macroSeries("UNRATE", "Unemployment rate", "%", "Unemployment rate", "1mo", "1948-01-01", "2026-10-01"),
     macroSeries("FEDFUNDS", "Effective federal funds rate, monthly average", "%", "Effective federal funds rate (monthly average)", "1mo", "1954-07-01", "2026-10-01", [

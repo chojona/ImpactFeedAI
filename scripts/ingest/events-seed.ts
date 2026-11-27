@@ -33,6 +33,8 @@
  * percent sign, because nothing can tell what unit it is in.
  */
 
+import type { SeasonalAdjustment } from "@/services/macro/metrics";
+
 export type SeedEventType =
   | "TARIFF"
   | "FED_DECISION"
@@ -65,6 +67,12 @@ export interface SeedEvent {
   sourceUrl?: string;
   /** Manually-curated consensus value, if known. Used to populate DataRelease.expectedValue. */
   expectedValue?: number;
+  /**
+   * Seasonal-adjustment basis of `expectedValue`, set ONLY when verified.
+   * Required for SA/NSA-sensitive metrics before a surprise is computed;
+   * omit (unknown) rather than guess. Ignored for metrics with basis `na`.
+   */
+  expectedSeasonalAdjustment?: SeasonalAdjustment;
   /** Source for expectedValue. Existing values have no citation and stay unverified. */
   consensusSource?: string;
   consensusSourceUrl?: string;
