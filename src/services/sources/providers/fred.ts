@@ -151,16 +151,16 @@ export const FRED_PROVIDER: DataProviderEntry = {
     redistribution: "RESTRICTED",
     attributionRequired: true,
     summary:
-      "The 2024 FRED API terms restrict storing, caching or archiving FRED content in databases, and restrict AI/ML training use. Many series are copyrighted by third parties (S&P DJI, Cboe, Nasdaq), and their notes override FRED's defaults.",
-    termsUrl: "https://fred.stlouisfed.org/docs/api/terms_of_use.html",
-    basis: "THIRD_PARTY",
+      "https://fred.stlouisfed.org/legal/ Prohibition (p) bars storing, caching or incorporating FRED content in a database without permission; Prohibition (j) requires prior written permission for display on an internet site and for commercial use. Required notice: \"This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.\" Third-party series are stricter (VIXCLS: Cboe copyright, citation required; SP500: S&P DJI pre-approval required).",
+    termsUrl: "https://fred.stlouisfed.org/legal/",
+    basis: "DOCUMENTED",
   },
   implementations: [
     { status: "MAIN", path: "scripts/ingest/sources-fred.ts" },
     { status: "MAIN", path: "scripts/ingest/fetch-macro.ts" },
     { status: "MAIN", path: "scripts/ingest/sources-fomc.ts" },
     // release/dates as reconciliation evidence for the historical release calendar.
-    { status: "OPEN_PR", path: "scripts/ingest/release-calendar/source-fred.ts", pullRequest: 31 },
+    { status: "MAIN", path: "scripts/ingest/release-calendar/source-fred.ts" },
     { status: "MAIN", path: "src/services/market-context/fred.ts" },
   ],
   lastSuccessfulValidation: TESTED_ON,
@@ -204,7 +204,7 @@ export const FRED_PROVIDER: DataProviderEntry = {
     },
     dailySeries("DFEDTARL", "Federal funds target range, lower limit", "%", ["market:DFEDTARL:target_pct"], "2008-12-16", "2026-11-27", "Same publication as DFEDTARU."),
     dailySeries("VIXCLS", "Cboe VIX close (FRED mirror)", "Index", ["market:VIXCLS:level"], "1990-01-02", "2026-11-26", NEXT_MORNING, [
-      "Copyright Cboe. Prefer the Cboe CSV as primary.",
+      "Copyright Cboe; citation required. Prefer the Cboe CSV as primary. More restricted than FRED-origin series.",
       "Contains a 2026-11-26 (Thanksgiving) row.",
     ]),
     dailySeries("VXVCLS", "Cboe 3-month VIX close (FRED mirror)", "Index", [], "2007-12-04", "2026-11-25", NEXT_MORNING, [
@@ -218,7 +218,7 @@ export const FRED_PROVIDER: DataProviderEntry = {
     dailySeries("T10YIE", "10-year breakeven inflation", "%", ["market:T10YIE:breakeven_pct"], "2003-01-02", "2026-11-25", SAME_EVENING),
     {
       ...dailySeries("SP500", "S&P 500 index close", "Index", [], "2016-11-28", "2026-11-24", NEXT_MORNING, [
-        "Licensed by S&P DJI: FRED serves a rolling 10 years only.",
+        "Licensed by S&P DJI: pre-approval required; FRED serves a rolling 10 years only. More restricted than FRED-origin series.",
       ]),
       coverage: [
         { ...metadataClaim("1d", "2016-11-28", "2026-11-24") },

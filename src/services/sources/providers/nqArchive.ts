@@ -23,12 +23,12 @@ export const NQ_ARCHIVE_PROVIDER: DataProviderEntry = {
   },
   licensing: {
     storage: "PERMITTED",
-    redistribution: "UNVERIFIED",
+    redistribution: "RESTRICTED",
     attributionRequired: false,
     summary:
-      "Licensed vendor data held for personal research. Treat as non-redistributable. Never commit bars or manifests to git.",
-    termsUrl: "https://databento.com/terms",
-    basis: "UNVERIFIED",
+      "Databento FAQ §1.7 (https://databento.com/blog/introduction-market-data-licensing): historical data needs no licence unless redistributed; redistribution of CME data needs a CME licence. Public display: UNVERIFIED. Never commit bars or manifests to git.",
+    termsUrl: "https://databento.com/blog/introduction-market-data-licensing",
+    basis: "DOCUMENTED",
   },
   implementations: [{ status: "MAIN", path: "src/services/market/nqArchive/index.ts" }],
   lastSuccessfulValidation: TESTED_ON,

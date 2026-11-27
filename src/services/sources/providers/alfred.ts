@@ -80,9 +80,10 @@ export const ALFRED_PROVIDER: DataProviderEntry = {
     storage: "RESTRICTED",
     redistribution: "RESTRICTED",
     attributionRequired: true,
-    summary: "Same FRED API terms as the fred provider.",
-    termsUrl: "https://fred.stlouisfed.org/docs/api/terms_of_use.html",
-    basis: "THIRD_PARTY",
+    summary:
+      "Same FRED legal terms as the fred provider (https://fred.stlouisfed.org/legal/): Prohibition (p) bars database storage/caching without permission; Prohibition (j) requires prior written permission for internet display and commercial use. Required notice: \"This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.\"",
+    termsUrl: "https://fred.stlouisfed.org/legal/",
+    basis: "DOCUMENTED",
   },
   implementations: [
     { status: "MAIN", path: "scripts/ingest/fetch-macro.ts" },

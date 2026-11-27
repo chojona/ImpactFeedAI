@@ -21,11 +21,15 @@ describe("DATA_SOURCE_REGISTRY integrity", () => {
       [
         "alfred",
         "alpha_vantage",
+        "atlanta_fed",
+        "bea",
         "bls",
         "cboe",
         "cleveland_fed",
+        "federal_reserve_board",
         "fred",
         "nq_archive",
+        "philadelphia_fed",
         "sf_fed",
         "treasury",
         "yahoo",
@@ -33,11 +37,59 @@ describe("DATA_SOURCE_REGISTRY integrity", () => {
     );
   });
 
-  it("gives every provider at least one TESTED claim and a validation date", () => {
+  it("gives live-probed providers at least one TESTED claim and a validation date", () => {
+    const advertisedOnly = new Set([
+      "atlanta_fed",
+      "bea",
+      "federal_reserve_board",
+      "philadelphia_fed",
+    ]);
     for (const p of DATA_SOURCE_REGISTRY.providers) {
+      if (advertisedOnly.has(p.id)) {
+        expect(p.series.flatMap((s) => s.coverage).some((c) => c.status === "ADVERTISED"), p.id).toBe(
+          true,
+        );
+        expect(p.lastSuccessfulValidation, p.id).toBeNull();
+        continue;
+      }
       expect(p.series.flatMap((s) => s.coverage).some((c) => c.status === "TESTED"), p.id).toBe(true);
       expect(p.lastSuccessfulValidation, p.id).not.toBeNull();
     }
+  });
+
+  it("marks PR #31 release-calendar adapters as MAIN", () => {
+    for (const id of ["bls", "fred", "sf_fed"] as const) {
+      const paths = getProvider(id)!.implementations.filter((i) =>
+        i.path.includes("release-calendar/"),
+      );
+      expect(paths.length, id).toBeGreaterThan(0);
+      for (const impl of paths) {
+        expect(impl.status, `${id} ${impl.path}`).toBe("MAIN");
+        expect(impl.pullRequest, `${id} ${impl.path}`).toBeUndefined();
+      }
+    }
+  });
+
+  it("records licensing permissions from the 2026-11-27 audit", () => {
+    expect(getProvider("yahoo")!.licensing).toMatchObject({
+      storage: "PROHIBITED",
+      redistribution: "PROHIBITED",
+      basis: "DOCUMENTED",
+    });
+    expect(getProvider("cboe")!.licensing).toMatchObject({
+      storage: "RESTRICTED",
+      redistribution: "RESTRICTED",
+      basis: "DOCUMENTED",
+    });
+    expect(getProvider("nq_archive")!.licensing).toMatchObject({
+      redistribution: "RESTRICTED",
+      basis: "DOCUMENTED",
+    });
+    expect(getProvider("fred")!.licensing.termsUrl).toBe("https://fred.stlouisfed.org/legal/");
+    expect(getProvider("alfred")!.licensing.termsUrl).toBe("https://fred.stlouisfed.org/legal/");
+    expect(getProvider("alpha_vantage")!.licensing.basis).toBe("UNVERIFIED");
+    expect(getProvider("philadelphia_fed")!.licensing.basis).toBe("UNVERIFIED");
+    expect(getProvider("atlanta_fed")!.licensing.basis).toBe("DOCUMENTED");
   });
 
   it("uses all three coverage states", () => {

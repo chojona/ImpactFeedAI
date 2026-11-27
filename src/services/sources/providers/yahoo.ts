@@ -57,7 +57,7 @@ function etf(symbol: string, coverage: readonly CoverageClaim[]): DataSeriesEntr
       conditions: [
         "Intraday: only bars archived while inside the provider window.",
         "Daily: use returns, not levels, and record Candle.priceBasis.",
-        "Terms for bulk collection remain unverified (candle-source permissions gate).",
+        "Yahoo ToS prohibit automated collection and database/archive creation without prior permission (candle-source permissions gate).",
       ],
     },
     notes: ["Extended-hours bars report volume 0. Store it as NULL, not 0."],
@@ -79,12 +79,13 @@ export const YAHOO_PROVIDER: DataProviderEntry = {
     detail: "Throttles under load. The pipeline waits 500 ms per symbol and backs off 30 s after repeated failures.",
   },
   licensing: {
-    storage: "UNVERIFIED",
-    redistribution: "UNVERIFIED",
+    storage: "PROHIBITED",
+    redistribution: "PROHIBITED",
     attributionRequired: false,
-    summary: "Commercial use, automated collection and redistribution terms are unverified. Personal research only.",
+    summary:
+      "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html §2(d)(9) no automated collection without express prior permission; §2(d)(10) no creating a database/archive/data feed; §2(e) no commercial purpose; §2(h) no reproduce/distribute/publicly display. Storage, public display and redistribution: PROHIBITED.",
     termsUrl: "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html",
-    basis: "UNVERIFIED",
+    basis: "DOCUMENTED",
   },
   implementations: [
     { status: "MAIN", path: "scripts/ingest/fetch-prices.ts" },
