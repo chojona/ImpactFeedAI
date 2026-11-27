@@ -25,13 +25,13 @@ Counts below are a November 5 snapshot, not product constants.
 
 ### R0 — repair calendar and verification integrity (highest priority)
 
-- [ ] Correct the three false equity early closes against official NYSE sources.
-- [ ] Add regular-session **negative** fixtures for 2022-07-01, 2022-12-23 and
+- [x] Correct the three false equity early closes against official NYSE sources.
+- [x] Add regular-session **negative** fixtures for 2022-07-01, 2022-12-23 and
   2026-07-02, retaining real half-day fixtures; reproduce and prevent the
   post-release daily-close anchor defect.
 - [ ] Independently validate release-session origin and pre-release economic
   close, with explicit stock/futures/crypto semantics.
-- [ ] Make verifier completeness measurable: checked/total/skipped/invalid;
+- [x] Make verifier completeness measurable: checked/total/skipped/invalid;
   strict incomplete runs fail, including reference-provider failure, missing
   release time and zero verification coverage. Validate timing source/status.
 - [ ] Follow the existing reaction contract §6.3 calculation-version bump rule;
@@ -39,6 +39,14 @@ Counts below are a November 5 snapshot, not product constants.
   obtain complete verification before changing the current read version.
 - [ ] Update operational coverage checks to measure current reactions, not only
   the v2 archive. No production repair or read cutover has been performed.
+
+Phase 0.5 status ([Phase 0.5 remediation](audits/2026-11-05-phase-0.5-remediation.md)): the three items above are done
+in code and tests. Still open: release-session origin/economic-close
+validation is partial (180 native-futures session rows unsupported); the
+calculation version is bumped to 4 and written additively, but lossless
+isolated replay is NOT MET, so `--apply` is frozen in code
+(`src/services/events/measurementWriteGate.ts`) and reads stay on v3;
+`db:verify` still counts only the v2 archive.
 
 Acceptance: source-backed calendar regressions pass; corrupted/skipped cases
 cannot pass strict verification; all four measures and session-basis disclosure
@@ -61,6 +69,14 @@ does not prove that every prior measurement can be reproduced today.
 - [ ] Make audit/dry-run database access read-only at the connection level.
 - [ ] Keep all 21 legacy actuals/20 unverified forecasts visibly unqualified;
   do not invent metric keys, reference periods, sources or first prints.
+
+Phase 0.5 status ([Phase 0.5 remediation](audits/2026-11-05-phase-0.5-remediation.md)): the eligibility contract is defined
+(`docs/historical-provenance-policy.md`, `src/services/macro/actualProvenance.ts`)
+but vintage/fallback persistence is not implemented, so that item stays open.
+Dry-run clients from `createDryRunPrismaClient` now set
+`default_transaction_read_only=on` at the connection, but `verify-db.ts` uses
+a writable client and the `repair-reaction-timing` dry-run relies on the
+model-level guard only, so connection-level read-only is not yet complete.
 
 Acceptance: new eligible event fixtures reach the live measurement workflow;
 archive mutation is not part of normal ingestion; point-in-time eligibility

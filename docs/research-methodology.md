@@ -108,9 +108,10 @@ Details that decide whether the numbers mean anything:
   equivalent paths.
 - **Native market semantics.** Session-basis labels distinguish regular US
   equities, extended futures and continuous UTC-day crypto. Common canonical
-  dates do not imply identical tradeable hours. The audit identified false
-  early-close entries and a verifier completeness gap; broader computation
-  is gated on their correction and versioned verification.
+  dates do not imply identical tradeable hours. Phase 0.5 corrected the
+  false early-close entries (calculation version 4) and made verifier
+  completeness strict. Broader computation stays gated: v4 is not qualified
+  for cutover, production reads remain on v3, and Phase 1 is NO-GO.
 - **Overlapping events.** CPI at 08:30 and a Fed speaker at 10:00 contaminate
   each other's windows. Contamination should be flagged, not silently averaged
   away.
