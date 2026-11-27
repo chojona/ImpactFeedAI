@@ -62,36 +62,12 @@ describe("release-calendar record merging", () => {
     expect(r.flags).not.toContain("TIME_CONFLICT");
   });
 
-  it("flags disagreeing research and the contract provider then withholds the record", async () => {
-    const records = mergeObservations([fomc(ev({})), sffed("2024-01-31", "2024-01-31T19:15:00.000Z")]);
-    expect(records[0].flags).toContain("TIME_CONFLICT");
-    const provider = createRecordCalendarProvider(records);
-    const res = await resolveHistoricalRelease(provider, {
-      metricKey: "FED_TARGET_UPPER", referencePeriodStart: "2024-01-31", releaseStage: "INITIAL" });
-    expect(res).toBeNull();
-  });
-
   it("never projects research-only timing onto the contract", async () => {
     const records = mergeObservations([sffed("1990-07-13", "1990-07-13T15:30:00.000Z")]);
     expect(records[0].timingStatus).toBe("SECONDARY_ONLY");
     const res = await resolveHistoricalRelease(createRecordCalendarProvider(records), {
       metricKey: "FED_TARGET_UPPER", referencePeriodStart: "1990-07-13", releaseStage: "INITIAL" });
     expect(res).toBeNull();
-  });
-
-  it("prefers a release record over the schedule and flags a reschedule", () => {
-    const base = { family: "BEA_GDP" as const, referencePeriodStart: "2025-07-01", releaseStage: "ADVANCE" as const,
-      stageLabel: "Advance", unscheduled: null, flags: [] };
-    const schedule: CalendarObservation = { ...base, evidence: ev({ providerId: "bea-release-schedule-ics",
-      sourceKind: "OFFICIAL_SCHEDULE", sourceUrl: "https://www.bea.gov/news/schedule/ics/online-calendar-subscription.ics",
-      releaseDate: "2025-10-30", releaseAt: "2025-10-30T12:30:00.000Z", statedZone: "UTC", evidenceText: "DTSTART:20251030T123000Z" }) };
-    const record: CalendarObservation = { ...base, evidence: ev({ providerId: "bea-news-release",
-      sourceUrl: "https://www.bea.gov/news/2025/gdp-advance-estimate-3rd-quarter-2025",
-      releaseDate: "2025-12-23", releaseAt: "2025-12-23T13:30:00.000Z", statedZone: "EST",
-      evidenceText: "EMBARGOED UNTIL RELEASE AT 8:30 a.m. EST, Tuesday, December 23, 2025" }) };
-    const [r] = mergeObservations([schedule, record]);
-    expect(r).toMatchObject({ timingStatus: "VERIFIED", releaseDate: "2025-12-23" });
-    expect(r.flags).toEqual(expect.arrayContaining(["SCHEDULE_DIFFERS_FROM_RECORD", "DATE_CONFLICT"]));
   });
 
   it("projects a schedule-only release as SCHEDULED through the existing validator", async () => {
@@ -127,5 +103,91 @@ describe("release-calendar record merging", () => {
     const records = mergeObservations([blsObs("2024-01-11"), blsObs("2024-02-13")]);
     expect(records).toHaveLength(2);
     expect(records.every((r) => r.flags.includes("REFERENCE_PERIOD_UNKNOWN"))).toBe(true);
+  });
+});
+
+const FOMC_ID = (day: string) => ({ metricKey: "FED_TARGET_UPPER", referencePeriodStart: day, releaseStage: "INITIAL" as const });
+const GDP_ID = { metricKey: "GDP_REAL", referencePeriodStart: "2025-07-01", releaseStage: "ADVANCE" as const };
+const gdpBase = { family: "BEA_GDP" as const, referencePeriodStart: "2025-07-01", releaseStage: "ADVANCE" as const,
+  stageLabel: "Advance", unscheduled: null, flags: [] };
+const ICS_URL = "https://www.bea.gov/news/schedule/ics/online-calendar-subscription.ics";
+const beaSchedule = (releaseDate: string, releaseAt: string): CalendarObservation => ({ ...gdpBase,
+  evidence: ev({ providerId: "bea-release-schedule-ics", sourceKind: "OFFICIAL_SCHEDULE", sourceUrl: ICS_URL,
+    releaseDate, releaseAt, statedZone: "UTC", evidenceText: `DTSTART:${releaseAt}` }) });
+const beaRecord = (releaseDate: string, releaseAt: string | null, slug = "gdp-advance-estimate-3rd-quarter-2025"): CalendarObservation => ({ ...gdpBase,
+  evidence: ev({ providerId: "bea-news-release", sourceUrl: `https://www.bea.gov/news/2025/${slug}`,
+    releaseDate, releaseAt, statedZone: releaseAt ? "EST" : null, evidenceText: `EMBARGOED UNTIL RELEASE AT … ${releaseDate}` }) });
+
+describe("release-calendar conflict policy", () => {
+  it("lets the publication determine a rescheduled BEA release; the schedule mismatch is informational", async () => {
+    // Q3-2025 GDP: scheduled for 2025-10-30, published 2025-12-23 after the shutdown.
+    const records = mergeObservations([beaSchedule("2025-10-30", "2025-10-30T12:30:00.000Z"),
+      beaRecord("2025-12-23", "2025-12-23T13:30:00.000Z")]);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({ timingStatus: "VERIFIED", releaseDate: "2025-12-23", releaseAt: "2025-12-23T13:30:00.000Z" });
+    expect(records[0].flags).toEqual(["SCHEDULE_DIFFERS_FROM_RECORD"]);
+    const res = await resolveHistoricalRelease(createRecordCalendarProvider(records), GDP_ID);
+    expect(res?.timing).toMatchObject({ timingStatus: "VERIFIED", releaseDate: "2025-12-23" });
+    expect(res?.timing.provenance).toMatchObject({ sourceKind: "OFFICIAL_RELEASE_RECORD",
+      sourceUrl: "https://www.bea.gov/news/2025/gdp-advance-estimate-3rd-quarter-2025" });
+  });
+
+  it("uses the published clock time when a release moved within the scheduled day", async () => {
+    const records = mergeObservations([beaSchedule("2025-12-23", "2025-12-23T15:00:00.000Z"),
+      beaRecord("2025-12-23", "2025-12-23T13:30:00.000Z")]);
+    expect(records[0]).toMatchObject({ timingStatus: "VERIFIED", releaseAt: "2025-12-23T13:30:00.000Z", flags: ["SCHEDULE_DIFFERS_FROM_RECORD"] });
+    expect((await resolveHistoricalRelease(createRecordCalendarProvider(records), GDP_ID))?.timing.releaseAt?.toISOString())
+      .toBe("2025-12-23T13:30:00.000Z");
+  });
+
+  it("prefers a published date over a scheduled clock time", async () => {
+    const records = mergeObservations([beaSchedule("2025-10-30", "2025-10-30T12:30:00.000Z"), beaRecord("2025-12-23", null)]);
+    expect(records[0]).toMatchObject({ timingStatus: "DATE_ONLY", releaseDate: "2025-12-23", releaseAt: null, flags: ["SCHEDULE_DIFFERS_FROM_RECORD"] });
+    expect((await resolveHistoricalRelease(createRecordCalendarProvider(records), GDP_ID))?.timing)
+      .toMatchObject({ timingStatus: "DATE_ONLY", releaseDate: "2025-12-23", releaseAt: null });
+  });
+
+  it("refuses official publications that state different days", async () => {
+    const records = mergeObservations([beaRecord("2025-12-23", "2025-12-23T13:30:00.000Z"),
+      beaRecord("2025-12-24", "2025-12-24T13:30:00.000Z", "gdp-advance-estimate-3rd-quarter-2025-reissue")]);
+    expect(records[0].flags).toContain("DATE_CONFLICT");
+    expect(await resolveHistoricalRelease(createRecordCalendarProvider(records), GDP_ID)).toBeNull();
+  });
+
+  it("refuses official publications that state different times on the same day", async () => {
+    const records = mergeObservations([beaRecord("2025-12-23", "2025-12-23T13:30:00.000Z"),
+      beaRecord("2025-12-23", "2025-12-23T15:00:00.000Z", "gdp-advance-estimate-3rd-quarter-2025-reissue")]);
+    expect(records[0].flags).toEqual(["TIME_CONFLICT"]);
+    expect(await resolveHistoricalRelease(createRecordCalendarProvider(records), GDP_ID)).toBeNull();
+  });
+
+  it("refuses a single document whose file-name day and embargo day disagree", async () => {
+    const obs = { ...beaRecord("2025-12-23", "2025-12-23T13:30:00.000Z"), flags: ["DATE_CONFLICT" as const] };
+    expect(await resolveHistoricalRelease(createRecordCalendarProvider(mergeObservations([obs])), GDP_ID)).toBeNull();
+  });
+
+  it("never promotes an SF Fed time to VERIFIED, alone or beside a date-only statement", async () => {
+    const alone = mergeObservations([sffed("2005-06-30", "2005-06-30T18:15:00.000Z")]);
+    expect(alone[0]).toMatchObject({ timingStatus: "SECONDARY_ONLY", releaseAt: "2005-06-30T18:15:00.000Z" });
+    expect(await resolveHistoricalRelease(createRecordCalendarProvider(alone), FOMC_ID("2005-06-30"))).toBeNull();
+
+    const statement = fomc(ev({ releaseDate: "2005-06-30", releaseAt: null, statedZone: null,
+      sourceUrl: "https://www.federalreserve.gov/boarddocs/press/monetary/2005/20050630/default.htm",
+      evidenceText: "page date: 2005-06-30 | For immediate release" }));
+    const paired = mergeObservations([statement, sffed("2005-06-30", "2005-06-30T18:15:00.000Z")]);
+    expect(paired[0]).toMatchObject({ timingStatus: "DATE_ONLY", releaseAt: null, timePrecision: "DATE" });
+    expect(paired[0].flags).toContain("SECONDARY_TIME_ONLY");
+    const res = await resolveHistoricalRelease(createRecordCalendarProvider(paired), FOMC_ID("2005-06-30"));
+    expect(res?.timing).toMatchObject({ timingStatus: "DATE_ONLY", releaseAt: null });
+    expect(res?.timing.provenance.sourceKind).toBe("OFFICIAL_RELEASE_RECORD");
+  });
+
+  it("keeps the official instant when research disagrees, flagging it without withholding", async () => {
+    const records = mergeObservations([fomc(ev({})), sffed("2024-01-31", "2024-01-31T19:15:00.000Z")]);
+    expect(records[0]).toMatchObject({ timingStatus: "VERIFIED", releaseAt: "2024-01-31T19:00:00.000Z",
+      flags: ["SECONDARY_DIFFERS_FROM_OFFICIAL"] });
+    const res = await resolveHistoricalRelease(createRecordCalendarProvider(records), FOMC_ID("2024-01-31"));
+    expect(res?.timing).toMatchObject({ timingStatus: "VERIFIED" });
+    expect(res?.timing.provenance.sourceUrl).toContain("federalreserve.gov");
   });
 });

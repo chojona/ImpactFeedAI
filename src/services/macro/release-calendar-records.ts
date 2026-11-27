@@ -17,6 +17,10 @@
  *   SECONDARY_ONLY — only non-official evidence (e.g. a peer-reviewed research
  *                    dataset) supports the timing. Never projected onto the
  *                    contract; kept for research use and cross-checking.
+ *
+ * Conflicts: only official publication evidence can conflict fatally
+ * (DATE_CONFLICT / TIME_CONFLICT → withheld). Schedules and research data that
+ * disagree with the publication are informational flags; the publication wins.
  */
 
 import {
@@ -83,9 +87,10 @@ export interface TimingEvidence {
 
 export type RecordFlag =
   | "ZONE_LABEL_MISMATCH" // printed EST/EDT disagrees with America/New_York at that instant
-  | "TIME_CONFLICT" // two pieces of evidence give different instants
-  | "DATE_CONFLICT" // two pieces of evidence give different days
-  | "SCHEDULE_DIFFERS_FROM_RECORD" // official schedule ≠ official record (reschedule)
+  | "TIME_CONFLICT" // official publications state different instants (fatal: withheld)
+  | "DATE_CONFLICT" // official publications state different days (fatal: withheld)
+  | "SCHEDULE_DIFFERS_FROM_RECORD" // schedule ≠ publication, e.g. a reschedule (informational)
+  | "SECONDARY_DIFFERS_FROM_OFFICIAL" // research timing ≠ official timing (informational)
   | "SECONDARY_TIME_ONLY" // clock time known only from secondary evidence
   | "IMPLICIT_ANNOUNCEMENT" // pre-1994 FOMC: no explicit announcement was made
   | "UNSCHEDULED" // intermeeting / conference-call / notation-vote action
@@ -208,42 +213,57 @@ function mergeGroup(group: readonly CalendarObservation[]): ReleaseCalendarRecor
   const flags = new Set<RecordFlag>(sorted.flatMap((o) => o.flags));
   const ev = sorted.map((o) => o.evidence);
 
-  const officialDays = new Set(ev.filter(isOfficial).map((e) => e.releaseDate));
-  const allDays = new Set(ev.map((e) => e.releaseDate));
-  if (officialDays.size > 1 || allDays.size > 1) flags.add("DATE_CONFLICT");
+  // Conflict policy. Only official PUBLICATION evidence (a release record, or
+  // official date metadata about the publication) can conflict fatally. A
+  // schedule is a plan and a research dataset is a reconstruction: when either
+  // disagrees with the publication, the publication determines the timing and
+  // the disagreement is recorded as an informational flag.
+  const publications = ev.filter(
+    (e) => e.sourceKind === "OFFICIAL_RELEASE_RECORD" || e.sourceKind === "OFFICIAL_DATE_METADATA",
+  );
+  const schedules = ev.filter((e) => e.sourceKind === "OFFICIAL_SCHEDULE");
+  const secondaries = ev.filter((e) => !isOfficial(e));
 
-  const record = ev.find((e) => e.sourceKind === "OFFICIAL_RELEASE_RECORD" && e.releaseAt);
-  const schedule = ev.find((e) => e.sourceKind === "OFFICIAL_SCHEDULE" && e.releaseAt);
-  const official = ev.find(isOfficial);
-  const secondaryTimed = ev.find((e) => !isOfficial(e) && e.releaseAt);
+  if (new Set(publications.map((e) => e.releaseDate)).size > 1) flags.add("DATE_CONFLICT");
+  const publishedInstants = new Set(publications.filter((e) => e.releaseAt).map((e) => e.releaseAt));
+  if (publishedInstants.size > 1) flags.add("TIME_CONFLICT");
+
+  const timedRecord = publications.find((e) => e.sourceKind === "OFFICIAL_RELEASE_RECORD" && e.releaseAt);
+  const publication = timedRecord ?? publications[0];
+  const schedule = schedules.find((e) => e.releaseAt) ?? schedules[0];
 
   let timingStatus: CalendarTimingStatus;
   let chosen: TimingEvidence;
-  if (record) {
+  if (timedRecord) {
     timingStatus = "VERIFIED";
-    chosen = record;
-  } else if (schedule) {
+    chosen = timedRecord;
+  } else if (publication) {
+    // A published date beats any scheduled clock time for the same release.
+    timingStatus = "DATE_ONLY";
+    chosen = publication;
+  } else if (schedule?.releaseAt) {
     timingStatus = "SCHEDULED";
     chosen = schedule;
-  } else if (official) {
+  } else if (schedule) {
     timingStatus = "DATE_ONLY";
-    chosen = official;
+    chosen = schedule;
   } else {
     timingStatus = "SECONDARY_ONLY";
     chosen = ev[0];
   }
 
-  if (record && schedule && record.releaseAt !== schedule.releaseAt) {
+  if (publication && schedules.some((s) =>
+    s.releaseDate !== publication.releaseDate ||
+    (publication.releaseAt !== null && s.releaseAt !== null && s.releaseAt !== publication.releaseAt))) {
     flags.add("SCHEDULE_DIFFERS_FROM_RECORD");
   }
-  const officialInstants = new Set(
-    ev.filter((e) => e.sourceKind === "OFFICIAL_RELEASE_RECORD" && e.releaseAt).map((e) => e.releaseAt),
-  );
-  if (officialInstants.size > 1) flags.add("TIME_CONFLICT");
-  if (secondaryTimed && chosen.releaseAt && secondaryTimed.releaseAt !== chosen.releaseAt) {
-    flags.add("TIME_CONFLICT");
+  const anchor = publication ?? (schedule?.releaseAt ? schedule : null);
+  if (anchor && secondaries.some((s) =>
+    s.releaseDate !== anchor.releaseDate ||
+    (anchor.releaseAt !== null && s.releaseAt !== null && s.releaseAt !== anchor.releaseAt))) {
+    flags.add("SECONDARY_DIFFERS_FROM_OFFICIAL");
   }
-  if (!chosen.releaseAt && secondaryTimed) flags.add("SECONDARY_TIME_ONLY");
+  if (timingStatus === "DATE_ONLY" && secondaries.some((s) => s.releaseAt)) flags.add("SECONDARY_TIME_ONLY");
 
   const releaseAt = timingStatus === "DATE_ONLY" ? null : chosen.releaseAt;
   const first = sorted[0];

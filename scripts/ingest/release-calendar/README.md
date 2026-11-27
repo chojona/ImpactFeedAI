@@ -64,14 +64,23 @@ Each saved document's file mtime is recorded as `retrievedAt`, and its canonical
 | `DATE_ONLY` | An official document proves the day only | yes, `releaseAt: null` |
 | `SECONDARY_ONLY` | Only research evidence exists (e.g. pre-1994 FOMC) | **no** (null) |
 
-There is no fallback clock: 08:30 or 14:00 are never assumed. A record carrying
-`DATE_CONFLICT` or `TIME_CONFLICT` is withheld (null) by the contract provider.
+There is no fallback clock: 08:30 or 14:00 are never assumed.
+
+**Conflict policy.** The official publication determines the timing.
+- `DATE_CONFLICT` and `TIME_CONFLICT` are raised **only** when official publication evidence disagrees
+  with itself: two release records, or a document whose file-name day and embargo day differ. Such
+  records are withheld (null) by the contract provider.
+- An official schedule that differs from the publication (a reschedule) yields
+  `SCHEDULE_DIFFERS_FROM_RECORD`. That flag is informational: the published date and time are used.
+- A research time that differs from the official timing yields `SECONDARY_DIFFERS_FROM_OFFICIAL`.
+  That flag is also informational. Research timing never becomes `VERIFIED`.
+- A published date beats a scheduled clock time: the record is `DATE_ONLY` from the publication.
 
 - **DST**: the publisher's Washington wall clock is authoritative. A printed
   EST/EDT label that disagrees with `America/New_York` at that instant is
   flagged `ZONE_LABEL_MISMATCH` and never used to shift the time.
 - **Shutdowns / reschedules**: the official record's date wins. If an official
-  schedule disagrees, the record gets `SCHEDULE_DIFFERS_FROM_RECORD`. Reference
+  schedule disagrees, the record gets `SCHEDULE_DIFFERS_FROM_RECORD` and still resolves. Reference
   periods come only from release titles, never from "previous month", because
   shutdown-delayed releases (September 2025 payrolls on 2025-11-20) break that rule.
 - **Unscheduled FOMC actions**: conference calls, notation votes, "(unscheduled)"
