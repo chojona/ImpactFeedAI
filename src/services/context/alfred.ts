@@ -97,6 +97,13 @@ export type AlfredHttpGet = (url: string) => Promise<{
 }>;
 
 const OPEN_ENDED_REALTIME_END = "9999-12-31";
+const DECIMAL_NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+const MS_PER_DAY = 86_400_000;
+const MAX_INITIAL_PUBLICATION_LAG_DAYS = {
+  daily: 7,
+  monthly: 31,
+  quarterly: 45,
+} as const satisfies Record<ContextSeriesDefinition["frequency"], number>;
 
 export function redactFredUrl(url: string): string {
   const parsed = new URL(url);
@@ -162,7 +169,7 @@ export function buildAlfredVintageDatesUrl(
 function parseFloatOrNull(raw: unknown): number | null {
   if (typeof raw !== "string") return null;
   const value = raw.trim();
-  if (value === "" || value === ".") return null;
+  if (!DECIMAL_NUMBER.test(value)) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -195,8 +202,7 @@ function valueKindFor(
 }
 
 /**
- * A complete provider revision history establishes the first published value
- * for each period. Missing markers do not count as releases.
+ * Find the earliest numeric vintage in the archive for each period.
  */
 function firstArchivedVintageByPeriod(
   rows: readonly AlfredRawObservation[],
@@ -210,6 +216,26 @@ function firstArchivedVintageByPeriod(
     }
   }
   return firstStartByPeriod;
+}
+
+function hasPlausibleInitialPublicationDate(
+  row: AlfredRawObservation,
+  frequency: ContextSeriesDefinition["frequency"] | undefined,
+): boolean {
+  if (!frequency) return false;
+  const periodStart = utcDateOnly(row.date);
+  const vintageMs = utcDateOnly(row.realtime_start).getTime();
+  if (frequency === "daily") {
+    const lagDays = (vintageMs - periodStart.getTime()) / MS_PER_DAY;
+    return lagDays >= 0 && lagDays <= MAX_INITIAL_PUBLICATION_LAG_DAYS.daily;
+  }
+
+  const monthsInPeriod = frequency === "quarterly" ? 3 : 1;
+  const month = periodStart.getUTCMonth();
+  if (periodStart.getUTCDate() !== 1 || month % monthsInPeriod !== 0) return false;
+  const periodEndMs = Date.UTC(periodStart.getUTCFullYear(), month + monthsInPeriod, 0);
+  const lagDays = (vintageMs - periodEndMs) / MS_PER_DAY;
+  return lagDays >= 1 && lagDays <= MAX_INITIAL_PUBLICATION_LAG_DAYS[frequency];
 }
 
 function mapAlfredObservation(input: {
@@ -271,10 +297,13 @@ function mapAlfredObservation(input: {
   };
 }
 
+function hasFullRealtimeWindow(json: AlfredObservationsResponse): boolean {
+  return json.realtime_start === ALFRED_FULL_REALTIME_START &&
+    json.realtime_end === ALFRED_FULL_REALTIME_END;
+}
+
 function hasCompleteRevisionHistory(json: AlfredObservationsResponse, rowCount: number): boolean {
-  return json.output_type === 1 &&
-    json.realtime_start === ALFRED_FULL_REALTIME_START &&
-    json.realtime_end === ALFRED_FULL_REALTIME_END &&
+  return json.output_type === 1 && hasFullRealtimeWindow(json) &&
     json.offset === 0 && json.count === rowCount;
 }
 
@@ -322,9 +351,7 @@ export function parseAlfredObservationsPayload(
       : null;
   const isInitialReleaseResponse =
     meta.mode === "initial_release_only" &&
-    (json.output_type === undefined || json.output_type === 4) &&
-    (json.realtime_start === undefined || json.realtime_start === ALFRED_FULL_REALTIME_START) &&
-    (json.realtime_end === undefined || json.realtime_end === ALFRED_FULL_REALTIME_END);
+    json.output_type === 4 && hasFullRealtimeWindow(json);
 
   return rows.map((row) => {
     const value = parseFloatOrNull(row.value);
@@ -332,10 +359,16 @@ export function parseAlfredObservationsPayload(
       ? snapshotDateFor(row, snapshotDates)
       : null;
     let providerStage: ContextReleaseStage = "UNKNOWN";
-    if (value !== null && (isInitialReleaseResponse || firstArchivedVintage)) {
-      providerStage = isInitialReleaseResponse || firstArchivedVintage?.get(row.date) === row.realtime_start
-        ? "INITIAL"
-        : "REVISION";
+    const firstVintage = firstArchivedVintage?.get(row.date);
+    if (value !== null) {
+      if (firstVintage && row.realtime_start > firstVintage) {
+        providerStage = "REVISION";
+      } else if (
+        (isInitialReleaseResponse || firstVintage === row.realtime_start) &&
+        hasPlausibleInitialPublicationDate(row, def?.frequency)
+      ) {
+        providerStage = "INITIAL";
+      }
     }
     const matchingEvidence = meta.mode === "current_latest" ||
       (meta.mode === "as_of_vintage" && snapshotAsOf === null)
@@ -347,9 +380,10 @@ export function parseAlfredObservationsPayload(
           evidence.value === value &&
           isValidEvidenceReference(evidence.reference)) ?? [];
     const evidence = matchingEvidence[0];
-    const publicationEvidence = evidence &&
-      matchingEvidence.every((match) => match.releaseStage === evidence.releaseStage) &&
-      (providerStage === "UNKNOWN" || providerStage === evidence.releaseStage) &&
+    const hasStageConflict = matchingEvidence.some((match) =>
+      match.releaseStage !== evidence.releaseStage ||
+      (providerStage !== "UNKNOWN" && match.releaseStage !== providerStage));
+    const publicationEvidence = evidence && !hasStageConflict &&
       Number.isFinite(utcDateOnly(evidence.publicationDate).getTime())
       ? evidence
       : null;
@@ -366,7 +400,7 @@ export function parseAlfredObservationsPayload(
       unit,
       mode: meta.mode,
       value,
-      releaseStage: publicationEvidence?.releaseStage ?? providerStage,
+      releaseStage: hasStageConflict ? "UNKNOWN" : publicationEvidence?.releaseStage ?? providerStage,
       publicationEvidence,
       snapshotAsOf,
       fetchedAt: meta.fetchedAt,

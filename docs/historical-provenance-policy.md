@@ -44,11 +44,20 @@ An ALFRED single-day snapshot records the provider's information set for that
 date. Its row interval does not establish the date the value was published or
 whether it was the first print. The adapter leaves release stage unresolved
 unless independently reviewed publication evidence ties the exact series,
-period, date, and value to a stage. Provider responses explicitly limited to
-initial releases or demonstrably complete revision histories can establish the
-stage of an archived observation. In each mode, independent publication
-evidence is required for a date-bound availability claim. First-print
-selection requires both the initial stage and the initial reported value kind.
+period, date, and value to a stage. The adapter considers a provider-implied
+initial stage only when the response explicitly declares the full real-time
+window and either initial-release output or an unpaginated revision history
+whose row count matches its metadata. The earliest numeric vintage in a
+revision history is the earliest archived value. In either mode, an initial
+label from the archive requires known series frequency and a plausible lag
+from the reference period's end. The window is 0–7 calendar days for daily
+series, 1–31 for monthly series, and 1–45 for quarterly series. Pre-archive
+first vintages outside those windows stay unresolved. A stage conflict with
+reviewed evidence leaves both stage and availability unresolved.
+
+Independent publication evidence is required for a date-bound availability
+claim. First-print selection requires both the initial stage and the initial
+reported value kind.
 
 Macro transforms require all operands to share a validated single-day snapshot
 or a single point-in-time panel selection. Snapshot arithmetic is descriptive
