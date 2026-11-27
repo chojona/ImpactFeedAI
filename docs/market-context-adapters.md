@@ -111,6 +111,12 @@ in `eligibility.ts`.
    value, availability policy version, historicalReconstruction status,
    vintageAsOf
 
+FRED credentials follow PR #20's standard: endpoints drop the `api_key`
+parameter entirely, and every error message (network failure, body read, JSON
+parse, or an unexpected exception, which is rethrown without `cause`) has the
+key, its URL-encoded form and any echoed `api_key=` value replaced with
+`[REDACTED]`.
+
 `KnowledgeMode`: `PUBLIC_INFORMATION_RECONSTRUCTION` | `SYSTEM_REPLAY`.
 
 ---

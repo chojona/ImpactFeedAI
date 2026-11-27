@@ -21,6 +21,7 @@ import {
   nextNyMidnightAfter,
   parseRawNumeric,
   redactFredApiKey,
+  redactFredText,
   sessionWindowIsComplete,
   treasuryH15Availability,
   validateSessionCalendar,
@@ -163,11 +164,12 @@ describe("FRED market adapter — revision / vintage gating", () => {
   });
 
   it("redacts API keys and surfaces injected-fetch errors", async () => {
-    expect(
-      redactFredApiKey(
-        "https://api.stlouisfed.org/fred/series/observations?api_key=SECRET",
-      ),
-    ).toContain("api_key=REDACTED");
+    const stripped = redactFredApiKey(
+      "https://api.stlouisfed.org/fred/series/observations?api_key=SECRET&series_id=DGS2",
+    );
+    expect(stripped).not.toContain("SECRET");
+    expect(stripped).not.toContain("api_key");
+    expect(stripped).toContain("series_id=DGS2");
 
     const fetchImpl = vi.fn(async () => new Response("nope", { status: 503 }));
     const result = await fetchFredMarketObservations({
@@ -179,6 +181,120 @@ describe("FRED market adapter — revision / vintage gating", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.statusCode).toBe(503);
+  });
+});
+
+describe("FRED API key redaction (PR #20 credential standard)", () => {
+  // Contains characters URLSearchParams percent-encodes, so the encoded
+  // form that a transport echoes in a URL is exercised too.
+  const API_KEY = "sk+live/0123456789abcdef=";
+  const ENCODED_KEY = encodeURIComponent(API_KEY);
+
+  function expectNoKey(value: unknown): void {
+    const text = JSON.stringify(value);
+    expect(text).not.toContain(API_KEY);
+    expect(text).not.toContain(ENCODED_KEY);
+  }
+
+  async function fetchWith(fetchImpl: (url: string | URL) => Promise<Response>) {
+    return fetchFredMarketObservations({
+      apiKey: API_KEY,
+      seriesId: "DGS2",
+      fetchImpl,
+      fetchedAt: FIXED_FETCHED_AT,
+    });
+  }
+
+  it("redacts the key from network-failure messages that echo the URL", async () => {
+    const result = await fetchWith(async (url) => {
+      throw new TypeError(`fetch failed for ${String(url)} (key ${API_KEY})`);
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.kind).toBe("http_error");
+    expect(result.error.message).toContain("[REDACTED]");
+    expect(result.error.sourceEndpoint).not.toContain("api_key");
+    expectNoKey(result);
+  });
+
+  it("redacts the key from non-Error throw values", async () => {
+    const result = await fetchWith(async (url) => {
+      throw `socket hang up: ${String(url)}`;
+    });
+    expect(result.ok).toBe(false);
+    expectNoKey(result);
+  });
+
+  it("redacts the key from response-body reading errors", async () => {
+    const result = await fetchWith(async (url) => {
+      const res = new Response("{}", { status: 200 });
+      Object.defineProperty(res, "text", {
+        value: async () => {
+          throw new Error(`stream aborted reading ${String(url)}`);
+        },
+      });
+      return res;
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.kind).toBe("parse_error");
+    expect(result.error.message).toContain("failed to read body");
+    expectNoKey(result);
+  });
+
+  it("strips the key from HTTP-error endpoints", async () => {
+    const result = await fetchWith(async () => new Response("nope", { status: 403 }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.statusCode).toBe(403);
+    expect(result.error.sourceEndpoint).not.toContain("api_key");
+    expectNoKey(result);
+  });
+
+  it("redacts the key from JSON parse errors when the body echoes it", async () => {
+    const result = await fetchWith(
+      async (url) => new Response(`<html>bad request ${String(url)} ${API_KEY}</html>`),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain("invalid FRED JSON");
+    expectNoKey(result);
+  });
+
+  it("rethrows unexpected exceptions with a redacted message", async () => {
+    const hostile = {
+      get ok(): boolean {
+        throw new Error(`unexpected ${API_KEY} / ${ENCODED_KEY}`);
+      },
+    } as unknown as Response;
+    const thrown = await fetchWith(async () => hostile).then(
+      () => null,
+      (err: unknown) => err,
+    );
+    expect(thrown).toBeInstanceOf(Error);
+    const message = (thrown as Error).message;
+    expect(message).toContain("[REDACTED]");
+    expect(message).not.toContain(API_KEY);
+    expect(message).not.toContain(ENCODED_KEY);
+    expect((thrown as Error).cause).toBeUndefined();
+  });
+
+  it("keeps successful retrieval provenance credential-free", async () => {
+    const result = await fetchWith(async () => new Response(fixture("fred-dgs2.json")));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.observations.length).toBeGreaterThan(0);
+    expect(result.retrievalBatch.sourceEndpoint).not.toContain("api_key");
+    expectNoKey(result);
+  });
+
+  it("scrubs echoed api_key values even without the configured key", () => {
+    expect(redactFredText("GET /obs?api_key=abc123&series_id=X", undefined)).toBe(
+      "GET /obs?api_key=[REDACTED]&series_id=X",
+    );
+    expect(redactFredApiKey("not a url ?api_key=abc123&series_id=X")).toBe(
+      "not a url ?series_id=X",
+    );
   });
 });
 

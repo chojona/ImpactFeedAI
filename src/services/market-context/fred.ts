@@ -30,6 +30,7 @@ import {
 } from "@/services/market-context/series";
 import type {
   FetchLike,
+  MarketContextFetchError,
   MarketContextFetchResult,
   RetrievedMarketObservation,
 } from "@/services/market-context/types";
@@ -110,17 +111,48 @@ function buildFredUrl(opts: FredMarketFetchOptions): string {
   return url.toString();
 }
 
-/** Redact API key from URLs stored in provenance. */
+const REDACTED = "[REDACTED]";
+
+/**
+ * Credential-free endpoint for provenance and errors. Matches PR #20's
+ * `redactFredUrl`: the `api_key` parameter is removed, not masked.
+ */
 export function redactFredApiKey(endpoint: string): string {
   try {
     const url = new URL(endpoint);
-    if (url.searchParams.has("api_key")) {
-      url.searchParams.set("api_key", "REDACTED");
-    }
+    url.searchParams.delete("api_key");
     return url.toString();
   } catch {
-    return endpoint.replace(/api_key=[^&]+/i, "api_key=REDACTED");
+    return endpoint
+      .replace(/([?&])api_key=[^&#\s]*&?/gi, "$1")
+      .replace(/[?&](#|$)/, "$1");
   }
+}
+
+/**
+ * Scrub a FRED API key from free text (exception / response-reading messages),
+ * following PR #20's standard: every occurrence becomes `[REDACTED]`. Also
+ * catches the URL-encoded key and any `api_key=` value echoed by a transport.
+ */
+export function redactFredText(text: string, apiKey: string | undefined): string {
+  let out = text;
+  if (apiKey) {
+    const variants = new Set([apiKey, encodeURIComponent(apiKey)]);
+    for (const variant of variants) out = out.split(variant).join(REDACTED);
+  }
+  return out.replace(/(api_key=)[^&#\s"']+/gi, `$1${REDACTED}`);
+}
+
+/** Apply both redactions to an error object before it leaves the adapter. */
+export function redactFredFetchError(
+  error: MarketContextFetchError,
+  apiKey: string | undefined,
+): MarketContextFetchError {
+  return {
+    ...error,
+    message: redactFredText(error.message, apiKey),
+    sourceEndpoint: redactFredText(redactFredApiKey(error.sourceEndpoint), apiKey),
+  };
 }
 
 function mapFredRows(
@@ -193,6 +225,22 @@ function mapFredRows(
 export async function fetchFredMarketObservations(
   opts: FredMarketFetchOptions,
 ): Promise<MarketContextFetchResult> {
+  let result: MarketContextFetchResult;
+  try {
+    result = await fetchFredMarketObservationsUnredacted(opts);
+  } catch (err) {
+    // Never let an injected fetch / parser exception carry the key upward.
+    // The original error is dropped (not attached as `cause`) on purpose.
+    const raw = err instanceof Error ? err.message : String(err);
+    throw new Error(redactFredText(raw, opts.apiKey));
+  }
+  if (result.ok) return result;
+  return { ok: false, error: redactFredFetchError(result.error, opts.apiKey) };
+}
+
+async function fetchFredMarketObservationsUnredacted(
+  opts: FredMarketFetchOptions,
+): Promise<MarketContextFetchResult> {
   if (!opts.apiKey && !opts.fixtureBody) {
     return {
       ok: false,
@@ -237,13 +285,7 @@ export async function fetchFredMarketObservations(
     const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
     const response = await fetchText(fetchImpl, buildFredUrl(opts), "fred");
     if (!response.ok) {
-      return {
-        ok: false,
-        error: {
-          ...response.error,
-          sourceEndpoint: redactFredApiKey(response.error.sourceEndpoint),
-        },
-      };
+      return { ok: false, error: response.error };
     }
     body = response.body;
     requestId = response.requestId;

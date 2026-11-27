@@ -42,6 +42,8 @@ export {
   fetchFredMarketObservations,
   isFredMarketSeriesId,
   redactFredApiKey,
+  redactFredFetchError,
+  redactFredText,
   type FredMarketFetchOptions,
   type FredMarketSeriesId,
 } from "@/services/market-context/fred";
