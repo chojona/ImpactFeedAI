@@ -201,8 +201,8 @@ describe("assessCoverage", () => {
     expect(r.providerId).toBe("yahoo");
     expect(r.suitability?.researchReady).toBe(false);
     expect(r.suitability?.pointInTime.status).toBe("CONDITIONAL");
-    expect(r.suitability?.licensing.storage).toBe("PROHIBITED");
-    expect(r.suitability?.blockers.some((b) => b.startsWith("Storage is PROHIBITED"))).toBe(true);
+    expect(r.suitability?.licensing.storage).toBe("RESTRICTED");
+    expect(r.suitability?.blockers.some((b) => b.startsWith("Storage is RESTRICTED"))).toBe(true);
   });
 
   it("does not treat tested NQ minute bars as certified outside accepted sessions", () => {

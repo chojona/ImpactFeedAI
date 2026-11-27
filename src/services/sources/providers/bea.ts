@@ -20,13 +20,13 @@ export const BEA_PROVIDER: DataProviderEntry = {
       "www.bea.gov permits crawling for the news archive and ICS. apps.bea.gov/robots.txt disallows /; do not hit the Data API host from this pipeline.",
   },
   licensing: {
-    storage: "PERMITTED",
-    redistribution: "PERMITTED",
-    attributionRequired: true,
+    storage: "UNVERIFIED",
+    redistribution: "UNVERIFIED",
+    attributionRequired: false,
     summary:
-      "U.S. federal government data. Required notice: \"This product uses the Bureau of Economic Analysis (BEA) Data API but is not endorsed or certified by BEA.\" Cite BEA as the source.",
+      "Cautious reading: federal-work / public-domain status for www.bea.gov news pages and the release-schedule ICS is presumed, not documented against a cited BEA terms URL. This pipeline does not call the BEA Data API (apps.bea.gov is never contacted); the BEA API required notice applies only if that API is used.",
     termsUrl: null,
-    basis: "DOCUMENTED",
+    basis: "UNVERIFIED",
   },
   implementations: [
     { status: "MAIN", path: "scripts/ingest/release-calendar/source-bea.ts" },

@@ -22,11 +22,11 @@ export const NQ_ARCHIVE_PROVIDER: DataProviderEntry = {
       "Already purchased (acceptance report: about $27 against an $85 ceiling). Reading it costs nothing. Extending it would be a new purchase and is out of scope.",
   },
   licensing: {
-    storage: "PERMITTED",
+    storage: "UNVERIFIED",
     redistribution: "RESTRICTED",
     attributionRequired: false,
     summary:
-      "Databento FAQ §1.7 (https://databento.com/blog/introduction-market-data-licensing): historical data needs no licence unless redistributed; redistribution of CME data needs a CME licence. Public display: UNVERIFIED. Never commit bars or manifests to git.",
+      "Databento FAQ §1.7 (https://databento.com/blog/introduction-market-data-licensing): \"You do NOT need a license to access historical (T+1) data.\" Exceptions include: \"You plan to redistribute the data.\" (Also listed: exotic OTC; raw PCAPs from ICE.) Cautious reading: FAQ does not cover durable local storage — storage UNVERIFIED; redistribution RESTRICTED. Public display: UNVERIFIED. Never commit bars or manifests to git.",
     termsUrl: "https://databento.com/blog/introduction-market-data-licensing",
     basis: "DOCUMENTED",
   },

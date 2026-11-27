@@ -81,7 +81,7 @@ export const ALFRED_PROVIDER: DataProviderEntry = {
     redistribution: "RESTRICTED",
     attributionRequired: true,
     summary:
-      "Same FRED legal terms as the fred provider (https://fred.stlouisfed.org/legal/): Prohibition (p) bars database storage/caching without permission; Prohibition (j) requires prior written permission for internet display and commercial use. Required notice: \"This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.\"",
+      "Same FRED legal terms as the fred provider (https://fred.stlouisfed.org/legal/): Prohibition (p) bars storing/caching/archiving or incorporating FRED® Content in a database; Prohibition (j) is commercial use only (prior written consent). Website display/post/transmit restriction is in the unlettered \"Property Rights and Licenses\" section. AI/ML training with FRED® Content is prohibited on /legal/ (and API Prohibition (k)). Required notice (https://fred.stlouisfed.org/docs/api/terms_of_use.html): \"This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.\"",
     termsUrl: "https://fred.stlouisfed.org/legal/",
     basis: "DOCUMENTED",
   },

@@ -57,7 +57,7 @@ function etf(symbol: string, coverage: readonly CoverageClaim[]): DataSeriesEntr
       conditions: [
         "Intraday: only bars archived while inside the provider window.",
         "Daily: use returns, not levels, and record Candle.priceBasis.",
-        "Yahoo ToS prohibit automated collection and database/archive creation without prior permission (candle-source permissions gate).",
+        "Yahoo ToS §2(d)(9)/(10): no automated collection without express prior permission; no database/archive/data feed that competes with or constitutes a material substitute for Yahoo's Services (candle-source permissions gate).",
       ],
     },
     notes: ["Extended-hours bars report volume 0. Store it as NULL, not 0."],
@@ -79,11 +79,11 @@ export const YAHOO_PROVIDER: DataProviderEntry = {
     detail: "Throttles under load. The pipeline waits 500 ms per symbol and backs off 30 s after repeated failures.",
   },
   licensing: {
-    storage: "PROHIBITED",
+    storage: "RESTRICTED",
     redistribution: "PROHIBITED",
     attributionRequired: false,
     summary:
-      "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html §2(d)(9) no automated collection without express prior permission; §2(d)(10) no creating a database/archive/data feed; §2(e) no commercial purpose; §2(h) no reproduce/distribute/publicly display. Storage, public display and redistribution: PROHIBITED.",
+      "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html §2(d)(9) no automated collection without express prior permission; §2(d)(10) no creating a database/archive/data feed that competes with or constitutes a material substitute for the Services or Yahoo/data-provider offerings; §2(e) no commercial purpose; §2(h) no reproduce, modify, rent, lease, sell, trade, distribute, transmit, broadcast, publicly perform, create derivative works based on, or exploit for any commercial purposes without explicit written permission. Cautious reading: storage RESTRICTED; redistribution PROHIBITED.",
     termsUrl: "https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html",
     basis: "DOCUMENTED",
   },

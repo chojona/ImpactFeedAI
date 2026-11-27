@@ -20,12 +20,12 @@ export const PHILADELPHIA_FED_PROVIDER: DataProviderEntry = {
   },
   licensing: {
     storage: "UNVERIFIED",
-    redistribution: "UNVERIFIED",
-    attributionRequired: true,
+    redistribution: "RESTRICTED",
+    attributionRequired: false,
     summary:
-      "Site /terms-of-use returned 404 on 2026-11-27 licensing audit. Terms UNVERIFIED — do not invent reuse permissions. Cite the Philadelphia Fed when using SPF figures.",
-    termsUrl: null,
-    basis: "UNVERIFIED",
+      "https://www.philadelphiafed.org/about-us/privacy-notice (\"Online Terms of Use and Privacy Notice\"): content may be used for informational, educational, and research purposes only; some content may be copyrighted and needs owner permission. Page does not state an attribution requirement. Cautious reading: storage UNVERIFIED (not addressed); redistribution RESTRICTED to those purposes.",
+    termsUrl: "https://www.philadelphiafed.org/about-us/privacy-notice",
+    basis: "DOCUMENTED",
   },
   implementations: [
     { status: "MAIN", path: "src/services/expectations/adapters/spf.ts" },

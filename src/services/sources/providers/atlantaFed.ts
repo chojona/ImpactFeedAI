@@ -18,11 +18,11 @@ export const ATLANTA_FED_PROVIDER: DataProviderEntry = {
     detail: "Public GDPNow page and archives. Fetch sparingly.",
   },
   licensing: {
-    storage: "RESTRICTED",
+    storage: "UNVERIFIED",
     redistribution: "RESTRICTED",
     attributionRequired: true,
     summary:
-      "https://www.atlantafed.org/terms-of-use: non-commercial reproduction with attribution. Not an official forecast of the Federal Reserve System. Do not imply endorsement.",
+      "https://www.atlantafed.org/terms-of-use: non-commercial reproduction with attribution. Not an official forecast of the Federal Reserve System. Do not imply endorsement. Cautious reading: terms say nothing about durable storage — storage UNVERIFIED; redistribution RESTRICTED to non-commercial reproduction with attribution.",
     termsUrl: "https://www.atlantafed.org/terms-of-use",
     basis: "DOCUMENTED",
   },

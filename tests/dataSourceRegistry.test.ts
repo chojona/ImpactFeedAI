@@ -72,7 +72,7 @@ describe("DATA_SOURCE_REGISTRY integrity", () => {
 
   it("records licensing permissions from the 2026-11-27 audit", () => {
     expect(getProvider("yahoo")!.licensing).toMatchObject({
-      storage: "PROHIBITED",
+      storage: "RESTRICTED",
       redistribution: "PROHIBITED",
       basis: "DOCUMENTED",
     });
@@ -82,14 +82,30 @@ describe("DATA_SOURCE_REGISTRY integrity", () => {
       basis: "DOCUMENTED",
     });
     expect(getProvider("nq_archive")!.licensing).toMatchObject({
+      storage: "UNVERIFIED",
       redistribution: "RESTRICTED",
       basis: "DOCUMENTED",
     });
     expect(getProvider("fred")!.licensing.termsUrl).toBe("https://fred.stlouisfed.org/legal/");
+    expect(getProvider("fred")!.licensing.summary).toMatch(/Property Rights and Licenses/);
+    expect(getProvider("fred")!.licensing.summary).toMatch(/docs\/api\/terms_of_use\.html/);
     expect(getProvider("alfred")!.licensing.termsUrl).toBe("https://fred.stlouisfed.org/legal/");
     expect(getProvider("alpha_vantage")!.licensing.basis).toBe("UNVERIFIED");
-    expect(getProvider("philadelphia_fed")!.licensing.basis).toBe("UNVERIFIED");
-    expect(getProvider("atlanta_fed")!.licensing.basis).toBe("DOCUMENTED");
+    expect(getProvider("bea")!.licensing).toMatchObject({
+      storage: "UNVERIFIED",
+      redistribution: "UNVERIFIED",
+      basis: "UNVERIFIED",
+    });
+    expect(getProvider("philadelphia_fed")!.licensing).toMatchObject({
+      attributionRequired: false,
+      termsUrl: "https://www.philadelphiafed.org/about-us/privacy-notice",
+      basis: "DOCUMENTED",
+    });
+    expect(getProvider("atlanta_fed")!.licensing).toMatchObject({
+      storage: "UNVERIFIED",
+      redistribution: "RESTRICTED",
+      basis: "DOCUMENTED",
+    });
   });
 
   it("uses all three coverage states", () => {
