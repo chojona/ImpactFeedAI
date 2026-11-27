@@ -16,13 +16,13 @@
       "realtime_start": "2024-01-10",
       "realtime_end": "2024-01-10",
       "date": "2024-01-02",
-      "value": "13.20"
+      "value": "9001.05"
     },
     {
       "realtime_start": "2024-01-10",
       "realtime_end": "2024-01-10",
       "date": "2024-01-03",
-      "value": "14.04"
+      "value": "9002.05"
     },
     {
       "realtime_start": "2024-01-10",
@@ -34,7 +34,7 @@
       "realtime_start": "2024-01-10",
       "realtime_end": "2024-01-10",
       "date": "2024-01-05",
-      "value": "13.73"
+      "value": "9003.05"
     }
   ]
 }
