@@ -1,0 +1,54 @@
+# Weekly dependency updates for ImpactFeedAI.
+# Security alerts still open separate PRs; this keeps routine bumps from rotting.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - javascript
+    groups:
+      next-eslint:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+      npm-production:
+        dependency-type: production
+        exclude-patterns:
+          - "next"
+          - "eslint-config-next"
+          - "prisma"
+          - "@prisma/*"
+      npm-development:
+        dependency-type: development
+        exclude-patterns:
+          - "next"
+          - "eslint-config-next"
+          - "prisma"
+          - "@prisma/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      github-actions:
+        patterns:
+          - "*"
