@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import hours from "./fixtures/nyse-hours.json";
-import { buildSessionCalendar, resolveReleaseSession } from "@/services/market/sessionCalendar";
+import {
+  buildSessionCalendar,
+  isNyseFullClose,
+  resolveReleaseSession,
+} from "@/services/market/sessionCalendar";
 import { economicCloseInstant } from "@/services/market/sessionBasis";
 import { resolveSessionMeasurements, resolveIntradayMeasurement } from "@/services/events/reactionMeasurement";
 import { COMPUTED_REACTION_CALCULATION_VERSION, CURRENT_REACTION_CALCULATION_VERSION } from "@/services/events/timing";
@@ -12,6 +16,10 @@ describe("official NYSE schedule regressions", () => {
     const calendar = buildSessionCalendar([day]);
     expect(calendar.isEarlyClose(day)).toBe(true);
     expect(calendar.closeInstant(day, { honourEarlyClose: true }).getTime()).toBeLessThan(calendar.closeInstant(day).getTime());
+  });
+  it.each(hours.fullCloses)("treats source-listed full close %s as a non-session holiday", day => {
+    expect(isNyseFullClose(day)).toBe(true);
+    expect(buildSessionCalendar([day]).isEarlyClose(day)).toBe(false);
   });
   it.each(hours.regularCloses)("does not turn $day into a half-day or use its future close", c => {
     const calendar = buildSessionCalendar([c.previous, c.day, c.next]);
