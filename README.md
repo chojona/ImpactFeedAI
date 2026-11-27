@@ -5,6 +5,17 @@ releases and major news events into structured, searchable records of what
 markets actually did afterwards — so a trader can study precedent instead of
 guessing.
 
+**V2 audit — November 5, 2026:** the [repository audit](docs/audits/2026-11-05-repository-audit.md),
+[updated architecture](docs/architecture.md), [prioritized roadmap](docs/roadmap.md)
+and [Phase 1 implementation plan](docs/phase-1-market-context-plan.md) are the
+current planning baseline. Live reads use four v3 measures from
+`reaction_measurements`; `asset_reactions` is the v2 archive. The audit
+reverified 518 tests and 828 measurement rows, but found blocking calendar and
+verification defects plus missing point-in-time actual provenance. Phase 1
+implementation remains gated on those findings. Older operational sections
+below retain some v2 history; follow the audited architecture for current
+reaction semantics and the roadmap for next work.
+
 > **Status: early development.** The ingestion pipeline, the database schema and
 > the web UI are wired together: every data-backed page and `/api/events` read
 > Postgres.
@@ -46,7 +57,8 @@ the foundation everything else reads from.
 
 **Event reaction analysis** — for an event with a sourced exact release time,
 how a set of instruments moved over defined windows after the release. The
-current calculation supports 1 hour / 1 day / 1 week across 12 symbols. Events
+current calculation supports first hour / release session / next session /
+five sessions across 12 symbols. Events
 with only an inferred time, a publication date, a reference period, or an
 unverified timestamp deliberately show no reaction. A window that could not be
 measured is stored and displayed as *null*, never as 0.00% — see
@@ -133,7 +145,7 @@ Everything listed here is confirmed present in the repository.
 | Framework | Next.js 16.2.6 (App Router) |
 | UI | React 19.2, TypeScript 5 (`strict`) |
 | Styling | Tailwind CSS v4 (via `@tailwindcss/postcss`) |
-| Charts | Inline SVG, rendered on the server (see `src/components/reactions/`) |
+| Charts | SVG reaction observations and lightweight-charts persisted candles |
 | Animation | `framer-motion` 12 |
 | Icons | `lucide-react` |
 | Database | Neon PostgreSQL |
@@ -147,10 +159,8 @@ Everything listed here is confirmed present in the repository.
 | Deployment target | Vercel; local project-link metadata is not committed |
 
 **Declared but currently unused:** `@anthropic-ai/sdk` — no AI calls exist in
-the codebase yet — and `lightweight-charts`, retained for the planned intraday
-replay. The reaction visualizations are inline SVG because what the schema holds
-is three discrete observations per instrument, not a continuous series; a
-candle library is the right tool only once candle storage exists.
+the codebase yet. Reaction visualizations use four discrete measurement slots;
+lightweight-charts renders the separate persisted candle series.
 `axios` and `recharts` were declared but imported nowhere and have been removed.
 **Not present:** Docker, Python, tRPC, component tests or end-to-end tests.
 
@@ -561,9 +571,9 @@ Early development, pre-MVP.
   endpoints publish reference periods and actuals, not historical release
   instants or market consensus. Hand-entered expectations remain explicitly
   `UNVERIFIED`; bulk rows have `MISSING` consensus
-- **Animated intraday replay.** Four prices per asset are stored, not candles,
-  so there is no series to replay. The detail page shows the measured windows
-  instead
+- **Animated intraday replay.** Stored candles and a static candle chart exist;
+  animated replay is not implemented. Audited candle coverage is limited to
+  SPY/QQQ hourly event windows.
 - Market context (VIX, yields, trend, regime), similarity scoring, AI layer,
   authentication and payments
 

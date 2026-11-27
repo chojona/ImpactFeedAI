@@ -1,5 +1,17 @@
 # Data Sources
 
+**November 5, 2026 coverage update:** source integration code is not proof of
+live historical coverage. The [read-only repository/database audit](audits/2026-11-05-repository-audit.md)
+found 50 events, 21 legacy release rows (all missing metric keys, reference
+periods and complete actual provenance), zero verified forecasts, 828 v3
+measurements across 20 events, and 1,276 SPY/QQQ hourly candles only. No
+VIX/Treasury context series is stored. Curated day-level ALFRED requests can
+fall back to latest values without persisted vintage status; bulk FRED/BLS
+values do not prove first prints. The [Phase 1 plan](phase-1-market-context-plan.md)
+defines the separate vintage/publication/availability evidence needed before
+these become historical context inputs. Existing provider/price notes below
+are source inventory, not a fresh verification of provider limits or pricing.
+
 An inventory of the data ImpactFeedAI uses and might use. Only the entries
 marked **Integrated** exist in the codebase; everything else is a candidate.
 
