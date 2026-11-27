@@ -1,0 +1,42 @@
+
+> impactfeed-ai@0.1.0 build
+> prisma generate && next build --webpack
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (7.10.1) to ./src/generated/prisma in 60ms
+
+▲ Next.js 16.4.6 (webpack)
+✓ Running next.config.ts took 1881ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 6.4s
+  Running TypeScript ...
+  Finished TypeScript in 4.5s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/5) ...
+  Generating static pages using 9 workers (1/5) 
+  Generating static pages using 9 workers (2/5) 
+  Generating static pages using 9 workers (3/5) 
+✓ Generating static pages using 9 workers (5/5) in 187ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/events
+├ ƒ /brief
+├ ƒ /calendar
+├ ƒ /events/[id]
+├ ƒ /feed
+├ ƒ /patterns
+└ ƒ /quality
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+exit=0

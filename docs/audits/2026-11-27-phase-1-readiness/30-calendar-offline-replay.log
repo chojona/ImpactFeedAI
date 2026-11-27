@@ -1,0 +1,46 @@
+[fed] 1994: 6 statements
+[fed] 1995: 3 statements
+[fed] 1996: 1 statements
+[fed] 1997: 1 statements
+[fed] 1998: 3 statements
+[fed] 1999: 6 statements
+[fed] 2000: 8 statements
+[fed] 2001: 11 statements
+[fed] 2002: 8 statements
+[fed] 2003: 8 statements
+[fed] 2004: 8 statements
+[fed] 2005: 8 statements
+[fed] 2006: 8 statements
+[fed] 2007: 10 statements
+[fed] 2008: 11 statements
+[fed] 2009: 8 statements
+[fed] 2010: 9 statements
+[fed] 2011: 8 statements
+[fed] 2012: 8 statements
+[fed] 2013: 8 statements
+[fed] 2014: 8 statements
+[fed] 2015: 8 statements
+[fed] 2016: 8 statements
+[fed] 2017: 8 statements
+[fed] 2018: 8 statements
+[fed] 2019: 9 statements
+[fed] 2020: 10 statements
+[fed] calendar page: 47 statements
+[bea] BEA_GDP: 362 release pages in archive listing
+[bea] BEA_PERSONAL_INCOME_OUTLAYS: 364 release pages in archive listing
+
+Records by family and timing status:
+┌─────────────────────────────┬────────────────┬───────────┬──────────┬───────────┐
+│ (index)                     │ SECONDARY_ONLY │ DATE_ONLY │ VERIFIED │ SCHEDULED │
+├─────────────────────────────┼────────────────┼───────────┼──────────┼───────────┤
+│ FOMC_STATEMENT              │ 131            │ 155       │ 92       │           │
+│ BEA_PERSONAL_INCOME_OUTLAYS │                │           │ 358      │ 14        │
+│ BEA_GDP                     │                │           │ 360      │ 14        │
+└─────────────────────────────┴────────────────┴───────────┴──────────┴───────────┘
+[fed] ok: 247 observations
+[sffed] ok: 361 observations, 1 notes
+[bea] ok: 788 observations, 8 notes
+[fred] skipped: 0 observations, 1 notes
+
+Wrote ../calendar-replay/{records,observations,reconciliation,run-report}.json
+calendar exit=0

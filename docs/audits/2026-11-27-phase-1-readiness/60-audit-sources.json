@@ -1,0 +1,268 @@
+{
+  "registryAsOf": "2026-11-27",
+  "today": "2026-11-27",
+  "staleAfterDays": 90,
+  "providers": [
+    {
+      "providerId": "bls",
+      "name": "BLS Public Data API",
+      "category": "government_statistics",
+      "authKind": "api_key",
+      "envVars": [
+        "BLS_API_KEY"
+      ],
+      "seriesCount": 4,
+      "claims": {
+        "tested": 4,
+        "advertised": 4,
+        "unavailable": 0
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 2,
+        "ineligible": 2
+      },
+      "storage": "PERMITTED",
+      "redistribution": "PERMITTED",
+      "implementation": "MAIN",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "fred",
+      "name": "FRED API",
+      "category": "central_bank",
+      "authKind": "api_key",
+      "envVars": [
+        "FRED_API_KEY"
+      ],
+      "seriesCount": 23,
+      "claims": {
+        "tested": 23,
+        "advertised": 0,
+        "unavailable": 1
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 12,
+        "ineligible": 11
+      },
+      "storage": "RESTRICTED",
+      "redistribution": "RESTRICTED",
+      "implementation": "MAIN",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "alfred",
+      "name": "ALFRED (Archival FRED) vintages",
+      "category": "central_bank",
+      "authKind": "api_key",
+      "envVars": [
+        "FRED_API_KEY"
+      ],
+      "seriesCount": 4,
+      "claims": {
+        "tested": 4,
+        "advertised": 0,
+        "unavailable": 0
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 4,
+        "ineligible": 0
+      },
+      "storage": "RESTRICTED",
+      "redistribution": "RESTRICTED",
+      "implementation": "MAIN",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "alpha_vantage",
+      "name": "Alpha Vantage",
+      "category": "commercial_api",
+      "authKind": "api_key",
+      "envVars": [
+        "ALPHA_VANTAGE_API_KEY"
+      ],
+      "seriesCount": 2,
+      "claims": {
+        "tested": 3,
+        "advertised": 2,
+        "unavailable": 7
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 0,
+        "ineligible": 2
+      },
+      "storage": "UNVERIFIED",
+      "redistribution": "UNVERIFIED",
+      "implementation": "NONE",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "yahoo",
+      "name": "Yahoo Finance via yahoo-finance2",
+      "category": "unofficial_api",
+      "authKind": "none",
+      "envVars": [],
+      "seriesCount": 2,
+      "claims": {
+        "tested": 5,
+        "advertised": 0,
+        "unavailable": 2
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 2,
+        "ineligible": 0
+      },
+      "storage": "UNVERIFIED",
+      "redistribution": "UNVERIFIED",
+      "implementation": "MAIN",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "cboe",
+      "name": "Cboe index daily history files",
+      "category": "exchange",
+      "authKind": "none",
+      "envVars": [],
+      "seriesCount": 3,
+      "claims": {
+        "tested": 3,
+        "advertised": 0,
+        "unavailable": 3
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 3,
+        "ineligible": 0
+      },
+      "storage": "UNVERIFIED",
+      "redistribution": "RESTRICTED",
+      "implementation": "MAIN",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "treasury",
+      "name": "U.S. Treasury rates and Fiscal Data",
+      "category": "government_statistics",
+      "authKind": "none",
+      "envVars": [],
+      "seriesCount": 2,
+      "claims": {
+        "tested": 2,
+        "advertised": 0,
+        "unavailable": 0
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 2,
+        "ineligible": 0
+      },
+      "storage": "PERMITTED",
+      "redistribution": "PERMITTED",
+      "implementation": "MAIN",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "cleveland_fed",
+      "name": "Cleveland Fed Inflation Nowcasting",
+      "category": "central_bank",
+      "authKind": "none",
+      "envVars": [],
+      "seriesCount": 1,
+      "claims": {
+        "tested": 1,
+        "advertised": 0,
+        "unavailable": 0
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 1,
+        "ineligible": 0
+      },
+      "storage": "UNVERIFIED",
+      "redistribution": "UNVERIFIED",
+      "implementation": "MAIN",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "sf_fed",
+      "name": "SF Fed Monetary Policy Surprises (Bauer–Swanson)",
+      "category": "central_bank",
+      "authKind": "none",
+      "envVars": [],
+      "seriesCount": 1,
+      "claims": {
+        "tested": 1,
+        "advertised": 0,
+        "unavailable": 1
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 1,
+        "ineligible": 0
+      },
+      "storage": "UNVERIFIED",
+      "redistribution": "UNVERIFIED",
+      "implementation": "OPEN_PR",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    },
+    {
+      "providerId": "nq_archive",
+      "name": "Local Databento NQ outright archive",
+      "category": "local_archive",
+      "authKind": "local_path",
+      "envVars": [
+        "NQ_ARCHIVE_ROOT",
+        "NQ_OUTRIGHT_PARQUET",
+        "NQ_ROLLS_CSV"
+      ],
+      "seriesCount": 2,
+      "claims": {
+        "tested": 1,
+        "advertised": 0,
+        "unavailable": 1
+      },
+      "pointInTime": {
+        "eligible": 0,
+        "conditional": 1,
+        "ineligible": 1
+      },
+      "storage": "PERMITTED",
+      "redistribution": "UNVERIFIED",
+      "implementation": "MAIN",
+      "lastSuccessfulValidation": "2026-11-27",
+      "validationAgeDays": 0,
+      "stale": false
+    }
+  ],
+  "totals": {
+    "providers": 10,
+    "series": 44,
+    "tested": 47,
+    "advertised": 6,
+    "unavailable": 15,
+    "staleProviders": 0
+  },
+  "issues": []
+}

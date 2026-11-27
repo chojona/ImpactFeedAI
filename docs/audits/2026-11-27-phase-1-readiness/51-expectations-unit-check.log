@@ -1,0 +1,4 @@
+CPI_HEADLINE inRegistry= true unit= pct_yoy -> {"value":3.3,"asOf":"2023-08-09T19:35:00.000Z","source":"CNBC (archived public citation)","sourceUrl":"https://www.cnbc.com/2023/08/09/stockk-market-outlook-trading-inflation-cpi-jpmorgan-trade-desk-picks-powell-fed.html"}
+CPI_HEADLINE_MOM inRegistry= false unit= pct_level -> {"value":0.2,"asOf":"2023-08-09T19:35:00.000Z","source":"CNBC (archived public citation)","sourceUrl":"https://www.cnbc.com/2023/08/09/stockk-market-outlook-trading-inflation-cpi-jpmorgan-trade-desk-picks-powell-fed.html"}
+releaseAt null select: news:cnbc:2023-08-09:cpi-yoy toConsensus: null
+exit=0

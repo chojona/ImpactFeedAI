@@ -1,0 +1,1616 @@
+{
+  "snapshotSha256": "2253b317d395bbe2d58da78bda49e44270819ac4f1304b24bb74fec3f3d8173e",
+  "generatedAt": "2026-11-27T17:10:44.079Z",
+  "capturedAt": "2026-11-05T21:56:03.595Z",
+  "calculationVersion": 3,
+  "databaseReadOnly": true,
+  "mode": "offline_evidence_replay",
+  "policyVersion": "phase-0.5-strict-1",
+  "summary": {
+    "sourceEvents": 50,
+    "eligibleEvents": 20,
+    "ineligibleEvents": 30,
+    "expected": 960,
+    "observed": 828,
+    "checked": 828,
+    "unchecked": 0,
+    "valid": 648,
+    "invalid": 180,
+    "incomplete": 0,
+    "missing": 132,
+    "duplicateRows": 0,
+    "unexpected": 0,
+    "legitimatelyUnavailable": 0,
+    "unresolvedAvailability": 132,
+    "byMeasure": {
+      "RELEASE_SESSION": 240,
+      "SESSION_PLUS_1": 240,
+      "SESSION_PLUS_5": 240,
+      "INTRADAY_60M": 108
+    },
+    "bySymbol": {
+      "BTC-USD": 69,
+      "CL=F": 69,
+      "DX-Y.NYB": 69,
+      "GC=F": 69,
+      "GLD": 69,
+      "IWM": 69,
+      "QQQ": 69,
+      "SPY": 69,
+      "TLT": 69,
+      "XLE": 69,
+      "XLF": 69,
+      "XLK": 69
+    }
+  },
+  "diagnostics": [
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/SPY/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/QQQ/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/IWM/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/TLT/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GLD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GC=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/CL=F/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/DX-Y.NYB/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/BTC-USD/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/XLE/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/XLF/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/XLK/INTRADAY_60M",
+      "code": "missing_expected_measurement",
+      "detail": "No archived unavailability evidence; do not infer nonexistence from current provider retention."
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 478ef3e9-d3ff-46ba-906d-c7c2cee73acc"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 7c3f5ac0-ca2e-49f6-8483-c5eec25a626f"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6ed72a65-0ffc-4b75-a265-d05564d37c56"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 27af1b8b-0e48-48ab-b9af-acadf7e8f22e"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 3f95634e-45cb-4e97-88b1-7c3737ba596a"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 72e0ed3f-2b11-4635-88ee-7af939cc26a2"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 4705f5c3-5dc1-4eb2-899c-adbeeca72f12"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 104d964f-107e-42c6-ad11-292f2ed65d8c"
+    },
+    {
+      "key": "06340b0a-8f98-4426-ac76-d84c1597199a/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row b785af11-f476-4130-bd65-3a6e9d3cbf49"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 69060f0e-ca3b-4a10-8fbd-81fb03c10ea9"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row fab025be-0448-44f8-a1e0-f4caeb392939"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 382cec11-7e01-49ec-be63-949c469c825a"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 4b2071a9-6601-4af8-aa54-ab8b39813489"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 28b37182-584f-415d-9766-33aa167b6ec3"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row b9fc8abc-473d-497b-9ad8-3495337ae402"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row b92cd9e8-163a-4e96-bfb7-91c7c80aba3e"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 4c0c9f76-3628-4d96-9dca-dbc7d5011213"
+    },
+    {
+      "key": "207a28ac-9178-43a5-beed-4a94a023e3cf/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row d6585364-2f36-4401-8b2b-1208975b6fd6"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 9d122ab1-b4c9-4518-a9d0-d66196d259cd"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 87ccb62e-4250-4b7b-b08e-80d219802ea3"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row e6bdc6e8-6385-4494-b06b-72a24c82a80f"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 76f31c4f-27eb-4db5-ad74-c1f41c936688"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 55ac4fd9-2faf-43d5-bd81-ea67b31d471e"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row cabacc8d-3a79-43b4-826e-cd5ae2451edb"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5df6fc62-8eda-45ea-b210-6e53580a93aa"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row c33c4248-ebe1-4082-bdab-e29e9b6f3115"
+    },
+    {
+      "key": "2cded866-475d-4cf1-b79c-f2532460a1ce/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 7ba2238a-540d-427d-a0d1-ab5911ca6f30"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row ee04c007-1174-4f3a-ba9a-21c08c801ff1"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row b466e58c-0f25-4c34-b331-70f7d0940571"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5c660278-5b1d-47f9-88b7-3f28ff6950a3"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 19b8fa5c-ec11-4515-b59a-7a5638bba2f6"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row b13dd4a1-626e-4be8-8835-eb364238a1cd"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row aa4cb08b-6d9b-4258-bf70-a997ce694bc5"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6e466f68-83db-42b3-a0e6-5f0b7229162c"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 7e5c8b3f-c0d3-4f94-a022-dd76f8295e07"
+    },
+    {
+      "key": "3efb3735-e4d7-4900-8cb8-c6b6c3e4c064/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 897af7fe-3ea7-4169-9f5d-7a96ba981f63"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 390ef153-32f7-447e-85cb-0e22647eefb9"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 52bd247c-89b4-4231-9cbc-cfc8753e6493"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row d7f28014-297f-4cab-9ce7-80d061b56196"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5f102d75-ec29-4202-8dd2-5adad1f168ac"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 0375e7c7-00d8-4931-871f-a2aaab1bb5c0"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row aed8c02d-5e5c-4ac2-ae58-5eca077da316"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 2408896d-d1b1-44c3-9bf3-894df00f47c1"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6c8efe77-bc06-4624-8409-d5866ea8ffdb"
+    },
+    {
+      "key": "4193c2c6-95f9-450c-80ae-3468777d6d33/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 30d71bbb-022a-48c1-b6d2-fd4215eceb6d"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 0e610fd4-0548-4e88-96bc-415254e91c40"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 23b63795-0848-48de-8bcd-45ada1917050"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row d5d327ba-ebde-430f-afc0-38029dd9da57"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row b42de888-7546-4cf7-9103-8470abd38319"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 12b17f39-0915-4526-98af-02daff74c1d2"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 55cdefea-f97e-48ca-a889-69e4ade352bc"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row bda12e2d-7206-4ccc-9f3c-28227452c6f2"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6b2c17d8-1f6c-427b-80c0-8e8234bdcb68"
+    },
+    {
+      "key": "42ea8aa8-e35f-4f9b-9f08-5aa2c0b92d6f/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 89b7bf7e-6163-4ccd-b277-33b398753430"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row e9faba46-9924-44c9-82d5-1be5e76baafb"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 3ebbfc1c-a76c-4638-b413-49fbec4366f4"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row db2ee768-692c-47b4-8e48-9f0bfca1c60c"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row fb0dfff8-daec-4d39-9de0-da44c79133f0"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row b6183b15-f0bb-446d-a25f-68c056ebac19"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row ebd8be3b-f210-4ea5-bd88-8013a305c24c"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row edfbe428-d459-485d-a5d4-022371149482"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row f447c931-295d-4fbb-b33c-8a84f2d32c35"
+    },
+    {
+      "key": "4ea3b9e1-4a10-44fe-ac87-12ce4578c49b/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row de790b48-8b3a-49d8-96b1-e9e0975567a5"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 4b388efc-b19f-44ea-b935-abc988999d88"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 72435015-e8f7-4318-a392-0fdfc387dbef"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6b22fa1e-98b6-464c-a527-464e4da8b92d"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row bdb158c0-dfa6-4ccd-90aa-9f657be792d1"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 4f6aaa4d-e738-45da-b916-b0438302e573"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 3b6e7170-abf6-42a1-9d6f-609a3cde7f3a"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 77359602-d5ab-4719-98ac-ce8dbfb98154"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 75148939-350b-485d-be96-f262d8ce12d7"
+    },
+    {
+      "key": "631cd675-c999-4e39-99f1-19f9414e1f87/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 15fa5cc9-9e5a-4479-8901-09daa6a544ae"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row b10d83c0-42c3-46b9-bfc2-a2a1656d74ee"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 56e3bbd0-5502-4354-9274-aebe74b99e17"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row f2013b58-dfcc-44c8-b7ec-419773f6b8d6"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 952afb3a-4ac3-41e9-bbc3-9f2e55187a00"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 4d1bd024-6b09-4e55-bee0-1e648de907a5"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row cc4cea12-fa16-45b5-9241-fb48cc080637"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 3b262b2a-781c-4a05-98a6-4f293606ccfd"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 55af34f5-b2f3-4b33-9293-cd7e770d9607"
+    },
+    {
+      "key": "6e4278e0-f5f5-4929-9a86-06b3eb417239/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row f4ce9dcd-9092-41c2-8639-8d2d73291959"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 19e4c699-c9d4-49d7-883d-96d6e4613e51"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row cfed5497-f8a8-4868-9ab8-18060ca40ae6"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row f5246bf3-54b2-4bd9-99d5-b9a2f97e3b4e"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row dc7a6f36-5fc0-409c-bfd4-a7b931acaa3b"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 9323bebc-68be-45d8-8398-edf66a38e7f4"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row d648591d-894c-4e05-a0a2-cf792d373255"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row a9f03eec-9218-41c4-a812-64df70ad998e"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 3e1ebe27-cf41-4b6e-9906-ed0d4ca32adf"
+    },
+    {
+      "key": "7314681b-ba4a-4ded-bc3b-396f37f112ec/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 492da2d9-baf4-47be-82e5-81560c16b2e5"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6915b2ec-0541-4946-a1d7-ddc15a848129"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 24546f1a-d6dd-4535-aea5-c859b821a141"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 7fbab319-810d-47ae-959a-6cbe14297f92"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 8da952aa-b898-4ec4-b664-26cdae9eb039"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row a8eb0a10-a9b5-4a5e-80ee-b95f96ba3db3"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6902421b-c539-4ec3-9a19-39319817adf2"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 12f537a2-f8dc-4ce6-bbba-6cf688c4b749"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 07dbd0a4-7a88-4f0a-a722-9c48e392e114"
+    },
+    {
+      "key": "808d3cee-74c1-4d49-8fff-08b29926c4ed/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 04e4293b-8b85-42eb-8c67-fc0b50b1f825"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5ad23815-435e-44bb-8a35-ab9308928d5c"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 3c13ceb6-722d-431d-aed1-eb0465a374ba"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5f559346-4284-48da-9963-94b47a294ea8"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 42562c69-bb30-45f9-9650-4b86207700da"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row d9aebf1f-5c47-41c0-8449-da1a87484e1f"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 9cf8c7d2-8b14-454a-8b36-81611314b41e"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 9459dec1-2633-480e-b3b6-e43f04f41e82"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 55332442-9b2e-4cca-aa30-851c98dfc500"
+    },
+    {
+      "key": "9340c8f9-2fcd-43ed-8f52-1f5feffe6605/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row f3ed753a-b555-4a1a-90d8-8ed8f007922f"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row f8415cd5-6dee-4714-ae12-fcb82cd0aebf"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row e67ca0b5-f9a5-4f7d-8c41-256b835b041f"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 64aa5db7-2aff-436b-9f7e-25b131abdbc4"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 2a98de2d-c154-4ee9-99a2-202cd452dd0c"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 15f49c0d-5235-4877-8eda-a54c5de86014"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 498a5a6e-887e-4398-8b17-8b3d53028621"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row bdb621ae-32d1-40de-9686-4737298905bd"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 2dcf923b-b2ba-4ed3-9b51-7d6070033c11"
+    },
+    {
+      "key": "9838bd52-2470-4e07-8420-dc784c9cac81/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 1c1ed90d-e6a1-43da-8979-c787a35ef1f4"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 60420b6c-1679-4e52-ade6-64ea8f585f16"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row beb3329c-5abb-4ab4-b8b4-342160092213"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row f569ab39-1309-4a81-aec9-30ec1abeab56"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row f3e84dad-83e6-4248-ad99-6d6b5c2d2d67"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5da42411-48a0-4139-bcf8-851131718f59"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row e6fc5e48-80f5-4610-8e84-05cd67983c38"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row b9c656ea-951b-47fd-bbc5-e9f07a7a985d"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row a4482df6-fb94-4367-8361-68a9b7ad7d67"
+    },
+    {
+      "key": "a5f9f7a8-162b-4402-a937-e151e74af7c6/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row b93d79d3-0b87-4e5c-be45-1787016b6b15"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 40d1cec3-623c-49da-93c4-fcfab7c7e503"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row e16c571c-3b90-4855-81c0-8ab00a426853"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 464e2113-ebb5-4757-9dd1-d163d6477792"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row d14d72a0-7c6e-481c-a5ce-ec51cf9e88bd"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5c269dc1-f960-4491-acba-8b524a943b87"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 9d5fe1bb-bdf8-4cb5-8fea-2582a0687d1e"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row a55e90be-f231-4f4b-ba19-c7737f787fe4"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6786b99e-4616-4aad-9bf5-d07b6061a8a5"
+    },
+    {
+      "key": "a76b62c9-1c62-40da-b549-8138759a9151/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 3cad1b58-f00d-4e0c-b32c-293938926e04"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 79d03a81-25c9-4b51-b32c-2ca04a720237"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 7c068654-7cbe-402c-a955-f9db15cf821e"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 8ebeae64-68ac-4675-871f-3d035eef6d33"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 68131de8-4ad6-4e10-b941-69d5880ecd3d"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row b9056130-1aa7-4f77-ac1d-2b82ab378d0b"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 4dde6917-be4d-4ac8-baa3-b75aa4febb3f"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 4059ba44-3442-4c5d-8146-fbb7b5674892"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 84eabfb1-b21b-456d-b912-87254b3c3340"
+    },
+    {
+      "key": "daca639d-d202-4ec1-8be0-88c612d40b33/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 77b27976-51fd-415a-97d3-6b60243fa331"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 34005af8-0692-48c3-bb5b-f229a8f5b428"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row acb596af-022f-4cc9-b5e9-c436d4ec1c4c"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5e843565-7074-4ede-95a8-31419a6e0b44"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 403a3259-c8ab-4f7f-a830-588e04e557b9"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row fbf3aecb-503f-4885-9478-fad583e74fc5"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 71091235-ed96-4f48-abaf-706f8601483e"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 19ba0901-77b8-4691-b6f6-6ee309d13d7f"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 57f9e328-1643-4e9d-82b7-0982b31d568b"
+    },
+    {
+      "key": "dbadd60e-a539-470d-a572-b67dda7d955d/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 2daf84bf-d14b-4b2a-85aa-b3c950b46895"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row a2f14e5a-cb13-4f07-890a-b51b802b954d"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 5790d399-9815-4851-8b39-9bd02b86ff87"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6f195d34-d189-4d6e-8b8f-ebcef4f45d85"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 427eaf04-1570-4d02-8ae0-190e2e6e3dfd"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 9c253295-aa15-44eb-932a-3470147a714d"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 860e1bb9-a817-4045-808a-436ab58ec55f"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 102e12af-9112-4a52-9e7c-da4370842b04"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 18d76951-39d2-44a6-9aaa-ae2e7a4d24ec"
+    },
+    {
+      "key": "e59943dd-6e8b-4ce1-9f2f-73c62c39529c/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 2f465449-6c1d-44c4-bf51-0aeef9d38f55"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 01d3d0da-1abb-41eb-9f12-17d12bc6ac26"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 6380ec7a-d22f-4399-9a4f-b9dfac4957c0"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row c82b3805-0709-414e-a3d6-af5157817e0f"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 177e5630-864d-4bb4-be18-b0698080f05d"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 3b3cf163-9cb9-4323-ad1a-8b4a8a8712d6"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row d0c6162a-6c08-498a-bb8f-143cfea5abda"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 277626ff-4d1e-4b9c-9231-d229a3743862"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 240e27a2-ea54-42d3-a9d1-7e26df8f074d"
+    },
+    {
+      "key": "e5c7f41b-28b1-43c1-b164-1427b5c8bbc4/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 1b3ea7f9-dbc6-44a4-8e23-f0ef4a3e1142"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/CL=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row 449121eb-1cbf-4e18-8666-a8d20cb39dc6"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/CL=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row 71b86131-6bd6-4bda-935e-aa22f1c46d03"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/CL=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row a9c282d9-33be-42cf-90a0-0dc4e25effe8"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/DX-Y.NYB/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row ccc38ac8-4095-4a20-a40c-4c6533d4c86e"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/DX-Y.NYB/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row d94053ac-72ef-46c4-bd00-ed1996148f91"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/DX-Y.NYB/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row a04d062f-ac62-4c35-af71-188eae3b9f71"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/GC=F/RELEASE_SESSION",
+      "code": "unsupported_native_calendar",
+      "detail": "row c4e0d99a-f734-4c43-b46c-874ebc2c7c59"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/GC=F/SESSION_PLUS_1",
+      "code": "unsupported_native_calendar",
+      "detail": "row c189ed11-aa59-4cbd-abc1-4a30b504ff0d"
+    },
+    {
+      "key": "f261fa54-88f2-4b47-9de4-e64952c713b5/GC=F/SESSION_PLUS_5",
+      "code": "unsupported_native_calendar",
+      "detail": "row 1568b975-7716-42f0-902c-1ffcb023bbd7"
+    }
+  ],
+  "passed": false,
+  "pointInTimeCertified": false,
+  "limitations": [
+    "Economic completion is a lower bound, not evidence of actual provider delivery or historical adjustment vintage.",
+    "No archived unavailability evidence was supplied. Missing rows remain failures, including expired intraday history.",
+    "Reference session dates are provider evidence; official NYSE hours are independently fixture-tested.",
+    "Return checks reconcile stored prices, not unarchived provider input series."
+  ]
+}

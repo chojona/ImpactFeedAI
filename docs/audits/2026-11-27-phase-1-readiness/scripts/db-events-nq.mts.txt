@@ -1,0 +1,16 @@
+import { readFileSync } from "node:fs";
+const WT = process.env.WT!, SP = process.env.SP!, ROOT = process.env.NQ_ARCHIVE_ROOT!;
+const nq = await import(`${WT}/src/services/market/nqArchive/index.ts`);
+const p = nq.pathsFromArchiveRoot(ROOT);
+const idx = await nq.loadEligibilityIndex({ strictAllowlistCsv: p.strictAllowlistCsv, exploratoryAllowlistCsv: p.exploratoryAllowlistCsv, certificationBySessionCsv: p.certificationBySessionCsv });
+const db = JSON.parse(readFileSync(`${SP}/evidence/20-db-snapshot.json`, "utf8"));
+const agg: Record<string, Record<string, number>> = {};
+for (const e of db.targetEvents) {
+  if (!["CPI", "NFP", "FED_DECISION", "PPI", "MACRO_DATA"].includes(e.event_type)) continue;
+  const at = new Date(e.release_at ?? e.occurred_at);
+  const l = idx.lookup(nq.tradingDateForReleaseAt(at));
+  const label = l.researchEligibility === "STRICT_AND_EXPLORATORY" ? "strict" : l.researchEligibility === "EXPLORATORY_ONLY" ? "exploratory" : "refused";
+  agg[e.event_type] ??= {}; agg[e.event_type][label] = (agg[e.event_type][label] ?? 0) + 1;
+  console.log(e.event_type.padEnd(13), at.toISOString(), (e.release_at ? "release_at" : "occurred_at(no release_at)").padEnd(26), label);
+}
+console.log(JSON.stringify(agg));

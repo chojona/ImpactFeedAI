@@ -1,0 +1,38 @@
+== records by family|status
+┌───────────────────────────────────────┬─────┬──────────────┬──────────────┐
+│ (index)                               │ n   │ first        │ last         │
+├───────────────────────────────────────┼─────┼──────────────┼──────────────┤
+│ BEA_GDP|SCHEDULED                     │ 14  │ '2026-11-25' │ '2027-12-22' │
+│ BEA_GDP|VERIFIED                      │ 360 │ '1996-08-01' │ '2026-10-29' │
+│ BEA_PERSONAL_INCOME_OUTLAYS|SCHEDULED │ 14  │ '2026-11-25' │ '2027-12-22' │
+│ BEA_PERSONAL_INCOME_OUTLAYS|VERIFIED  │ 358 │ '1996-07-01' │ '2026-10-29' │
+│ FOMC_STATEMENT|DATE_ONLY              │ 155 │ '1994-02-04' │ '2015-12-16' │
+│ FOMC_STATEMENT|SECONDARY_ONLY         │ 131 │ '1988-02-04' │ '2020-08-27' │
+│ FOMC_STATEMENT|VERIFIED               │ 92  │ '2008-10-08' │ '2026-10-28' │
+└───────────────────────────────────────┴─────┴──────────────┴──────────────┘
+== VERIFIED records by family|NQ label|NYSE schedule range
+┌────────────────────────────────────────────────────────────────────────────┬─────┬──────────────┬──────────────┐
+│ (index)                                                                    │ n   │ first        │ last         │
+├────────────────────────────────────────────────────────────────────────────┼─────┼──────────────┼──────────────┤
+│ BEA_GDP|exploratory|nyse_schedule_known                                    │ 41  │ '2022-01-27' │ '2026-09-30' │
+│ BEA_GDP|exploratory|nyse_schedule_unknown                                  │ 22  │ '2018-02-28' │ '2021-10-28' │
+│ BEA_GDP|outside_archive|nyse_schedule_known                                │ 1   │ '2026-10-29' │ '2026-10-29' │
+│ BEA_GDP|outside_archive|nyse_schedule_unknown                              │ 165 │ '1996-08-01' │ '2010-05-27' │
+│ BEA_GDP|refused:NOT_ON_ALLOWLIST|nyse_schedule_known                       │ 15  │ '2022-02-24' │ '2026-05-28' │
+│ BEA_GDP|refused:NOT_ON_ALLOWLIST|nyse_schedule_unknown                     │ 116 │ '2010-06-25' │ '2021-12-22' │
+│ BEA_PERSONAL_INCOME_OUTLAYS|exploratory|nyse_schedule_known                │ 45  │ '2022-01-28' │ '2026-09-30' │
+│ BEA_PERSONAL_INCOME_OUTLAYS|exploratory|nyse_schedule_unknown              │ 22  │ '2018-03-01' │ '2021-10-29' │
+│ BEA_PERSONAL_INCOME_OUTLAYS|outside_archive|nyse_schedule_known            │ 1   │ '2026-10-29' │ '2026-10-29' │
+│ BEA_PERSONAL_INCOME_OUTLAYS|outside_archive|nyse_schedule_unknown          │ 164 │ '1996-07-01' │ '2010-05-28' │
+│ BEA_PERSONAL_INCOME_OUTLAYS|refused:NOT_ON_ALLOWLIST|nyse_schedule_known   │ 11  │ '2022-05-27' │ '2026-05-28' │
+│ BEA_PERSONAL_INCOME_OUTLAYS|refused:NOT_ON_ALLOWLIST|nyse_schedule_unknown │ 115 │ '2010-06-28' │ '2021-12-23' │
+│ FOMC_STATEMENT|exploratory|nyse_schedule_known                             │ 22  │ '2022-01-26' │ '2026-07-29' │
+│ FOMC_STATEMENT|exploratory|nyse_schedule_unknown                           │ 18  │ '2018-11-08' │ '2021-12-15' │
+│ FOMC_STATEMENT|outside_archive|nyse_schedule_known                         │ 1   │ '2026-10-28' │ '2026-10-28' │
+│ FOMC_STATEMENT|outside_archive|nyse_schedule_unknown                       │ 2   │ '2008-10-08' │ '2010-05-09' │
+│ FOMC_STATEMENT|refused:NOT_ON_ALLOWLIST|nyse_schedule_known                │ 15  │ '2022-07-27' │ '2026-06-17' │
+│ FOMC_STATEMENT|refused:NOT_ON_ALLOWLIST|nyse_schedule_unknown              │ 33  │ '2016-01-27' │ '2021-07-28' │
+│ FOMC_STATEMENT|strict|nyse_schedule_known                                  │ 1   │ '2026-09-16' │ '2026-09-16' │
+└────────────────────────────────────────────────────────────────────────────┴─────┴──────────────┴──────────────┘
+== strict NQ sessions hit by a VERIFIED release: 1
+   FOMC_STATEMENT 2026-09-16T18:00:00.000Z (FED_TARGET_UPPER INITIAL)
