@@ -344,10 +344,12 @@ untrusted PR code with privileged context.
 
 ## Deployment
 
-There is no hosted deployment target: the app runs locally (`npm run dev`, or
-`npm run build && npm run start`) against managed PostgreSQL. `vercel.json`
-sets `git.deploymentEnabled: false`, so pushes and PRs no longer trigger Vercel
-builds. No Docker or separate backend service is configured in this checkout. Production builds generate Prisma.
+Production runs on Vercel with managed PostgreSQL. Live URLs include
+`impactfeed-ai.vercel.app` and `impact-feed-ai.vercel.app` (existing deployments
+keep serving traffic; Git no longer provisions new ones). `vercel.json` sets
+`git.deploymentEnabled: false`, so pushes and PRs do not trigger Vercel builds.
+Develop and verify locally (`npm run dev`, or `npm run build && npm run start`).
+No Docker or separate backend service is configured in this checkout. Production builds generate Prisma.
 Dynamic event/pattern routes read Postgres at request time; landing data can be
 prerendered/revalidated. A successful local build does not prove a deployment
 or provider scheduler is configured. No deployment or production mutation was

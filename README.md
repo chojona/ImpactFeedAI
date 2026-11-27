@@ -157,7 +157,7 @@ Everything listed here is confirmed present in the repository.
 | Linting | ESLint 9 + `eslint-config-next` |
 | Tests | Vitest 4 (`npm test`) — unit only |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) |
-| Deployment target | None — runs locally (`npm run dev`, or `npm run build && npm run start`). Vercel Git deployments are disabled in `vercel.json` |
+| Deployment target | Vercel — `impactfeed-ai.vercel.app` and `impact-feed-ai.vercel.app` are live production URLs. `vercel.json` sets `git.deploymentEnabled: false` so Git pushes and PRs do not trigger new builds; develop locally with `npm run dev` (or `npm run build && npm run start`) |
 
 **Declared but currently unused:** `@anthropic-ai/sdk` — no AI calls exist in
 the codebase yet. Reaction visualizations use four discrete measurement slots;
