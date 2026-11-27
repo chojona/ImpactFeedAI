@@ -5,6 +5,10 @@
  * (`revisionSelect.ts` / `quality.ts`). Feature calculators still enforce
  * `availableAt < cutoff` (and SYSTEM_REPLAY `fetchedAt < cutoff`) as defense
  * in depth over already-selected inputs.
+ *
+ * Conflict quarantine is point-in-time aware: only rows known under the same
+ * knowledge mode and cutoff can conflict. A later row unknown at a frozen
+ * cutoff must not change the earlier result.
  */
 
 import type {
@@ -41,6 +45,41 @@ export function isValidObservationDate(date: string): boolean {
     utc.getUTCMonth() === month - 1 &&
     utc.getUTCDate() === day
   );
+}
+
+/**
+ * Whether a row is in the information set at `cutoff` for conflict detection.
+ * Does not require a finite value — two known null/finite prints on the same
+ * date still conflict. Pre-marked `conflict` / `missing` quality is excluded.
+ */
+export function isKnownAtCutoff(
+  observation: MarketContextObservation,
+  cutoff: Date,
+  knowledgeMode: KnowledgeMode = "PUBLIC_INFORMATION_RECONSTRUCTION",
+): boolean {
+  if (observation.quality === "conflict" || observation.quality === "missing") {
+    return false;
+  }
+  if (!isValidObservationDate(observation.observationDate)) {
+    return false;
+  }
+  if (
+    !(observation.availableAt instanceof Date) ||
+    !Number.isFinite(observation.availableAt.getTime()) ||
+    !isAvailableBeforeCutoff(observation.availableAt, cutoff)
+  ) {
+    return false;
+  }
+  if (knowledgeMode === "SYSTEM_REPLAY") {
+    if (
+      !(observation.fetchedAt instanceof Date) ||
+      !Number.isFinite(observation.fetchedAt.getTime()) ||
+      observation.fetchedAt.getTime() >= cutoff.getTime()
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -120,20 +159,35 @@ export interface SeriesDateIndex {
   readonly conflicts: readonly DateIndexConflict[];
 }
 
+export interface SeriesDateIndexOptions {
+  readonly cutoff?: Date;
+  readonly knowledgeMode?: KnowledgeMode;
+}
+
 /**
  * Index observations by observationDate for one series.
  *
- * Duplicate dates are quarantined (not last-ID-wins): every id on a conflicted
- * date is listed and none of those rows enter `byDate`.
+ * When `cutoff` is provided, only rows {@link isKnownAtCutoff} enter conflict
+ * detection — appending a future/unknown duplicate must not quarantine a prior
+ * unique known print. Duplicates known under the same mode/cutoff are
+ * quarantined (not last-ID-wins).
+ *
+ * Without `cutoff`, all non-pre-quarantined rows are indexed (legacy/full-panel
+ * diagnostics only).
  */
 export function indexSeriesByObservationDate(
   observations: readonly MarketContextObservation[],
   seriesKey: string,
+  options: SeriesDateIndexOptions = {},
 ): SeriesDateIndex {
+  const { cutoff, knowledgeMode = "PUBLIC_INFORMATION_RECONSTRUCTION" } =
+    options;
   const buckets = new Map<string, MarketContextObservation[]>();
+
   for (const obs of observations) {
     if (obs.seriesKey !== seriesKey) continue;
     if (obs.quality === "conflict") continue;
+    if (cutoff && !isKnownAtCutoff(obs, cutoff, knowledgeMode)) continue;
     const list = buckets.get(obs.observationDate) ?? [];
     list.push(obs);
     buckets.set(obs.observationDate, list);
@@ -158,7 +212,7 @@ export function indexSeriesByObservationDate(
 
 /**
  * Eligible observations for a series, sorted ascending by observationDate then id.
- * Conflicted duplicate dates are excluded entirely.
+ * Conflicted duplicate dates (known at cutoff) are excluded entirely.
  */
 export function selectEligibleMarketObservations(
   observations: readonly MarketContextObservation[],
@@ -169,6 +223,7 @@ export function selectEligibleMarketObservations(
   const { byDate, conflicts } = indexSeriesByObservationDate(
     observations,
     seriesKey,
+    { cutoff, knowledgeMode },
   );
   const conflicted = new Set(conflicts.map((c) => c.observationDate));
 
@@ -185,10 +240,17 @@ export function selectEligibleMarketObservations(
     });
 }
 
-/** True when the series has any quarantined duplicate observationDate. */
+/** True when the series has PIT-known quarantined duplicate observationDates. */
 export function seriesHasDateConflicts(
   observations: readonly MarketContextObservation[],
   seriesKey: string,
+  cutoff: Date,
+  knowledgeMode: KnowledgeMode = "PUBLIC_INFORMATION_RECONSTRUCTION",
 ): boolean {
-  return indexSeriesByObservationDate(observations, seriesKey).conflicts.length > 0;
+  return (
+    indexSeriesByObservationDate(observations, seriesKey, {
+      cutoff,
+      knowledgeMode,
+    }).conflicts.length > 0
+  );
 }

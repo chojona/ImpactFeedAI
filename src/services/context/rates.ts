@@ -83,10 +83,12 @@ export function computeSpread2s10s(
   const dgs2Index = indexSeriesByObservationDate(
     request.observations,
     SERIES_KEYS.DGS2,
+    { cutoff: request.cutoff, knowledgeMode: request.knowledgeMode },
   );
   const dgs10Index = indexSeriesByObservationDate(
     request.observations,
     SERIES_KEYS.DGS10,
+    { cutoff: request.cutoff, knowledgeMode: request.knowledgeMode },
   );
   if (dgs2Index.conflicts.length > 0 || dgs10Index.conflicts.length > 0) {
     return featureResult({

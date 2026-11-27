@@ -70,6 +70,7 @@ function conflictResult(
   const { conflicts } = indexSeriesByObservationDate(
     request.observations,
     seriesKey,
+    { cutoff: request.cutoff, knowledgeMode: request.knowledgeMode },
   );
   if (conflicts.length === 0) return null;
   const def = FEATURE_DEFINITIONS[featureKey];
@@ -147,91 +148,9 @@ export function computeVixLevel(request: FeatureComputeRequest): FeatureResult {
   });
 }
 
-/**
- * Empirical percentile of the latest VIX among the prior N eligible prints,
- * excluding the latest. Tie rule: count prior values <= latest (inclusive).
- * Formula: 100 * count / N. Requires exactly N prior eligible observations.
- */
-export function computeVixTrailingPercentile(
-  request: FeatureComputeRequest,
-  lookback: number = VIX_PERCENTILE_LOOKBACK,
-): FeatureResult {
-  const def = FEATURE_DEFINITIONS.vix_pct_trailing;
-  const unitError = rejectUnitMismatch(
-    request,
-    "vix_pct_trailing",
-    SERIES_KEYS.VIXCLS,
-    request.observations,
-  );
-  if (unitError) return unitError;
-
-  const conflict = conflictResult(
-    request,
-    "vix_pct_trailing",
-    SERIES_KEYS.VIXCLS,
-  );
-  if (conflict) return conflict;
-
-  if (lookback <= 0) {
-    return featureResult({
-      featureKey: def.featureKey,
-      definitionVersion: def.definitionVersion,
-      unit: def.unit,
-      request,
-      value: null,
-      status: "invalid_input",
-      reasonCode: "incomplete_window",
-      detail: "lookback must be positive",
-    });
-  }
-
-  const eligible = selectEligibleMarketObservations(
-    request.observations,
-    SERIES_KEYS.VIXCLS,
-    request.cutoff,
-    request.knowledgeMode,
-  );
-
-  if (eligible.length < lookback + 1) {
-    return featureResult({
-      featureKey: def.featureKey,
-      definitionVersion: def.definitionVersion,
-      unit: def.unit,
-      request,
-      value: null,
-      status: "unavailable",
-      reasonCode: "insufficient_history",
-      detail: `need ${lookback + 1} eligible VIX prints, have ${eligible.length}`,
-    });
-  }
-
-  const window = eligible.slice(-(lookback + 1));
-  const latest = window[window.length - 1]!;
-  const prior = window.slice(0, lookback);
-  const latestValue = latest.value as number;
-  let count = 0;
-  for (const obs of prior) {
-    if ((obs.value as number) <= latestValue) count += 1;
-  }
-  const percentile = (100 * count) / lookback;
-
-  return featureResult({
-    featureKey: def.featureKey,
-    definitionVersion: def.definitionVersion,
-    unit: def.unit,
-    request,
-    value: percentile,
-    status: "ok",
-    reasonCode: "ok",
-    inputRefs: [
-      ref(latest, "level"),
-      ...prior.map((obs) => ref(obs, "window_member")),
-    ],
-  });
-}
-
 function normalizeSessionCalendar(
   calendar: readonly string[] | undefined,
+  purpose: string,
 ):
   | { ok: true; days: readonly string[] }
   | { ok: false; reason: FeatureReasonCode; detail: string } {
@@ -239,7 +158,7 @@ function normalizeSessionCalendar(
     return {
       ok: false,
       reason: "missing_session_calendar",
-      detail: "equity RV requires an independently validated sessionCalendar",
+      detail: `${purpose} requires an independently validated sessionCalendar`,
     };
   }
   for (const day of calendar) {
@@ -261,7 +180,6 @@ function normalizeSessionCalendar(
       };
     }
   }
-  // Reject unsorted input that would silently reorder expectations.
   for (let i = 0; i < calendar.length; i += 1) {
     if (calendar[i] !== sorted[i]) {
       return {
@@ -275,10 +193,10 @@ function normalizeSessionCalendar(
 }
 
 /**
- * Require trailing closes on an independent session calendar.
+ * Require trailing observations on an independent session calendar.
  * Missing source rows do not compress the window.
  */
-function consecutiveEligibleClosesOnCalendar(
+function consecutiveEligibleOnCalendar(
   observations: readonly MarketContextObservation[],
   seriesKey: string,
   request: FeatureComputeRequest,
@@ -290,6 +208,7 @@ function consecutiveEligibleClosesOnCalendar(
   const { byDate, conflicts } = indexSeriesByObservationDate(
     observations,
     seriesKey,
+    { cutoff: request.cutoff, knowledgeMode: request.knowledgeMode },
   );
   if (conflicts.length > 0) {
     return {
@@ -359,6 +278,111 @@ function consecutiveEligibleClosesOnCalendar(
   return { ok: true, window };
 }
 
+/**
+ * Empirical percentile of the latest VIX among the prior N session prints,
+ * excluding the latest.
+ *
+ * Contract: requires an independently validated `sessionCalendar` and exactly
+ * N+1 consecutive calendar sessions with eligible observations. This claims
+ * calendar completeness for the window — not merely N available prints with
+ * possible gaps. Tie rule: count prior values <= latest (inclusive).
+ * Formula: 100 * count / N.
+ */
+export function computeVixTrailingPercentile(
+  request: FeatureComputeRequest,
+  lookback: number = VIX_PERCENTILE_LOOKBACK,
+): FeatureResult {
+  const def = FEATURE_DEFINITIONS.vix_pct_trailing;
+  const unitError = rejectUnitMismatch(
+    request,
+    "vix_pct_trailing",
+    SERIES_KEYS.VIXCLS,
+    request.observations,
+  );
+  if (unitError) return unitError;
+
+  const conflict = conflictResult(
+    request,
+    "vix_pct_trailing",
+    SERIES_KEYS.VIXCLS,
+  );
+  if (conflict) return conflict;
+
+  if (lookback <= 0) {
+    return featureResult({
+      featureKey: def.featureKey,
+      definitionVersion: def.definitionVersion,
+      unit: def.unit,
+      request,
+      value: null,
+      status: "invalid_input",
+      reasonCode: "incomplete_window",
+      detail: "lookback must be positive",
+    });
+  }
+
+  const calendar = normalizeSessionCalendar(
+    request.sessionCalendar,
+    "VIX trailing percentile",
+  );
+  if (!calendar.ok) {
+    return featureResult({
+      featureKey: def.featureKey,
+      definitionVersion: def.definitionVersion,
+      unit: def.unit,
+      request,
+      value: null,
+      status: "invalid_input",
+      reasonCode: calendar.reason,
+      detail: calendar.detail,
+    });
+  }
+
+  const selected = consecutiveEligibleOnCalendar(
+    request.observations,
+    SERIES_KEYS.VIXCLS,
+    request,
+    lookback + 1,
+    calendar.days,
+  );
+  if (!selected.ok) {
+    return featureResult({
+      featureKey: def.featureKey,
+      definitionVersion: def.definitionVersion,
+      unit: def.unit,
+      request,
+      value: null,
+      status: "unavailable",
+      reasonCode: selected.reason,
+      detail: selected.detail,
+    });
+  }
+
+  const window = selected.window;
+  const latest = window[window.length - 1]!;
+  const prior = window.slice(0, lookback);
+  const latestValue = latest.value as number;
+  let count = 0;
+  for (const obs of prior) {
+    if ((obs.value as number) <= latestValue) count += 1;
+  }
+  const percentile = (100 * count) / lookback;
+
+  return featureResult({
+    featureKey: def.featureKey,
+    definitionVersion: def.definitionVersion,
+    unit: def.unit,
+    request,
+    value: percentile,
+    status: "ok",
+    reasonCode: "ok",
+    inputRefs: [
+      ref(latest, "level"),
+      ...prior.map((obs) => ref(obs, "window_member")),
+    ],
+  });
+}
+
 export interface EquityRvOptions {
   readonly seriesKey?: string;
   readonly sessions?: number;
@@ -399,7 +423,6 @@ export function computeEquityRealizedVol20(
     });
   }
 
-  // ddof=1 sample SD needs >= 2 returns ⇒ sessions >= 2.
   if (sessions < 2) {
     return featureResult({
       featureKey: def.featureKey,
@@ -413,7 +436,10 @@ export function computeEquityRealizedVol20(
     });
   }
 
-  const calendar = normalizeSessionCalendar(request.sessionCalendar);
+  const calendar = normalizeSessionCalendar(
+    request.sessionCalendar,
+    "equity RV",
+  );
   if (!calendar.ok) {
     return featureResult({
       featureKey: def.featureKey,
@@ -428,7 +454,7 @@ export function computeEquityRealizedVol20(
   }
 
   const closeCount = sessions + 1;
-  const selected = consecutiveEligibleClosesOnCalendar(
+  const selected = consecutiveEligibleOnCalendar(
     request.observations,
     seriesKey,
     request,

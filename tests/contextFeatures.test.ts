@@ -245,7 +245,7 @@ describe("computeVixLevel", () => {
 });
 
 describe("computeVixTrailingPercentile", () => {
-  it("requires a complete prior window and excludes the latest from the rank set", () => {
+  it("requires a complete prior calendar window and excludes the latest from the rank set", () => {
     const dates = tradingDates(VIX_PERCENTILE_LOOKBACK + 1);
     const observations = dates.map((date, i) =>
       obs({
@@ -261,7 +261,9 @@ describe("computeVixTrailingPercentile", () => {
     );
     const cutoffDate = dates[dates.length - 1]!;
     const result = computeVixTrailingPercentile(
-      request(`${cutoffDate}T23:00:00.000Z`, observations),
+      request(`${cutoffDate}T23:00:00.000Z`, observations, {
+        sessionCalendar: dates,
+      }),
     );
     // prior values 1..252; count <= 100 = 100 → percentile 100*100/252
     expect(result.status).toBe("ok");
@@ -269,7 +271,7 @@ describe("computeVixTrailingPercentile", () => {
     expect(result.inputRefs).toHaveLength(VIX_PERCENTILE_LOOKBACK + 1);
   });
 
-  it("applies a deterministic inclusive tie rule", () => {
+  it("applies a deterministic inclusive tie rule on a calendar window", () => {
     const dates = tradingDates(5);
     const values = [10, 20, 20, 30, 20];
     const observations = dates.map((date, i) =>
@@ -284,7 +286,9 @@ describe("computeVixTrailingPercentile", () => {
       }),
     );
     const result = computeVixTrailingPercentile(
-      request(`${dates[4]}T23:00:00.000Z`, observations),
+      request(`${dates[4]}T23:00:00.000Z`, observations, {
+        sessionCalendar: dates,
+      }),
       4,
     );
     // prior = [10,20,20,30]; latest=20; count <=20 = 3 → 75
@@ -292,25 +296,52 @@ describe("computeVixTrailingPercentile", () => {
     expect(result.value).toBe(75);
   });
 
-  it("returns unavailable for an incomplete window", () => {
-    const dates = tradingDates(10);
+  it("requires sessionCalendar and does not claim completeness from available prints alone", () => {
+    const dates = tradingDates(VIX_PERCENTILE_LOOKBACK + 1);
     const observations = dates.map((date, i) =>
       obs({
         id: `s${i}`,
         seriesKey: SERIES_KEYS.VIXCLS,
-        value: 15 + i,
+        value: 15 + (i % 5),
         unit: "index_points",
         observationDate: date,
         observationAt: availableAfterClose(date),
         availableAt: availableAfterClose(date),
       }),
     );
+    const end = dates[dates.length - 1]!;
+    const withoutCalendar = computeVixTrailingPercentile(
+      request(`${end}T23:00:00.000Z`, observations),
+    );
+    expect(withoutCalendar.status).toBe("invalid_input");
+    expect(withoutCalendar.reasonCode).toBe("missing_session_calendar");
+  });
+
+  it("returns unavailable when a calendar session is missing a source row", () => {
+    const dates = tradingDates(VIX_PERCENTILE_LOOKBACK + 1);
+    const missing = dates[10]!;
+    const observations = dates
+      .filter((date) => date !== missing)
+      .map((date, i) =>
+        obs({
+          id: `s${i}`,
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 15 + i,
+          unit: "index_points",
+          observationDate: date,
+          observationAt: availableAfterClose(date),
+          availableAt: availableAfterClose(date),
+        }),
+      );
     const result = computeVixTrailingPercentile(
-      request(`${dates[9]}T23:00:00.000Z`, observations),
+      request(`${dates[dates.length - 1]}T23:00:00.000Z`, observations, {
+        sessionCalendar: dates,
+      }),
     );
     expect(result.status).toBe("unavailable");
     expect(result.value).toBeNull();
-    expect(result.reasonCode).toBe("insufficient_history");
+    expect(result.reasonCode).toBe("incomplete_window");
+    expect(result.detail).toContain(missing);
   });
 
   it("does not let future VIX prints enter a frozen percentile window", () => {
@@ -329,21 +360,25 @@ describe("computeVixTrailingPercentile", () => {
     const end = dates[dates.length - 1]!;
     const cutoff = `${end}T23:00:00.000Z`;
     const baseline = computeVixTrailingPercentile(
-      request(cutoff, observations),
+      request(cutoff, observations, { sessionCalendar: dates }),
     );
     const withFuture = computeVixTrailingPercentile(
-      request(cutoff, [
-        ...observations,
-        obs({
-          id: "leak",
-          seriesKey: SERIES_KEYS.VIXCLS,
-          value: 5,
-          unit: "index_points",
-          observationDate: "2099-01-02",
-          observationAt: "2099-01-02T21:00:00.000Z",
-          availableAt: "2099-01-02T21:00:00.000Z",
-        }),
-      ]),
+      request(
+        cutoff,
+        [
+          ...observations,
+          obs({
+            id: "leak",
+            seriesKey: SERIES_KEYS.VIXCLS,
+            value: 5,
+            unit: "index_points",
+            observationDate: "2099-01-02",
+            observationAt: "2099-01-02T21:00:00.000Z",
+            availableAt: "2099-01-02T21:00:00.000Z",
+          }),
+        ],
+        { sessionCalendar: dates },
+      ),
     );
     expect(withFuture).toEqual(baseline);
     expect(baseline.value).toBe(100);
@@ -660,7 +695,8 @@ describe("computeEquityRealizedVol20", () => {
 });
 
 describe("PR #16 review regressions", () => {
-  it("1. quarantines conflicting duplicate observation dates instead of last-ID-wins", () => {
+  it("1. quarantines conflicting duplicates known at the same cutoff", () => {
+    const cutoff = at("2024-06-15T12:00:00.000Z");
     const indexed = indexSeriesByObservationDate(
       [
         obs({
@@ -683,6 +719,7 @@ describe("PR #16 review regressions", () => {
         }),
       ],
       SERIES_KEYS.VIXCLS,
+      { cutoff, knowledgeMode: MODE },
     );
     expect(indexed.byDate.has("2024-06-14")).toBe(false);
     expect(indexed.conflicts).toEqual([
@@ -723,6 +760,67 @@ describe("PR #16 review regressions", () => {
     expect(result.status).toBe("unavailable");
     expect(result.value).toBeNull();
     expect(result.reasonCode).toBe("conflict_quarantined");
+  });
+
+  it("1b. frozen-cutoff: future duplicate unknown at cutoff does not change result", () => {
+    const cutoff = "2024-06-15T12:00:00.000Z";
+    const known = obs({
+      id: "known",
+      seriesKey: SERIES_KEYS.VIXCLS,
+      value: 14,
+      unit: "index_points",
+      observationDate: "2024-06-14",
+      observationAt: "2024-06-14T21:00:00.000Z",
+      availableAt: "2024-06-14T21:00:00.000Z",
+      fetchedAt: "2024-06-14T22:00:00.000Z",
+    });
+    const baseline = computeVixLevel(request(cutoff, [known]));
+    expect(baseline.status).toBe("ok");
+    expect(baseline.value).toBe(14);
+
+    const withFutureDup = computeVixLevel(
+      request(cutoff, [
+        known,
+        obs({
+          id: "future-dup",
+          seriesKey: SERIES_KEYS.VIXCLS,
+          value: 99,
+          unit: "index_points",
+          observationDate: "2024-06-14",
+          observationAt: "2024-06-14T21:00:00.000Z",
+          // Not available until after the frozen cutoff.
+          availableAt: "2024-06-16T00:00:00.000Z",
+          fetchedAt: "2024-06-16T01:00:00.000Z",
+        }),
+      ]),
+    );
+    expect(withFutureDup).toEqual(baseline);
+
+    const replayBaseline = computeVixLevel(
+      request(cutoff, [known], { knowledgeMode: "SYSTEM_REPLAY" }),
+    );
+    const replayWithLateFetch = computeVixLevel(
+      request(
+        cutoff,
+        [
+          known,
+          obs({
+            id: "late-fetch-dup",
+            seriesKey: SERIES_KEYS.VIXCLS,
+            value: 88,
+            unit: "index_points",
+            observationDate: "2024-06-14",
+            observationAt: "2024-06-14T21:00:00.000Z",
+            availableAt: "2024-06-14T21:00:00.000Z",
+            // Publicly available, but not known to the system yet at cutoff.
+            fetchedAt: "2024-06-16T00:00:00.000Z",
+          }),
+        ],
+        { knowledgeMode: "SYSTEM_REPLAY" },
+      ),
+    );
+    expect(replayWithLateFetch).toEqual(replayBaseline);
+    expect(replayBaseline.value).toBe(14);
   });
 
   it("2. requires an independent session calendar and does not compress missing source rows", () => {

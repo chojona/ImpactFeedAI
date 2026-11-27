@@ -1,16 +1,22 @@
 /**
  * Shared Phase 1 market-context contracts.
  *
- * Coordination:
- * - Agent 03 (Phase 1.1 ALFRED / PIT selector, PR #20) owns macro revision
- *   selection and vintage-aware transforms. Keep `KnowledgeMode` string values
- *   identical so selector outputs and feature inputs share one vocabulary.
- * - Agent 05 (market-price adapters) populates {@link MarketContextObservation}
- *   rows for VIX, Treasury yields and equity closes.
- * - This module owns continuous feature result shapes consumed by regime math.
+ * Ownership / merge coordination (extend carefully; do not overwrite siblings):
+ * - PR #20 (Agent 03 ALFRED/PIT): owns macro {@link ContextObservation}, vintage
+ *   selection, and `revisionSelect.ts`. May also declare the lean market surface
+ *   in the same file when merged.
+ * - PR #16 (this branch / feature math): owns continuous {@link FeatureResult}
+ *   calculators and market PIT eligibility in `src/services/context/`. Keep
+ *   {@link MarketContextObservation}, {@link FeatureReasonCode}, and
+ *   `sessionCalendar` stable for consumers.
+ * - PR #24 (official market adapters): populates {@link MarketContextObservation}
+ *   (with `fetchedAt`) and may add `revised_latest` quality for FRED current
+ *   vintage pulls.
  *
- * SYSTEM_REPLAY contract (aligned with Agent 03 quality.ts):
- * `fetchedAt` must be present and satisfy `fetchedAt < cutoff` (strict).
+ * Shared vocabulary must stay identical across those PRs:
+ * `KnowledgeMode`, series keys (`market:VIXCLS:level`, `market:DGS*:yield_pct`,
+ * `market:SPY:close`), and strict `availableAt < cutoff` /
+ * SYSTEM_REPLAY `fetchedAt < cutoff`.
  *
  * Persistence / Prisma models are intentionally absent here.
  */
@@ -23,10 +29,16 @@ export type KnowledgeMode =
   | "PUBLIC_INFORMATION_RECONSTRUCTION"
   | "SYSTEM_REPLAY";
 
-/** Quality / eligibility hint on a market observation. */
+/**
+ * Quality / eligibility hint on a market observation.
+ *
+ * `revised_latest` matches PR #24 / Agent 03 vocabulary for current FRED
+ * knowledge that is not a verified historical vintage.
+ */
 export type MarketObservationQuality =
   | "verified"
   | "conservative_date_bound"
+  | "revised_latest"
   | "unknown_availability"
   | "missing"
   | "conflict";
@@ -35,8 +47,8 @@ export type MarketObservationQuality =
  * Lean daily market observation for feature calculators.
  *
  * Distinct from Agent 03's macro `ContextObservation` (vintage/revision heavy).
- * Agent 05 adapters should emit this shape; Agent 03 may also project selected
- * FRED market series (VIXCLS, DGS*) into it after PIT filtering.
+ * PR #24 adapters emit this shape; Agent 03 may also project selected FRED
+ * market series (VIXCLS, DGS*) into it after PIT filtering.
  */
 export interface MarketContextObservation {
   /** Stable id for lineage / FeatureResult.inputRefs. */
@@ -54,7 +66,7 @@ export interface MarketContextObservation {
   readonly observationAt: Date;
   /**
    * Source business/session date `YYYY-MM-DD` for same-date pairing
-   * (yields) and consecutive-session windows (RV). Required for those features.
+   * (yields) and consecutive-session windows (RV / VIX percentile).
    */
   readonly observationDate: string;
   /** Earliest defensible usable instant under a named availability policy. */
@@ -132,7 +144,8 @@ export interface FeatureComputeRequest {
   readonly observations: readonly MarketContextObservation[];
   /**
    * Independently validated session dates (`YYYY-MM-DD`, ascending unique).
-   * Required for equity RV: missing source rows must not compress the window.
+   * Required for equity RV and VIX trailing percentile: missing source rows
+   * must not compress the window / claim calendar completeness.
    */
   readonly sessionCalendar?: readonly string[];
 }

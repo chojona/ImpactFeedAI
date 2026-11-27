@@ -12,7 +12,7 @@ import type { ContextUnit } from "@/types/context";
 import { isKnowledgeMode as isSharedKnowledgeMode } from "@/services/context/knowledgeMode";
 
 /** Feature-math contract version for this milestone. */
-export const REGIME_FEATURE_DEFINITION_VERSION = "phase-1-regime-features-2";
+export const REGIME_FEATURE_DEFINITION_VERSION = "phase-1-regime-features-3";
 
 export const SERIES_KEYS = {
   VIXCLS: "market:VIXCLS:level",
@@ -47,7 +47,7 @@ export const FEATURE_DEFINITIONS = {
     definitionVersion: REGIME_FEATURE_DEFINITION_VERSION,
     unit: "pct_level",
     description:
-      "Percentile of latest VIX within the prior 252 eligible observations, excluding the latest. Requires a complete window.",
+      "Percentile of latest VIX among the prior 252 independently validated session-calendar prints, excluding the latest. Requires sessionCalendar completeness (no gap compression).",
     sourceSeriesKeys: [SERIES_KEYS.VIXCLS],
     citations: ["https://fred.stlouisfed.org/series/VIXCLS"],
   },

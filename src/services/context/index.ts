@@ -26,6 +26,7 @@ export type {
 export {
   indexSeriesByObservationDate,
   isAvailableBeforeCutoff,
+  isKnownAtCutoff,
   isMarketObservationEligible,
   isValidObservationDate,
   marketObservationIneligibilityReasons,
@@ -35,6 +36,7 @@ export {
 export type {
   DateIndexConflict,
   SeriesDateIndex,
+  SeriesDateIndexOptions,
 } from "@/services/context/pointInTime";
 
 export { computeSpread2s10s } from "@/services/context/rates";
