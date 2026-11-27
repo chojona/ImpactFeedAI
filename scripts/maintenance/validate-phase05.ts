@@ -36,7 +36,8 @@ async function main() {
       exitCode = typeof failure.code === "number" ? failure.code : 1;
       output = (failure.stdout ?? "") + (failure.stderr ?? "");
     }
-    await writeFile(`${folder}/${step.name}.txt`, output);
+    // Logs are committed as evidence: never record the local checkout path.
+    await writeFile(`${folder}/${step.name}.txt`, output.split(process.cwd()).join("<repo-root>"));
     checks.push({ name: step.name, command: [step.bin === node ? "node" : step.bin, ...step.args].join(" "), startedAt, finishedAt: new Date().toISOString(), exitCode, status: exitCode === 0 ? "PASS" : "FAIL", log: `${step.name}.txt` });
     console.log(`${step.name}: exit ${exitCode}`);
   }

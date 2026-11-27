@@ -37,8 +37,25 @@ export function createScriptPrismaClient(options: { readOnly?: boolean } = {}): 
     process.exit(1);
   }
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString,
-      ...(options.readOnly ? { options: "-c default_transaction_read_only=on" } : {}),
+    adapter: new PrismaPg({
+      connectionString: options.readOnly ? withReadOnlySession(connectionString) : connectionString,
     }),
   });
+}
+
+const READ_ONLY_SESSION_OPTION = "-c default_transaction_read_only=on";
+
+/**
+ * Put the read-only session flag into the URL's own `options` parameter.
+ * pg merges the parsed connection string OVER the config object, so a flag
+ * passed beside `connectionString` is silently dropped whenever the URL
+ * already carries `options` (e.g. Neon's `options=endpoint%3D…`). Appending
+ * here keeps any existing options and guarantees the flag survives.
+ */
+export function withReadOnlySession(connectionString: string): string {
+  const url = new URL(connectionString);
+  const existing = url.searchParams.get("options");
+  if (existing?.includes(READ_ONLY_SESSION_OPTION)) return connectionString;
+  url.searchParams.set("options", [existing, READ_ONLY_SESSION_OPTION].filter(Boolean).join(" "));
+  return url.toString();
 }
