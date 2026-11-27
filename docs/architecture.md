@@ -271,24 +271,76 @@ cost; do not scaffold one because an earlier concept diagram mentioned it.
 
 ## Testing
 
-Vitest uses a Node environment and covers pure domain calculations, temporal
-and provenance guards, provider semantics, query mapping, reaction invariants
-and chart geometry. The November 5 baseline passed 29 files / 518 tests,
-typecheck, lint, schema validation and production build. This is a timestamped
-baseline, not a permanently accurate test count.
+## Testing
 
-Database verifiers are separate from secret-free unit CI. Candle invariants
-passed 10/10; reaction invariants reported zero violations over 828 rows in the
-audit run. The Phase 0.5 strict verifier derives the expected grid from source
-events and fails incomplete runs; on the captured evidence it exits 1 (132
-unproven missing opportunities, 180 unsupported native-calendar rows). The audit documents verification gaps and a calendar regression not
-caught by these passing checks. Browser/component tests are not committed as
-an established harness; historical browser smoke reports were not rerun.
+✅ **Vitest**, unit tests only, in `tests/`. `npm test` runs them; `npm run verify`
+runs typecheck + lint + test. `npm run test:coverage` adds v8 coverage for the
+quantitative / data-integrity modules listed in `vitest.config.mts` and fails
+when thresholds drop below the measured baseline. No database, network or
+browser required.
 
-CI (`.github/workflows/ci.yml`) installs with npm, generates Prisma, typechecks,
-lints, runs unit tests, validates schema and builds without provider/database
-secrets. New calculation/pipeline milestones require meaningful unit tests;
-migration/persistence work also needs isolated database integration checks.
+Config is `vitest.config.mts` — `.mts` so Vite loads it as ESM natively, and
+`resolve.tsconfigPaths` so tests import through the same `@/` specifiers as the
+app rather than a parallel set of relative paths. Coverage uses
+`@vitest/coverage-v8` and writes `coverage/lcov.info` plus
+`coverage/coverage-summary.json`.
+
+| Suite | Covers |
+| --- | --- |
+| `tests/metrics.test.ts` | YoY / QoQ-annualised / MoM transforms, surprise arithmetic, unit and percentage-point formatting, registry integrity (every metric round-trips through its canonical name; FRED and BLS bindings agree) |
+| `tests/fetch-prices.test.ts` | window resolution against synthetic candle series, including named regressions for the fabricated-0.00% bug |
+| `tests/time.test.ts` | 08:30 / 14:00 ET across both DST transitions, plus a round-trip assertion |
+| `tests/timing.test.ts` | the reaction-eligibility matrix, missing provenance, and status labels |
+| `tests/source-timing.test.ts` | FRED/BLS reference-period-only candidates and inferred FOMC timing |
+| `tests/release-calendar.test.ts` | official-record/schedule/date-only provenance, normalized release identity, DST/day boundaries and no implicit fallback instant |
+| `tests/consensus.test.ts` | the provider boundary's source, HTTPS URL, finite-value and no-look-ahead checks |
+| `tests/mapEvent.test.ts` | row → `NewsEvent`, null propagation, primary-window selection, category mapping is a partition |
+| `tests/patternAnalysis.test.ts` | aggregation over measured moves only, sample-size reporting |
+| `tests/queryParams.test.ts` | `/api/events` parameter validation and clamping |
+
+The bias is deliberate: coverage concentrates where a bug becomes *wrong data*
+rather than a wrong pixel. A mis-signed surprise or a null coerced to zero is
+invisible in the UI and permanent in the database.
+
+Database verifiers are separate from secret-free unit CI. Browser/component
+tests are not an established harness yet.
+
+📋 Still outstanding:
+
+1. **`@testing-library/react`** for the interactive components — `EventBrowser`
+   URL syncing is the one with real branching. Needs `jsdom`.
+2. **Integration tests against a real Postgres** for `eventQueries.ts`. The raw
+   SQL in the `biggest` sort is the part unit tests cannot reach; it was verified
+   manually against a local Postgres instance.
+3. **Playwright** for end-to-end.
+
+### Continuous integration
+
+✅ `.github/workflows/ci.yml` runs on push, pull request (`opened` /
+`synchronize` / `reopened` / `ready_for_review`), and `workflow_dispatch`, with
+read-only repository permissions and no database/provider secrets. A weekly
+`schedule` drives the dependency audit job only. Concurrency cancels outdated
+runs for the same ref.
+
+The Quality job installs with `npm ci`, generates the gitignored Prisma client,
+then runs typecheck, lint, unit tests **with coverage thresholds**,
+`prisma validate` and a production build. Coverage artifacts (`lcov` +
+`json-summary`) upload on every Quality run. Node comes from `.nvmrc`; npm
+caching uses the lockfile.
+
+A separate Dependency security report job runs `npm audit --omit=dev`, uploads
+human-readable and JSON artifacts, and soft-fails (`continue-on-error`) so audit
+noise never blocks Quality. Prefer coordinated dependency bumps over forcing
+audit green in CI.
+
+**Dependabot caveat:** same-repo `pull_request` / `push` workflows run from the
+PR **head** branch. A Dependabot branch opened before `ci.yml` existed will not
+schedule Quality checks until it is rebased onto a commit that includes the
+workflow. Do not use `pull_request_target` to work around that — it would execute
+untrusted PR code with privileged context.
+
+---
+
 
 ## Deployment
 

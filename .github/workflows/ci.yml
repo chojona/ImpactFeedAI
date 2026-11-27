@@ -1,11 +1,30 @@
 name: CI
 
+# Dependabot / same-repo pull_request workflows run from the PR *head* branch.
+# Heads branched before this file existed never schedule Quality checks — rebase
+# those PRs onto main so the workflow is present. Never use pull_request_target
+# here: it would run untrusted PR code with privileged context.
+
 on:
   push:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      run_audit:
+        description: "Also run the dependency security report job"
+        type: boolean
+        default: true
+  schedule:
+    # Weekly dependency security report (Quality still runs on every PR/push).
+    - cron: "17 13 * * 1"
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   NEXT_TELEMETRY_DISABLED: "1"
@@ -13,8 +32,10 @@ env:
 jobs:
   quality:
     name: Quality checks
+    # Skip scheduled runs — schedule exists only for the audit job.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Check out repository
@@ -38,11 +59,94 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Unit tests
-        run: npm test
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage/lcov.info
+            coverage/coverage-summary.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Validate Prisma schema
         run: npm run db:validate
 
       - name: Production build
         run: npm run build
+
+  dependency-audit:
+    name: Dependency security report
+    # Weekly schedule, manual dispatch (when requested), or any push/PR that
+    # already runs CI — report always; soft-fail so audit noise never blocks
+    # Quality checks.
+    if: >
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_audit) ||
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Soft-fail: npm audit on production deps currently reports critical/high
+    # findings that require coordinated Next/Prisma bumps (owned elsewhere).
+    # Always upload the report; never gate the Quality job on audit exit codes.
+    continue-on-error: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (production, human-readable)
+        run: npm audit --omit=dev > npm-audit.txt 2>&1 || true
+
+      - name: npm audit (production, JSON)
+        run: npm audit --omit=dev --json > npm-audit.json 2>&1 || true
+
+      - name: Summarize audit
+        run: |
+          node <<'EOF'
+          const fs = require("node:fs");
+          const summaryPath = "npm-audit.json";
+          let meta = { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0 };
+          try {
+            const report = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
+            meta = report.metadata?.vulnerabilities ?? meta;
+          } catch {
+            console.log("Could not parse npm-audit.json; see artifact text report.");
+          }
+          const lines = [
+            `info=${meta.info ?? 0}`,
+            `low=${meta.low ?? 0}`,
+            `moderate=${meta.moderate ?? 0}`,
+            `high=${meta.high ?? 0}`,
+            `critical=${meta.critical ?? 0}`,
+            `total=${meta.total ?? 0}`,
+          ];
+          console.log(lines.join(" "));
+          fs.writeFileSync("npm-audit-summary.txt", lines.join("\n") + "\n");
+          EOF
+
+      - name: Upload npm audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: |
+            npm-audit.txt
+            npm-audit.json
+            npm-audit-summary.txt
+          if-no-files-found: warn
+          retention-days: 30
