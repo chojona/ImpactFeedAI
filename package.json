@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -23,6 +23,7 @@
     "smoke:macro": "tsx scripts/maintenance/smoke-macro.ts",
     "smoke:dryrun": "tsx scripts/maintenance/smoke-dryrun-guard.ts",
     "probe:candles": "tsx scripts/maintenance/probe-candle-coverage.ts",
+    "inventory:candles": "tsx scripts/maintenance/candle-coverage-inventory.ts",
     "audit:sources": "tsx scripts/maintenance/audit-data-sources.ts",
     "verify:candles": "tsx scripts/maintenance/verify-candles.ts",
     "repair:data-releases": "tsx scripts/maintenance/repair-data-releases.ts",

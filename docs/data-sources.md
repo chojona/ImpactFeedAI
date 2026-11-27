@@ -259,6 +259,14 @@ timing-eligible events are past even the hourly window, and the window rolls —
 history is lost permanently as events age. Commercial redistribution terms
 remain unverified.
 
+**Preservation gate:** bulk live provider fetches and candle apply-writes are
+blocked until
+`CANDLE_SOURCE_PERMISSIONS_CONFIRMED=yahoo-finance2-terms-verified` is set
+after terms review. Plan-only dry-runs and local Postgres inventory remain
+allowed while unverified. See [candle-preservation.md](./candle-preservation.md)
+for session / basis / lookback semantics and the inventory → plan → execute →
+apply flow.
+
 ### Polygon.io · **Planned**
 
 Named as the intended price provider in the project instructions; **no code

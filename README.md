@@ -409,12 +409,20 @@ Archived v2 reaction rows (`asset_reactions`) hold four prices per instrument. R
 bars, which live in a separate, provider-agnostic `candles` table.
 
 ```bash
+npm run inventory:candles      # read-only: stored coverage by symbol×interval×UTC day
 npm run probe:candles          # read-only: what can the provider still supply?
-npm run backfill:candles       # dry-run by default — writes nothing
-CANDLE_BACKFILL_CONFIRM=WRITE_CANDLES \
+npm run backfill:candles       # plan only by default — no provider, no writes
+CANDLE_SOURCE_PERMISSIONS_CONFIRMED=yahoo-finance2-terms-verified \
+  npm run backfill:candles -- --execute   # live fetch dry-run (terms confirmed)
+CANDLE_SOURCE_PERMISSIONS_CONFIRMED=yahoo-finance2-terms-verified \
+  CANDLE_BACKFILL_CONFIRM=WRITE_CANDLES \
   npm run backfill:candles -- --apply
 npm run verify:candles         # read-only: assert every stored invariant
 ```
+
+Yahoo commercial/redistribution terms are **unverified**; bulk fetch and apply
+are gated until that confirmation env is set. Details:
+[docs/candle-preservation.md](docs/candle-preservation.md).
 
 Useful flags: `--symbol SPY` (repeatable, default `SPY QQQ`), `--interval 1h`
 (default), `--event-id <uuid>` (repeatable), `--limit <n>`.

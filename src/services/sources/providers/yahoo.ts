@@ -57,7 +57,7 @@ function etf(symbol: string, coverage: readonly CoverageClaim[]): DataSeriesEntr
       conditions: [
         "Intraday: only bars archived while inside the provider window.",
         "Daily: use returns, not levels, and record Candle.priceBasis.",
-        "Terms for bulk collection remain unverified (candle-source permissions gate, PR #23).",
+        "Terms for bulk collection remain unverified (candle-source permissions gate).",
       ],
     },
     notes: ["Extended-hours bars report volume 0. Store it as NULL, not 0."],
@@ -90,7 +90,8 @@ export const YAHOO_PROVIDER: DataProviderEntry = {
     { status: "MAIN", path: "scripts/ingest/fetch-prices.ts" },
     { status: "MAIN", path: "scripts/backfill/backfill-candles.ts" },
     { status: "MAIN", path: "scripts/ingest/candle-provider.ts" },
-    { status: "OPEN_PR", path: "scripts/ingest/candle-source-permissions.ts", pullRequest: 23 },
+    { status: "MAIN", path: "scripts/ingest/candle-source-permissions.ts" },
+    { status: "MAIN", path: "scripts/ingest/candle-preservation-plan.ts" },
   ],
   lastSuccessfulValidation: TESTED_ON,
   series: [
