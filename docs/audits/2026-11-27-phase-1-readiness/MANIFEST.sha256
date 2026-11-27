@@ -12,7 +12,7 @@ ede3beaef7859e43c8ef726c4f1228b3bcceab5e2caea1ea2b3c819543409e8f  ./20-db-snapsh
 5032ba15e523c96072f76d0ae824aa96ef68874f30bc609a9e2638500a50ad51  ./30-calendar-offline-replay.log
 6e00ce02af32ca5fbe260d343b29cbb2d64eb38ffcf9ba262463dbb4bab342c9  ./31-calendar-hashes.txt
 a5f6d2a0e8f64c81926b23e922f6ed1abb2c3705ed80dc1df2cb7cd3b16ff975  ./40-measurement-replay.json
-8b26beab189ee4430d965a9be57eb54759bb25ddb723cc2b53365838b249a38a  ./41-recompute-replay.json
+c1fbcf4ddb380b4ae2115811274e582224a5ae86d1dd0589a0546a61e2642331  ./41-recompute-replay.json
 11882dba75b04ef07b5b6751288994d43b5f5c17729d9c33e56b6bc92f0a5d7d  ./41-recompute-replay.log
 0594c5a6be1a31646c7826b52ac4f8c87610ef36c9a722f75d8e81ec88e96f79  ./50-e2e-dryrun.json
 d561cbfc6aa8521d44632d7589ebceddc07ae4df16510c5e6ae3569a3251b65a  ./50-e2e-dryrun.log
@@ -32,3 +32,4 @@ d561cbfc6aa8521d44632d7589ebceddc07ae4df16510c5e6ae3569a3251b65a  ./baseline-951
 6abf41291bd09893b46b3efe13c03f3f8590014712bf8d48bbf0befe1cbbd0d3  ./scripts/e2e-dryrun.mts.txt
 916f0f4b433581a7fd47d9be8c8a4f8631aceb4b7a40eaf266283659e7fe9d67  ./scripts/expectations-unit-check.ts.txt
 c137aba173c9287ae939a3dab3424f4857fa8a0c2d350fc8e6ae56cbefe9ef34  ./scripts/importgraph.mjs.txt
+dd43a74e196bce58be7c3c3c1633acd3693f59662582d2793c207bd3fd5724f8  ./scripts/redact-recompute.mjs.txt

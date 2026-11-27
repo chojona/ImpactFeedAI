@@ -1,0 +1,78 @@
+/**
+ * Redact Yahoo-derived price levels and returns from the recompute replay
+ * report so it can be committed to a public repository.
+ *
+ * Kept verbatim: every count, key, reason, timestamp, session day and basis.
+ * Replaced: anchorPrice / endpointPrice / pctChange on each changed
+ * observation's `before` and `after` sides, with
+ *   - sha256 of JSON.stringify(<original side object>) — verifiable by anyone
+ *     who regenerates the report from the committed Nov-5 inputs;
+ *   - per-row flags for which price fields changed;
+ *   - aggregate statistics (n, counts, |Δ pctChange| max/median in pp).
+ *
+ * Usage: node redact-recompute.mjs <in.json> <out.json>
+ */
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+
+const [inPath, outPath] = process.argv.slice(2);
+const raw = readFileSync(inPath);
+const report = JSON.parse(raw.toString("utf8"));
+const PRICE_FIELDS = ["anchorPrice", "endpointPrice", "pctChange"];
+const sha = (v) => createHash("sha256").update(typeof v === "string" ? v : JSON.stringify(v)).digest("hex");
+const strip = (side) => {
+  if (!side) return side;
+  const out = {};
+  for (const [k, v] of Object.entries(side)) if (!PRICE_FIELDS.includes(k)) out[k] = v;
+  out.sideSha256 = sha(side);
+  return out;
+};
+
+const absDiffs = [];
+const fieldChangeCounts = { anchorPrice: 0, endpointPrice: 0, pctChange: 0, anchorBarAt: 0, endpointBarAt: 0, anchorSessionDay: 0, endpointSessionDay: 0 };
+const bySymbolMeasure = {};
+const changedObservations = report.changedObservations.map((row) => {
+  const { before, after } = row;
+  const changed = {};
+  for (const f of Object.keys(fieldChangeCounts)) {
+    const flag = Boolean(before && after && before[f] !== after[f]);
+    changed[`${f}Changed`] = flag;
+    if (flag) fieldChangeCounts[f]++;
+  }
+  if (before && after && Number.isFinite(before.pctChange) && Number.isFinite(after.pctChange)) {
+    absDiffs.push(Math.abs(after.pctChange - before.pctChange));
+  }
+  const [, symbol, measure] = row.key.split("/");
+  const k = `${symbol}/${measure}`;
+  bySymbolMeasure[k] = (bySymbolMeasure[k] ?? 0) + 1;
+  const rest = Object.fromEntries(Object.entries(row).filter(([key]) => !["before", "after"].includes(key)));
+  return { ...rest, before: strip(before), after: strip(after), changedFields: changed };
+});
+absDiffs.sort((a, b) => a - b);
+const median = absDiffs.length ? absDiffs[Math.floor(absDiffs.length / 2)] : null;
+
+// Guard: no price field may survive anywhere in the output.
+const out = {
+  ...report,
+  changedObservations,
+  redaction: {
+    reason: "Yahoo-derived price levels and returns are not redistributable; replaced with non-reconstructible evidence.",
+    originalReportSha256: sha(raw.toString("utf8")),
+    removedFields: PRICE_FIELDS,
+    removedValueCount: report.changedObservations.reduce((n, r) => n + [r.before, r.after].filter(Boolean).reduce((m, s) => m + PRICE_FIELDS.filter((f) => f in s).length, 0), 0),
+    sideHash: "sha256(JSON.stringify(original before|after object)) in field order as emitted by recompute-reaction-impact.ts",
+    summary: {
+      changedRows: changedObservations.length,
+      rowsWithComparablePctChange: absDiffs.length,
+      changedRowsByField: Object.fromEntries(Object.entries(fieldChangeCounts).map(([f, n]) => [`${f}ChangedRows`, n])),
+      bySymbolMeasure,
+      absPctChangeDiffPp: { max: absDiffs.at(-1) ?? null, median, min: absDiffs[0] ?? null },
+    },
+  },
+};
+const text = JSON.stringify(out, null, 2);
+for (const f of PRICE_FIELDS) if (text.includes(`"${f}"`) && !out.redaction.removedFields.includes(f)) throw new Error(`leak ${f}`);
+const leaked = changedObservations.some((r) => [r.before, r.after].some((s) => s && PRICE_FIELDS.some((f) => f in s)));
+if (leaked) throw new Error("price field survived redaction");
+writeFileSync(outPath, `${text}\n`);
+console.log(JSON.stringify(out.redaction, null, 2));

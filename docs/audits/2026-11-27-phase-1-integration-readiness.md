@@ -286,7 +286,7 @@ The criteria come from the [Phase 0.5 reconsideration list](2026-11-05-phase-0.5
 | Engineering checks (typecheck, lint, tests, coverage, schema, build) | **PASS** | §3 |
 | Authoritative futures close/settlement and roll evidence, or an approved narrower universe | **NOT MET.** The NQ archive has roll evidence, but only 11 strict sessions, no settlement or close definition, and no engine path | §7, B5 |
 | Missing-window evidence recovered or formally qualified | **NOT MET.** 132 missing, 0 legitimately unavailable | [40](2026-11-27-phase-1-readiness/40-measurement-replay.json) |
-| 60 gold-futures changes and 15 first-hour observations reconciled | **NOT MET.** 75 unresolved | [41](2026-11-27-phase-1-readiness/41-recompute-replay.log) |
+| 60 gold-futures changes and 15 first-hour observations reconciled | **NOT MET.** 75 unresolved: 60 `GC=F` session rows and 15 `INTRADAY_60M` rows (`redaction.summary.bySymbolMeasure`) | [41 log](2026-11-27-phase-1-readiness/41-recompute-replay.log), [41 json](2026-11-27-phase-1-readiness/41-recompute-replay.json) |
 | v4 inputs archived; additive persistence and replay validated on isolation | **NOT MET.** The writer still fetches live; no isolated apply | §5 |
 | Qualified macro observation/evidence boundary and source workflow | **NOT MET.** The contract exists, but ALFRED cannot pass it and nothing persists | B1, B4 |
 | R1: point-in-time eligibility explicit, with no silent latest-vintage promotion | **NOT MET** in the live ingest path | D3 |
@@ -355,3 +355,7 @@ The audit scripts are committed as `.txt` files so they stay out of `tsc` / `esl
 ## 13. Evidence manifest
 
 See [`MANIFEST.sha256`](2026-11-27-phase-1-readiness/MANIFEST.sha256). Each log ends with its command's exit code.
+
+**Redaction.** Yahoo-derived price levels and returns are not redistributable. In `41-recompute-replay.json`, the 405 `anchorPrice`, `endpointPrice` and `pctChange` values on the changed observations' before/after sides were removed. Each side is replaced by the SHA-256 of its original JSON (`sideSha256`). Every row also carries `changedFields` flags. Under `redaction` the file records the original report's sha256 and aggregate statistics: n, per-field change counts, per-symbol/measure counts, and the |Δ pctChange| range in pp.
+
+Redaction script: [`scripts/redact-recompute.mjs.txt`](2026-11-27-phase-1-readiness/scripts/redact-recompute.mjs.txt). The sha256 values can be checked by regenerating the report from the committed November 5 inputs (§12) and running the script on it. No other evidence file in this directory contains price levels.
