@@ -1,0 +1,10 @@
+{
+  "observations": [
+    {
+      "realtime_start": "2022-07-13",
+      "realtime_end": "9999-12-31",
+      "date": "2022-06-01",
+      "value": "296.311"
+    }
+  ]
+}

@@ -21,6 +21,11 @@
  * Persistence / Prisma models are intentionally absent here.
  */
 
+import type {
+  ActualValueKind,
+  AvailabilityQuality,
+} from "@/services/macro/actualProvenance";
+
 /**
  * How a query claims knowledge of the information set.
  * Values match Agent 03 Phase 1.1 — do not rename without coordinating.
@@ -149,3 +154,155 @@ export interface FeatureComputeRequest {
    */
   readonly sessionCalendar?: readonly string[];
 }
+
+// ---------------------------------------------------------------------------
+// Phase 1.1 macro point-in-time contracts (PR #20). Shared market/feature
+// contracts above are owned by PR #16; keep them identical, extend here.
+// ---------------------------------------------------------------------------
+
+/**
+ * Observation quality for historical macro eligibility.
+ * `revised_latest` is current FRED knowledge — never silently promoted to
+ * verified historical reconstruction.
+ */
+export type ObservationQuality =
+  | "verified_vintage"
+  | "conservative_date_bound"
+  | "revised_latest"
+  | "unknown_availability"
+  | "missing"
+  | "conflict";
+
+export type PublicationPrecision = "instant" | "date" | "unknown";
+
+export type ContextReleaseStage =
+  | "INITIAL"
+  | "PRELIMINARY"
+  | "ADVANCE"
+  | "SECOND_ESTIMATE"
+  | "THIRD_ESTIMATE"
+  | "FINAL"
+  | "REVISION"
+  | "UNKNOWN";
+
+export type MissingReason =
+  | "no_observation_for_period"
+  | "not_available_before_cutoff"
+  | "not_known_to_system"
+  | "recorded_after_data_freeze"
+  | "unknown_availability"
+  | "revised_latest_ineligible"
+  | "conflict_quarantined"
+  | "insufficient_vintage_panel"
+  | "non_finite_value"
+  | "mixed_vintage_panel"
+  | "untrusted_event_timing";
+
+/**
+ * Immutable macro observation with revision / vintage identity.
+ * Distinct from lean {@link MarketContextObservation} used by feature math.
+ */
+export interface ContextObservation {
+  readonly id: string;
+  readonly seriesKey: string;
+  readonly providerSeriesId: string;
+  /** YYYY-MM-DD reference-period start. */
+  readonly observationPeriodStart: string;
+  readonly value: number | null;
+  readonly rawValue: string | null;
+  readonly unit: string;
+  /**
+   * Provider revision identity. For ALFRED, typically
+   * `${seriesId}:${period}:${realtimeStart}`.
+   */
+  readonly vintageKey: string;
+  readonly realtimeStart: string;
+  /** Open-ended current interval uses null rather than inventing an end. */
+  readonly realtimeEnd: string | null;
+  readonly vintageDate: string | null;
+  readonly releaseStage: ContextReleaseStage;
+  readonly valueKind: ActualValueKind;
+  /** Exact publication instant — never invented from a vintage date. */
+  readonly publishedAt: Date | null;
+  readonly publicationDate: string | null;
+  readonly publicationPrecision: PublicationPrecision;
+  readonly availableAt: Date | null;
+  readonly availabilityQuality: AvailabilityQuality;
+  readonly availabilityPolicyVersion: string | null;
+  readonly quality: ObservationQuality;
+  readonly fetchedAt: Date;
+  readonly recordedAt: Date;
+  /** Credential-free HTTPS citation (API keys stripped). */
+  readonly sourceUrl: string;
+  readonly payloadHash: string;
+  readonly ingestionVersion: string;
+}
+
+export interface PointInTimePolicy {
+  readonly cutoff: Date;
+  readonly recordedThrough: Date;
+  readonly knowledgeMode: KnowledgeMode;
+  /**
+   * When true, only INITIAL / INITIAL_REPORTED observations may be selected
+   * (e.g. first-print surprise research).
+   */
+  readonly requireInitial?: boolean;
+  /**
+   * When false (default), `revised_latest` observations are ineligible for
+   * historical reconstruction features.
+   */
+  readonly allowRevisedLatest?: boolean;
+}
+
+export interface SelectionFailure {
+  readonly status: "missing";
+  readonly reason: MissingReason;
+  readonly seriesKey: string;
+  readonly observationPeriodStart?: string;
+  readonly observationIds: readonly string[];
+}
+
+export interface SelectionSuccess {
+  readonly status: "selected";
+  readonly observation: ContextObservation;
+}
+
+export type SelectionResult = SelectionSuccess | SelectionFailure;
+
+export interface ConflictRecord {
+  readonly vintageKey: string;
+  readonly seriesKey: string;
+  readonly observationPeriodStart: string;
+  readonly observationIds: readonly string[];
+  readonly payloadHashes: readonly string[];
+  readonly reason: "conflicting_payload_for_immutable_revision";
+}
+
+export interface TransformInputRef {
+  readonly role:
+    | "numerator"
+    | "denominator"
+    | "prior_numerator"
+    | "prior_denominator";
+  readonly observationId: string;
+  readonly observationPeriodStart: string;
+  readonly vintageKey: string;
+}
+
+export interface VintageTransformSuccess {
+  readonly status: "ok";
+  readonly value: number;
+  readonly prior: number | null;
+  readonly unit: string;
+  readonly inputs: readonly TransformInputRef[];
+}
+
+export interface VintageTransformFailure {
+  readonly status: "missing";
+  readonly reason: MissingReason;
+  readonly inputs: readonly TransformInputRef[];
+}
+
+export type VintageTransformResult =
+  | VintageTransformSuccess
+  | VintageTransformFailure;

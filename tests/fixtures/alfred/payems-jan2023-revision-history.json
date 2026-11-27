@@ -1,0 +1,40 @@
+{
+  "observations": [
+    {
+      "realtime_start": "2023-02-03",
+      "realtime_end": "2023-03-09",
+      "date": "2023-01-01",
+      "value": "155073"
+    },
+    {
+      "realtime_start": "2023-03-10",
+      "realtime_end": "2023-04-06",
+      "date": "2023-01-01",
+      "value": "155039"
+    },
+    {
+      "realtime_start": "2023-04-07",
+      "realtime_end": "2024-02-01",
+      "date": "2023-01-01",
+      "value": "155007"
+    },
+    {
+      "realtime_start": "2024-02-02",
+      "realtime_end": "2025-02-06",
+      "date": "2023-01-01",
+      "value": "154773"
+    },
+    {
+      "realtime_start": "2025-02-07",
+      "realtime_end": "2026-02-10",
+      "date": "2023-01-01",
+      "value": "154780"
+    },
+    {
+      "realtime_start": "2026-02-11",
+      "realtime_end": "9999-12-31",
+      "date": "2023-01-01",
+      "value": "154776"
+    }
+  ]
+}
