@@ -20,7 +20,10 @@ import {
   intervalReachableAt,
 } from "./candle-semantics";
 import { easternWallClock } from "@/services/macro/time";
-import type { SessionCalendar } from "@/services/market/sessionCalendar";
+import {
+  assertSessionCalendarComplete,
+  type SessionCalendar,
+} from "@/services/market/sessionCalendar";
 import type { CandleInterval } from "@/types/market";
 
 const DAY_MS = 86_400_000;
@@ -229,10 +232,11 @@ export function expectedRegularOpenTimesForSession(
 /**
  * Critical regular-session openTimes for the preservation window.
  *
- * Includes every session day whose regular session overlaps `[from, to]`,
- * then keeps only opens that themselves fall inside that inclusive window.
- * Weekends and holidays are absent from the calendar, so they contribute no
- * expected stamps. Early closes shorten that day's grid.
+ * First proves the observed calendar is complete against the independent
+ * NYSE schedule for `[from, to]` — a missing trading day refuses rather than
+ * shrinking the grid. Then emits opens for each overlapping session, keeping
+ * only those inside the inclusive window. Weekends / full closes contribute
+ * no stamps; early closes shorten that day's grid.
  */
 export function expectedCriticalOpenTimes(args: {
   calendar: SessionCalendar;
@@ -247,9 +251,14 @@ export function expectedCriticalOpenTimes(args: {
     return { status: "refused", reason: "invalid_window_bounds" };
   }
 
+  const completeness = assertSessionCalendarComplete(calendar, from, to);
+  if (completeness.status === "refused") {
+    return { status: "refused", reason: completeness.reason };
+  }
+
   const openTimes: Date[] = [];
 
-  for (const day of calendar.sessionDays) {
+  for (const day of completeness.expectedDays) {
     const sessionOpen = easternWallClock(day, 9, 30);
     if (!Number.isFinite(sessionOpen.getTime())) {
       return { status: "refused", reason: `invalid_session_day:${day}` };

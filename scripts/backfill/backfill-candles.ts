@@ -63,20 +63,11 @@ import {
   intervalFromCode,
 } from "@/services/market/candles";
 import { REACTION_ELIGIBLE_TIMING_STATUSES } from "@/services/events/timing";
-import { buildSessionCalendar } from "@/services/market/sessionCalendar";
+import {
+  buildSessionCalendar,
+  newYorkDateString,
+} from "@/services/market/sessionCalendar";
 import type { CandleInterval } from "@/types/market";
-
-const newYorkDateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/New_York",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-/** YYYY-MM-DD in America/New_York for a bar openTime. */
-function newYorkDateString(date: Date): string {
-  return newYorkDateFormatter.format(date);
-}
 
 const APPLY_CONFIRMATION = "WRITE_CANDLES";
 const CONFIRMATION_ENV = "CANDLE_BACKFILL_CONFIRM";
@@ -226,8 +217,9 @@ async function storedOpenTimesInWindow(
 }
 
 /**
- * Session days for grid verification come from stored SPY daily bars only —
- * never from a live provider call. An empty calendar fails closed (no skips).
+ * Observed session days from stored SPY daily bars only — never a live
+ * provider call. Completeness is checked later against the independent NYSE
+ * schedule inside the planner; a missing SPY day fails closed (no skips).
  */
 async function loadSpySessionCalendar(
   prisma: PrismaClient,

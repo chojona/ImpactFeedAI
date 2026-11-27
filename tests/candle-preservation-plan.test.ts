@@ -134,6 +134,31 @@ describe("expected timestamp grid", () => {
     // 7 + 7 + 4 early-close hours
     expect(grid.openTimes).toHaveLength(18);
   });
+
+  it("refuses the grid when an entire trading day is missing from the calendar", () => {
+    // Authoritative schedule still requires 2025-07-02; omitting it must not
+    // shrink expectations into a false fully-covered result.
+    const incomplete = buildSessionCalendar([
+      "2025-06-30",
+      "2025-07-01",
+      // "2025-07-02" missing
+      "2025-07-03",
+      "2025-07-07",
+    ]);
+    const releaseAt = new Date("2025-07-03T12:30:00.000Z");
+    const { from, to } = eventWindowBounds(releaseAt);
+
+    const grid = expectedCriticalOpenTimes({
+      calendar: incomplete,
+      interval: "ONE_HOUR",
+      from,
+      to,
+    });
+    expect(grid.status).toBe("refused");
+    if (grid.status !== "refused") return;
+    expect(grid.reason).toContain("incomplete_session_calendar");
+    expect(grid.reason).toContain("2025-07-02");
+  });
 });
 
 describe("incremental skip-when-covered", () => {
@@ -222,6 +247,63 @@ describe("incremental skip-when-covered", () => {
     expect(plan.skippedFullyCovered).toBe(0);
     expect(plan.remaining).toHaveLength(1);
     expect(plan.remaining[0]?.missingCriticalCount).toBe(1);
+  });
+
+  it("does not skip when a whole trading day is absent from the session calendar", () => {
+    const now = new Date("2025-07-10T00:00:00.000Z");
+    const releaseAt = new Date("2025-07-03T12:30:00.000Z");
+    const incomplete = buildSessionCalendar([
+      "2025-06-30",
+      "2025-07-01",
+      // missing 2025-07-02
+      "2025-07-03",
+      "2025-07-07",
+    ]);
+    const { from, to } = eventWindowBounds(releaseAt);
+
+    // Store a full regular-session grid for every day the incomplete calendar
+    // still knows about — count looks complete relative to the shrunk list.
+    const partialDays = ["2025-07-01", "2025-07-03"] as const;
+    const storedOpenTimes = partialDays.flatMap((day) => {
+      const dayGrid = expectedRegularOpenTimesForSession(
+        day,
+        "ONE_HOUR",
+        incomplete,
+      );
+      expect(dayGrid.status).toBe("ok");
+      return dayGrid.status === "ok" ? dayGrid.openTimes : [];
+    });
+    expect(storedOpenTimes.length).toBe(7 + 4);
+
+    const assessment = assessWindowCoverage({
+      calendar: incomplete,
+      interval: "ONE_HOUR",
+      from,
+      to,
+      storedOpenTimes,
+    });
+    expect(assessment.fullyCovered).toBe(false);
+    expect(assessment.unverifiableReason).toContain(
+      "incomplete_session_calendar",
+    );
+
+    const plan = buildPreservationPlan({
+      events: [{ id: "e1", releaseAt }],
+      symbols: ["SPY"],
+      interval: "ONE_HOUR",
+      calendar: incomplete,
+      now,
+      coverageFor: () => ({
+        symbol: "SPY",
+        interval: "ONE_HOUR",
+        storedOpenTimes,
+      }),
+    });
+
+    expect(plan.skippedFullyCovered).toBe(0);
+    expect(plan.remaining[0]?.unverifiableReason).toContain(
+      "incomplete_session_calendar",
+    );
   });
 
   it("does not skip when only part of the release window is stored", () => {

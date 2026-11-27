@@ -72,9 +72,12 @@ npm run backfill:candles -- --symbol SPY --limit 5
 - Loads timing-eligible events from Postgres (readonly client).
 - Builds work units `(eventId, symbol, interval, from, to)`.
 - Skips a unit only when every **expected regular-session openTime** for the
-  ±2 calendar-day release window is already stored (weekends/holidays omitted
-  via the SPY daily session calendar; early closes shorten that day's grid).
-  Equal bar counts with missing critical timestamps do **not** skip.
+  ±2 calendar-day release window is already stored. The observed SPY daily
+  calendar is checked for completeness against an independent curated NYSE
+  holiday schedule before any skip; a missing trading day fails closed
+  (never shrinks the grid). Weekends/full closes contribute no stamps; early
+  closes shorten that day's grid. Equal bar counts with missing critical
+  timestamps do **not** skip.
 - Prints days-remaining / at-risk flags and upper-bound row estimates.
 - **No provider calls. No writes.**
 
