@@ -49,7 +49,9 @@
     "verify:actual-provenance": "tsx scripts/maintenance/verify-actual-provenance.ts",
     "audit:reaction-calendar": "tsx scripts/maintenance/reaction-calendar-impact.ts",
     "audit:reaction-recompute": "tsx scripts/maintenance/recompute-reaction-impact.ts",
-    "validate:phase05": "tsx scripts/maintenance/validate-phase05.ts"
+    "validate:phase05": "tsx scripts/maintenance/validate-phase05.ts",
+    "calendar:build": "tsx scripts/ingest/release-calendar/build.ts",
+    "calendar:build:offline": "tsx scripts/ingest/release-calendar/build.ts --offline"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

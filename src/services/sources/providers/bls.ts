@@ -49,7 +49,11 @@ export const BLS_PROVIDER: DataProviderEntry = {
     termsUrl: "https://www.bls.gov/developers/termsOfService.htm",
     basis: "DOCUMENTED",
   },
-  implementations: [{ status: "MAIN", path: "scripts/ingest/sources-bls.ts" }],
+  implementations: [
+    { status: "MAIN", path: "scripts/ingest/sources-bls.ts" },
+    // Release timing from operator-saved archive documents; bls.gov is never fetched.
+    { status: "OPEN_PR", path: "scripts/ingest/release-calendar/source-bls-local.ts", pullRequest: 31 },
+  ],
   lastSuccessfulValidation: TESTED_ON,
   series: [
     {
