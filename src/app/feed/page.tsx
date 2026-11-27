@@ -53,7 +53,7 @@ export default function FeedPage({
 }) {
   return (
     <div className="flex flex-1 flex-col text-ink-2">
-      <Header active="feed" />
+      <Header active="events" />
 
       <main className="mx-auto w-full max-w-7xl px-5 pt-10 pb-24 sm:px-6 sm:pt-12">
         <PageHeader
