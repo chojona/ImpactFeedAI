@@ -196,6 +196,7 @@ async function ingestEvent(
     consensusSource: seed.consensusSource ?? null,
     consensusSourceUrl: seed.consensusSourceUrl ?? null,
     consensusAsOf: optionalDate(seed.consensusAsOf),
+    expectedSeasonalAdjustment: seed.expectedSeasonalAdjustment ?? null,
   });
 
   if (dryRun) {

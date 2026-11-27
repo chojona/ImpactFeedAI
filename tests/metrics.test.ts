@@ -67,11 +67,99 @@ describe("deriveMetric", () => {
     expect(derived!.prior).toBeNull();
   });
 
+  it("uses calendar months for priors, not array neighbours (U2)", () => {
+    // October 2025 omitted from the series: November must not inherit September
+    // as its prior, and a two-month gap must not become a "one-month change".
+    const obs: Observation[] = [
+      { iso: "2025-09-01", value: 4.4 },
+      { iso: "2025-11-01", value: 4.6 },
+    ];
+    const derived = deriveMetric("level_pct", 1, obs);
+    expect(derived).not.toBeNull();
+    expect(derived!.value).toBe(4.6);
+    expect(derived!.prior).toBeNull();
+  });
+
+  it("returns null MoM when the previous calendar month is absent (U2)", () => {
+    const obs: Observation[] = [
+      { iso: "2025-09-01", value: 157_000 },
+      { iso: "2025-11-01", value: 157_200 },
+    ];
+    expect(deriveMetric("mom_diff_thousands", 1, obs)).toBeNull();
+  });
+
+  it("returns null YoY when the same calendar month a year ago is absent (U2)", () => {
+    const obs: Observation[] = [
+      { iso: "2023-10-01", value: 100 },
+      { iso: "2024-11-01", value: 110 },
+    ];
+    expect(deriveMetric("yoy_pct", 1, obs)).toBeNull();
+  });
+
+  it("matches YoY on calendar month across leap-day vs Feb 28 (review #3)", () => {
+    const obs: Observation[] = [
+      { iso: "2023-02-28", value: 100 },
+      { iso: "2024-02-29", value: 110 },
+    ];
+    const derived = deriveMetric("yoy_pct", 1, obs);
+    expect(derived).not.toBeNull();
+    expect(derived!.value).toBeCloseTo(10.0, 1);
+  });
+
+  it("matches QoQ on calendar quarter across month-end dates (review #3)", () => {
+    const obs: Observation[] = [
+      { iso: "2024-12-31", value: 100 },
+      { iso: "2025-03-31", value: 101 },
+    ];
+    const derived = deriveMetric("qoq_pct_annualized", 1, obs);
+    expect(derived).not.toBeNull();
+    // (101/100)^4 − 1 ≈ 4.06% → round1 = 4.1
+    expect(derived!.value).toBeCloseTo(4.1, 1);
+  });
+
+  it("matches QoQ when one side is quarter-start and the other quarter-end (review #3)", () => {
+    const obs: Observation[] = [
+      { iso: "2024-01-01", value: 100 },
+      { iso: "2024-06-30", value: 101 },
+    ];
+    const derived = deriveMetric("qoq_pct_annualized", 1, obs);
+    expect(derived).not.toBeNull();
+    expect(derived!.value).toBeCloseTo(4.1, 1);
+  });
+
+  it("skips a malformed observation date without throwing (review #4)", () => {
+    const obs: Observation[] = [
+      { iso: "2023-01-01", value: 100 },
+      { iso: "not-a-date", value: 105 },
+      { iso: "2024-01-01", value: 110 },
+    ];
+    expect(() => deriveMetric("yoy_pct", 1, obs)).not.toThrow();
+    expect(deriveMetric("yoy_pct", 1, obs)).toBeNull();
+    // Neighbouring good rows still derive.
+    const good = deriveMetric("yoy_pct", 2, obs);
+    expect(good).not.toBeNull();
+    expect(good!.value).toBeCloseTo(10.0, 1);
+  });
+
   it("annualises a quarter-over-quarter change", () => {
-    const obs = monthly("2024-01-01", [100, 101, 102]);
+    const obs: Observation[] = [
+      { iso: "2024-01-01", value: 100 },
+      { iso: "2024-04-01", value: 101 },
+      { iso: "2024-07-01", value: 102 },
+    ];
     const derived = deriveMetric("qoq_pct_annualized", 2, obs);
     // (102/101)^4 − 1 ≈ 4.0%
     expect(derived!.value).toBeCloseTo(4.0, 1);
+    // prior QoQ uses calendar −3/−6 months: (101/100)^4 − 1 ≈ 4.1%
+    expect(derived!.prior).toBeCloseTo(4.1, 1);
+  });
+
+  it("returns null QoQ when the previous calendar quarter is absent (U2)", () => {
+    const obs: Observation[] = [
+      { iso: "2024-01-01", value: 100 },
+      { iso: "2024-07-01", value: 102 },
+    ];
+    expect(deriveMetric("qoq_pct_annualized", 1, obs)).toBeNull();
   });
 
   it("computes a month-over-month level difference in thousands", () => {
@@ -220,6 +308,25 @@ describe("metric registry integrity", () => {
       CURATED_SERIES_BY_EVENT_TYPE,
     )) {
       expect(binding?.metric.eventType).toBe(eventType);
+    }
+  });
+
+  it("binds PPI headline YoY to the unadjusted final-demand series (U1)", () => {
+    // BLS Table A quotes "Change in final demand from 12 months ago (unadj.)";
+    // FRED PPIFID is NSA, PPIFIS is SA.
+    const fredPpi = FRED_SERIES_BINDINGS.find((b) => b.seriesId === "PPIFID");
+    const curatedPpi = CURATED_SERIES_BY_EVENT_TYPE.PPI;
+    expect(fredPpi?.metric).toBe(METRICS.PPI_HEADLINE);
+    expect(curatedPpi?.seriesId).toBe("PPIFID");
+    expect(METRICS.PPI_HEADLINE.seasonalAdjustment).toBe("NSA");
+    expect(
+      FRED_SERIES_BINDINGS.some((b) => b.seriesId === "PPIFIS"),
+    ).toBe(false);
+  });
+
+  it("declares a seasonal-adjustment basis on every metric (U1)", () => {
+    for (const metric of Object.values(METRICS)) {
+      expect(["SA", "NSA", "na"]).toContain(metric.seasonalAdjustment);
     }
   });
 });

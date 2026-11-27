@@ -201,8 +201,8 @@ describe("assessCoverage", () => {
     expect(r.providerId).toBe("yahoo");
     expect(r.suitability?.researchReady).toBe(false);
     expect(r.suitability?.pointInTime.status).toBe("CONDITIONAL");
-    expect(r.suitability?.licensing.storage).toBe("UNVERIFIED");
-    expect(r.suitability?.blockers.some((b) => b.startsWith("Storage is UNVERIFIED"))).toBe(true);
+    expect(r.suitability?.licensing.storage).toBe("RESTRICTED");
+    expect(r.suitability?.blockers.some((b) => b.startsWith("Storage is RESTRICTED"))).toBe(true);
   });
 
   it("does not treat tested NQ minute bars as certified outside accepted sessions", () => {
@@ -243,23 +243,37 @@ describe("buildCoverageAudit", () => {
   it("totals per-provider counts and reports no issues for the shipped registry", () => {
     const audit = buildCoverageAudit(DATA_SOURCE_REGISTRY, { today: TODAY });
     const sum = (k: "tested" | "advertised" | "unavailable") => audit.providers.reduce((n, p) => n + p.claims[k], 0);
-    expect(audit.totals.providers).toBe(10);
+    expect(audit.totals.providers).toBe(14);
     expect(audit.totals.tested).toBe(sum("tested"));
     expect(audit.totals.unavailable).toBe(sum("unavailable"));
-    expect(audit.totals.staleProviders).toBe(0);
+    // Advertised-only providers (no live probe yet) count as stale.
+    expect(audit.totals.staleProviders).toBe(
+      audit.providers.filter((p) => p.lastSuccessfulValidation === null).length,
+    );
     expect(audit.issues).toEqual([]);
   });
 
   it("marks providers stale once validation ages past the threshold", () => {
     const audit = buildCoverageAudit(DATA_SOURCE_REGISTRY, { today: "2027-06-01", staleAfterDays: 90 });
     expect(audit.providers.every((p) => p.stale)).toBe(true);
-    expect(audit.providers[0].validationAgeDays).toBe(186);
+    const probed = audit.providers.find((p) => p.lastSuccessfulValidation !== null)!;
+    expect(probed.validationAgeDays).toBe(186);
   });
 
   it("reports the most mature implementation status", () => {
     const audit = buildCoverageAudit(DATA_SOURCE_REGISTRY, { today: TODAY });
     const byId = Object.fromEntries(audit.providers.map((p) => [p.providerId, p.implementation]));
-    expect(byId).toMatchObject({ fred: "MAIN", cboe: "MAIN", nq_archive: "MAIN", alpha_vantage: "NONE", sf_fed: "OPEN_PR" });
+    expect(byId).toMatchObject({
+      fred: "MAIN",
+      cboe: "MAIN",
+      nq_archive: "MAIN",
+      alpha_vantage: "NONE",
+      sf_fed: "MAIN",
+      bea: "MAIN",
+      federal_reserve_board: "MAIN",
+      atlanta_fed: "MAIN",
+      philadelphia_fed: "MAIN",
+    });
   });
 });
 

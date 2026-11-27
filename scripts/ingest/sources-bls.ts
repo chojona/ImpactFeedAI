@@ -45,10 +45,23 @@ interface BlsResponse {
   Results?: { series: BlsSeriesPayload[] };
 }
 
-const toFloat = (v: string): number | null => {
-  const n = Number(v);
+/**
+ * Parse a BLS API numeric string.
+ *
+ * Empty / whitespace / "-" / "." are missing observations → null. A true
+ * zero ("0", "0.0") stays 0. Never use bare `Number(v)`: `Number("") === 0`.
+ */
+export function parseBlsNumericValue(
+  raw: string | null | undefined,
+): number | null {
+  if (raw === null || raw === undefined) return null;
+  const trimmed = raw.trim();
+  if (trimmed === "" || trimmed === "-" || trimmed === ".") return null;
+  const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
-};
+}
+
+const toFloat = (v: string): number | null => parseBlsNumericValue(v);
 
 function periodToIso(year: string, period: string): string | null {
   if (!period.startsWith("M")) return null; // skip "M13" annual averages

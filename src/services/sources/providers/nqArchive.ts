@@ -22,13 +22,13 @@ export const NQ_ARCHIVE_PROVIDER: DataProviderEntry = {
       "Already purchased (acceptance report: about $27 against an $85 ceiling). Reading it costs nothing. Extending it would be a new purchase and is out of scope.",
   },
   licensing: {
-    storage: "PERMITTED",
-    redistribution: "UNVERIFIED",
+    storage: "UNVERIFIED",
+    redistribution: "RESTRICTED",
     attributionRequired: false,
     summary:
-      "Licensed vendor data held for personal research. Treat as non-redistributable. Never commit bars or manifests to git.",
-    termsUrl: "https://databento.com/terms",
-    basis: "UNVERIFIED",
+      "Databento FAQ §1.7 (https://databento.com/blog/introduction-market-data-licensing): \"You do NOT need a license to access historical (T+1) data.\" Exceptions include: \"You plan to redistribute the data.\" (Also listed: exotic OTC; raw PCAPs from ICE.) Cautious reading: FAQ does not cover durable local storage — storage UNVERIFIED; redistribution RESTRICTED. Public display: UNVERIFIED. Never commit bars or manifests to git.",
+    termsUrl: "https://databento.com/blog/introduction-market-data-licensing",
+    basis: "DOCUMENTED",
   },
   implementations: [{ status: "MAIN", path: "src/services/market/nqArchive/index.ts" }],
   lastSuccessfulValidation: TESTED_ON,
