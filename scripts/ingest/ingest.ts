@@ -27,9 +27,6 @@ import { createDryRunPrismaClient } from "../lib/readonly-prisma";
 import {
   ASSET_UNIVERSE,
   SEED_EVENTS,
-  curatedEventKey,
-  legacyCuratedEventKey,
-  legacyHeadlineAliases,
   type SeedEvent,
   type SeedEventType,
 } from "./events-seed";
@@ -37,39 +34,6 @@ import { fetchPriceSnapshot, sleep } from "./fetch-prices";
 import { fetchMacroRelease } from "./fetch-macro";
 import { buildAssetReaction } from "./compute-reactions";
 import { isReactionTimingEligible } from "@/services/events/timing";
-
-export {
-  curatedEventKey,
-  curatedSeedMatchesExisting,
-  legacyCuratedEventKey,
-  legacyHeadlineAliases,
-} from "./events-seed";
-
-/**
- * Idempotency predicates for a curated seed.
- *
- * Identity is the stable curated key, plus exact legacy headline keys/titles
- * (including explicit `previousHeadlines` aliases). Do NOT match on type +
- * occurredAt alone — that merges distinct co-timed releases (Fed vs FOMC
- * auto-ingest, headline CPI vs Core CPI).
- */
-export function curatedEventDedupWhere(seed: SeedEvent): {
-  OR: Array<Record<string, unknown>>;
-} {
-  const aliases = legacyHeadlineAliases(seed);
-  return {
-    OR: [
-      { eventKey: curatedEventKey(seed) },
-      ...aliases.map((headline) => ({
-        eventKey: legacyCuratedEventKey({
-          eventType: seed.eventType,
-          headline,
-        }),
-      })),
-      ...aliases.map((headline) => ({ headline })),
-    ],
-  };
-}
 
 const PER_SYMBOL_DELAY_MS = 500;
 const PER_EVENT_DELAY_MS = 1000;
@@ -152,6 +116,10 @@ const optionalDate = (value: string | undefined): Date | null => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+/** Stable across a later correction to timing; headlines are unique in the seed. */
+const curatedEventKey = (seed: SeedEvent): string =>
+  `curated:${seed.eventType}:${seed.headline.trim().replace(/\s+/g, " ")}`;
+
 async function ingestEvent(
   prisma: PrismaClient | null,
   seed: SeedEvent,
@@ -179,7 +147,14 @@ async function ingestEvent(
   // Idempotency check (skipped only when there is no DB connection at all)
   if (prisma) {
     const existing = await prisma.event.findFirst({
-      where: curatedEventDedupWhere(seed),
+      where: {
+        OR: [
+          { eventKey },
+          // Legacy curated rows predate event_key. Their hand-written
+          // headlines are unique, so this remains stable if timing is fixed.
+          { headline: seed.headline },
+        ],
+      },
       select: { id: true },
     });
     if (existing) {
