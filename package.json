@@ -42,7 +42,9 @@
     "auto-ingest": "tsx scripts/ingest/auto-ingest.ts",
     "auto-ingest:dry-run": "tsx scripts/ingest/auto-ingest.ts --dry-run",
     "auto-ingest:fred": "tsx scripts/ingest/auto-ingest.ts --source fred",
-    "auto-ingest:fomc": "tsx scripts/ingest/auto-ingest.ts --source fomc"
+    "auto-ingest:fomc": "tsx scripts/ingest/auto-ingest.ts --source fomc",
+    "calendar:build": "tsx scripts/ingest/release-calendar/build.ts",
+    "calendar:build:offline": "tsx scripts/ingest/release-calendar/build.ts --offline"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
