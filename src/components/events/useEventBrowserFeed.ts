@@ -15,11 +15,9 @@ import type {
   FeedResultState,
 } from "./EventBrowserTypes";
 import { useFeedUrlSync } from "./useFeedUrlSync";
+import { useSyncRef } from "./useSyncRef";
 
-export function useEventBrowserFeed(
-  initial: FeedInitialData,
-  pathname: string,
-) {
+export function useEventBrowserFeed(initial: FeedInitialData, pathname: string) {
   const [category, setCategory] = useState<CategoryFilter>(initial.category);
   const [sortMode, setSortMode] = useState<SortMode>(initial.sort);
   const [searchInput, setSearchInput] = useState(initial.search);
@@ -34,10 +32,8 @@ export function useEventBrowserFeed(
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(false);
   const [error, setError] = useState<string | null>(initial.error);
-
   const libraryTotalRef = useRef(initial.libraryTotal);
-  useEffect(() => { libraryTotalRef.current = result.libraryTotal; }, [result.libraryTotal]);
-
+  useSyncRef(libraryTotalRef, result.libraryTotal);
   useFeedUrlSync({
     pathname,
     category,
@@ -49,7 +45,6 @@ export function useEventBrowserFeed(
     setSearchInput,
     setSearch,
   });
-
   const queryKey = feedQueryKey({ category, sort: sortMode, search });
 
   const fetchEvents = useCallback(

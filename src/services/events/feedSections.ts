@@ -85,7 +85,7 @@ const dateSection = (group: EventDateGroup): FeedSection => ({
 const unrankedSection = (unrankedTotal: number): FeedSection => ({
   kind: "unranked",
   key: "unranked",
-  label: "No measured 1D reaction",
+  label: "No measured SPY release-session move",
   detail: `${plural(unrankedTotal, "event")} · newest first`,
 });
 
@@ -135,8 +135,8 @@ export function rankedSummary(
 ): string | null {
   if (total === 0) return null;
   const unranked = Math.max(total - rankedCount, 0);
-  const ranked = `${plural(rankedCount, "event")} ranked by 1D move`;
+  const ranked = `${plural(rankedCount, "event")} ranked by SPY release-session move`;
   return unranked === 0
     ? ranked
-    : `${ranked} · ${unranked} without measured 1D reaction`;
+    : `${ranked} · ${unranked} without measured SPY release-session move`;
 }

@@ -84,7 +84,7 @@ describe("feedRows — biggest move", () => {
     expect(marks[0]).toMatchObject({
       index: 20,
       kind: "unranked",
-      label: "No measured 1D reaction",
+      label: "No measured SPY release-session move",
     });
     expect(marks[0]?.detail).toBe("30 events · newest first");
   });
@@ -239,17 +239,19 @@ describe("feedRows — newest", () => {
 describe("rankedSummary", () => {
   it("states the ranked and unranked halves separately", () => {
     expect(rankedSummary(20, 50)).toBe(
-      "20 events ranked by 1D move · 30 without measured 1D reaction",
+      "20 events ranked by SPY release-session move · 30 without measured SPY release-session move",
     );
   });
 
   it("drops the second clause when the whole set is ranked", () => {
-    expect(rankedSummary(12, 12)).toBe("12 events ranked by 1D move");
+    expect(rankedSummary(12, 12)).toBe(
+      "12 events ranked by SPY release-session move",
+    );
   });
 
   it("still reports zero ranked rather than staying silent", () => {
     expect(rankedSummary(0, 11)).toBe(
-      "0 events ranked by 1D move · 11 without measured 1D reaction",
+      "0 events ranked by SPY release-session move · 11 without measured SPY release-session move",
     );
   });
 
