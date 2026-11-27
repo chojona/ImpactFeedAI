@@ -13,6 +13,7 @@ import {
   vintageConsistentYoy,
 } from "@/services/context/transforms";
 import type { ContextObservation } from "@/types/context";
+import gdpVintages from "./fixtures/alfred/gdpc1-q1-2023-vintages.json";
 
 const fixtureDir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -40,7 +41,27 @@ function parse(
   });
 }
 
+function gdpSnapshot(date: keyof typeof gdpVintages) {
+  return parseAlfredObservationsPayload(JSON.stringify(gdpVintages[date]), {
+    seriesId: "GDPC1",
+    mode: "as_of_vintage",
+    vintageDate: date,
+    fetchedAt,
+    sourceUrlRedacted: "https://api.stlouisfed.org/fred/series/observations",
+  });
+}
+
 describe("vintage-consistent transforms", () => {
+  it("rejects an April GDP numerator with a June snapshot denominator", () => {
+    const april = gdpSnapshot("2023-04-27");
+    const june = gdpSnapshot("2023-06-29");
+
+    expect(vintageConsistentQoqSaar([june[0], april[1]], 1)).toMatchObject({
+      status: "missing",
+      reason: "mixed_vintage_panel",
+    });
+  });
+
   it("A2: first-print PAYEMS MoM is +517; current panel is +434", () => {
     const firstPrint = parse(
       "payems-asof-2023-02-03.json",
@@ -61,6 +82,17 @@ describe("vintage-consistent transforms", () => {
     const currentMom = vintageConsistentMom(current, 2);
     expect(firstMom).toMatchObject({ status: "ok", value: 517 });
     expect(currentMom).toMatchObject({ status: "ok", value: 434 });
+    expect(firstMom).toMatchObject({
+      prior: 260,
+      inputs: [
+        { role: "numerator", observationId: firstPrint[2].id },
+        { role: "denominator", observationId: firstPrint[1].id },
+        { role: "prior_numerator", observationId: firstPrint[1].id },
+        { role: "prior_denominator", observationId: firstPrint[0].id },
+      ],
+    });
+    expect(vintageConsistentMom([current[0], firstPrint[1], firstPrint[2]], 2))
+      .toMatchObject({ status: "missing", reason: "mixed_vintage_panel" });
   });
 
   it("A3: mixed first-print Jan with current Dec is rejected", () => {
@@ -118,22 +150,8 @@ describe("vintage-consistent transforms", () => {
   });
 
   it("A6: GDPC1 Q1 2023 advance/second/third SAAR differ by vintage", () => {
-    const vintages = JSON.parse(
-      load("gdpc1-q1-2023-vintages.json"),
-    ) as Record<string, { observations: unknown }>;
-
-    const saarFor = (vintageDate: string): number => {
-      const payload = JSON.stringify(vintages[vintageDate]);
-      const panel = parseAlfredObservationsPayload(payload, {
-        seriesId: "GDPC1",
-        mode: "as_of_vintage",
-        fetchedAt,
-        sourceUrlRedacted:
-          "https://api.stlouisfed.org/fred/series/observations",
-        seriesKey: CONTEXT_SERIES.GDPC1.seriesKey,
-        unit: CONTEXT_SERIES.GDPC1.unit,
-      });
-      const result = vintageConsistentQoqSaar(panel, 1);
+    const saarFor = (vintageDate: keyof typeof gdpVintages): number => {
+      const result = vintageConsistentQoqSaar(gdpSnapshot(vintageDate), 1);
       expect(result.status).toBe("ok");
       if (result.status !== "ok") throw new Error("expected ok");
       return result.value;

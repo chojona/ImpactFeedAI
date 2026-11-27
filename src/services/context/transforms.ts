@@ -1,205 +1,116 @@
-/**
- * Vintage-consistent macro transforms.
- *
- * All inputs must come from one point-in-time panel. Mixing a first-print
- * numerator with a current-vintage denominator is rejected.
- */
+/** Macro transforms on one ALFRED snapshot or one point-in-time selection. */
 
-import {
-  deriveMetric,
-  type MetricTransform,
-  type Observation,
-} from "@/services/macro/metrics";
+import type { AlfredObservation } from "@/services/context/alfred";
+import { isObservationEligible } from "@/services/context/quality";
+import type { PanelObservation } from "@/services/context/revisionSelect";
+import { deriveMetric } from "@/services/macro/metrics";
 import type {
   ContextObservation,
   TransformInputRef,
   VintageTransformResult,
 } from "@/types/context";
 
-function assertSameSeriesPanel(
-  panel: readonly (ContextObservation | null)[],
-): ContextObservation[] {
-  const present = panel.filter((o): o is ContextObservation => o !== null);
-  if (present.length === 0) return [];
-  const seriesKey = present[0].seriesKey;
-  for (const obs of present) {
-    if (obs.seriesKey !== seriesKey) {
-      throw new TypeError("transform panel mixes seriesKey values");
-    }
-  }
-  return present;
-}
+type TransformObservation = ContextObservation &
+  Partial<Pick<AlfredObservation, "snapshotAsOf"> & Pick<PanelObservation, "selectionPolicy">>;
+type TransformPanel = readonly (TransformObservation | null)[];
+type HeadlineTransform = "mom_diff_thousands" | "yoy_pct" | "qoq_pct_annualized";
 
-/**
- * Reject panels that combine verified/date-bound vintage rows with
- * revised_latest (current) rows — the verified MoM trap.
- */
+/** Require one validated snapshot date or one common revision-selection policy. */
 export function assertVintageHomogeneousPanel(
-  panel: readonly (ContextObservation | null)[],
+  panel: TransformPanel,
 ): { ok: true } | { ok: false; reason: "mixed_vintage_panel" } {
-  const present = panel.filter((o): o is ContextObservation => o !== null);
-  const qualities = new Set(present.map((o) => o.quality));
-  const hasHistorical =
-    qualities.has("verified_vintage") ||
-    qualities.has("conservative_date_bound");
-  const hasCurrent = qualities.has("revised_latest");
-  if (hasHistorical && hasCurrent) {
-    return { ok: false, reason: "mixed_vintage_panel" };
-  }
-  return { ok: true };
-}
+  const present = panel.filter((o): o is TransformObservation => o !== null);
+  const first = present[0];
+  if (!first) return { ok: true };
 
-function toMetricObservations(
-  panel: readonly (ContextObservation | null)[],
-): Observation[] {
-  return panel.map((obs) => ({
-    iso: obs?.observationPeriodStart ?? "",
-    value: obs?.value ?? null,
-  }));
-}
-
-function inputRefsForMom(
-  panel: readonly (ContextObservation | null)[],
-  index: number,
-): TransformInputRef[] {
-  const refs: TransformInputRef[] = [];
-  const here = panel[index];
-  const prior = panel[index - 1];
-  if (here) {
-    refs.push({
-      role: "numerator",
-      observationId: here.id,
-      observationPeriodStart: here.observationPeriodStart,
-      vintageKey: here.vintageKey,
-    });
-  }
-  if (prior) {
-    refs.push({
-      role: "denominator",
-      observationId: prior.id,
-      observationPeriodStart: prior.observationPeriodStart,
-      vintageKey: prior.vintageKey,
-    });
-  }
-  return refs;
-}
-
-function inputRefsForYoy(
-  panel: readonly (ContextObservation | null)[],
-  index: number,
-): TransformInputRef[] {
-  const refs: TransformInputRef[] = [];
-  const here = panel[index];
-  const yearAgo = panel[index - 12];
-  if (here) {
-    refs.push({
-      role: "numerator",
-      observationId: here.id,
-      observationPeriodStart: here.observationPeriodStart,
-      vintageKey: here.vintageKey,
-    });
-  }
-  if (yearAgo) {
-    refs.push({
-      role: "denominator",
-      observationId: yearAgo.id,
-      observationPeriodStart: yearAgo.observationPeriodStart,
-      vintageKey: yearAgo.vintageKey,
-    });
-  }
-  return refs;
+  const commonPolicy = first.selectionPolicy;
+  const consistent = commonPolicy
+    ? present.every((o) => o.selectionPolicy === commonPolicy && isObservationEligible(o, commonPolicy))
+    : first.snapshotAsOf != null && present.every((o) =>
+        !o.selectionPolicy &&
+        o.snapshotAsOf === first.snapshotAsOf &&
+        (o.quality === "revised_latest") === (first.quality === "revised_latest") &&
+        o.quality !== "conflict",
+      );
+  return consistent ? { ok: true } : { ok: false, reason: "mixed_vintage_panel" };
 }
 
 function runTransform(
-  transform: MetricTransform,
-  panel: readonly (ContextObservation | null)[],
+  transform: HeadlineTransform,
+  panel: TransformPanel,
   index: number,
   unit: string,
-  refs: readonly TransformInputRef[],
 ): VintageTransformResult {
-  assertSameSeriesPanel(panel);
-  const homogeneity = assertVintageHomogeneousPanel(panel);
-  if (!homogeneity.ok) {
-    return { status: "missing", reason: homogeneity.reason, inputs: refs };
-  }
-  if (
-    panel[index] === null ||
-    (transform === "mom_diff_thousands" && panel[index - 1] === null) ||
-    (transform === "yoy_pct" && panel[index - 12] === null) ||
-    (transform === "qoq_pct_annualized" && panel[index - 1] === null)
-  ) {
-    return {
-      status: "missing",
-      reason: "insufficient_vintage_panel",
-      inputs: refs,
-    };
+  const numerator = panel[index];
+  if (numerator && panel.some((o) => o !== null && o.seriesKey !== numerator.seriesKey)) {
+    throw new TypeError("transform panel mixes seriesKey values");
   }
 
-  const derived = deriveMetric(transform, index, toMetricObservations(panel));
-  if (!derived) {
-    return {
-      status: "missing",
-      reason: "insufficient_vintage_panel",
-      inputs: refs,
-    };
+  const levels = Array.from(panel, (o) => ({
+    iso: o?.observationPeriodStart ?? "",
+    value: o?.value ?? null,
+  }));
+  const derived = deriveMetric(transform, index, levels);
+  const lag = transform === "yoy_pct" ? 12 : 1;
+  const operands: [TransformInputRef["role"], TransformObservation | null | undefined][] = [
+    ["numerator", numerator],
+    ["denominator", panel[index - lag]],
+  ];
+  if (derived?.prior != null) {
+    operands.push(
+      ["prior_numerator", panel[index - 1]],
+      ["prior_denominator", panel[index - lag - 1]],
+    );
   }
-  return {
-    status: "ok",
-    value: derived.value,
-    prior: derived.prior,
-    unit,
-    inputs: refs,
-  };
+  const inputs = operands.flatMap<TransformInputRef>(([role, observation]) =>
+    observation ? [{
+      role,
+      observationId: observation.id,
+      observationPeriodStart: observation.observationPeriodStart,
+      vintageKey: observation.vintageKey,
+    }] : [],
+  );
+  if (!derived) {
+    return { status: "missing", reason: "insufficient_vintage_panel", inputs };
+  }
+  const homogeneity = assertVintageHomogeneousPanel(operands.map(([, observation]) => observation ?? null));
+  if (!homogeneity.ok) {
+    return { status: "missing", reason: homogeneity.reason, inputs };
+  }
+  if (!Number.isFinite(derived.value) || (derived.prior !== null && !Number.isFinite(derived.prior))) {
+    return { status: "missing", reason: "non_finite_value", inputs };
+  }
+
+  return { status: "ok", value: derived.value, prior: derived.prior, unit, inputs };
 }
 
 /** Month-over-month difference in thousands (payrolls). */
 export function vintageConsistentMom(
-  panel: readonly (ContextObservation | null)[],
+  panel: TransformPanel,
   index: number,
 ): VintageTransformResult {
-  return runTransform(
-    "mom_diff_thousands",
-    panel,
-    index,
-    "thousands_mom",
-    inputRefsForMom(panel, index),
-  );
+  return runTransform("mom_diff_thousands", panel, index, "thousands_mom");
 }
 
 /** Year-over-year percent change (CPI-style index). */
 export function vintageConsistentYoy(
-  panel: readonly (ContextObservation | null)[],
+  panel: TransformPanel,
   index: number,
 ): VintageTransformResult {
-  return runTransform(
-    "yoy_pct",
-    panel,
-    index,
-    "pct_yoy",
-    inputRefsForYoy(panel, index),
-  );
+  return runTransform("yoy_pct", panel, index, "pct_yoy");
 }
 
 /** Quarter-over-quarter percent annualized (real GDP). */
 export function vintageConsistentQoqSaar(
-  panel: readonly (ContextObservation | null)[],
+  panel: TransformPanel,
   index: number,
 ): VintageTransformResult {
-  const refs = inputRefsForMom(panel, index);
-  return runTransform(
-    "qoq_pct_annualized",
-    panel,
-    index,
-    "pct_saar",
-    refs,
-  );
+  return runTransform("qoq_pct_annualized", panel, index, "pct_saar");
 }
 
-/**
- * Helper: order panel periods ascending and locate index of `period`.
- */
+/** Helper: locate the index of `period` in the panel. */
 export function panelIndexForPeriod(
-  panel: readonly (ContextObservation | null)[],
+  panel: TransformPanel,
   period: string,
 ): number {
   return panel.findIndex(
