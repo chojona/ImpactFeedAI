@@ -1,5 +1,8 @@
 # Weekly dependency updates for ImpactFeedAI.
 # Security alerts still open separate PRs; this keeps routine bumps from rotting.
+#
+# Groups only collect minor/patch bumps. Major upgrades open as individual PRs
+# so they can be reviewed (and rejected) without breaking npm ci / lint.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -13,17 +16,38 @@ updates:
     labels:
       - dependencies
       - javascript
+    ignore:
+      # typescript-eslint / eslint-config-next do not support TypeScript 7 yet.
+      - dependency-name: "typescript"
+        versions: [">=6"]
+      # Keep Node types aligned with engines (^22.12 || >=24), not Node 26.
+      - dependency-name: "@types/node"
+        versions: [">=23"]
+      # Keep vitest and its coverage reporter on the same major.
+      - dependency-name: "@vitest/coverage-v8"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
     groups:
       next-eslint:
         patterns:
           - "next"
           - "eslint-config-next"
+        update-types:
+          - "minor"
+          - "patch"
       prisma:
         patterns:
           - "prisma"
           - "@prisma/*"
+        update-types:
+          - "minor"
+          - "patch"
       npm-production:
         dependency-type: production
+        update-types:
+          - "minor"
+          - "patch"
         exclude-patterns:
           - "next"
           - "eslint-config-next"
@@ -31,6 +55,9 @@ updates:
           - "@prisma/*"
       npm-development:
         dependency-type: development
+        update-types:
+          - "minor"
+          - "patch"
         exclude-patterns:
           - "next"
           - "eslint-config-next"
@@ -52,3 +79,6 @@ updates:
       github-actions:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
