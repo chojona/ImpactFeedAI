@@ -10,7 +10,8 @@ guessing.
 and [Phase 1 implementation plan](docs/phase-1-market-context-plan.md) are the
 current planning baseline. Live reads use four v3 measures from
 `reaction_measurements`; `asset_reactions` is the v2 archive. The audit
-reverified 518 tests and 828 measurement rows, but found blocking calendar and
+re-ran 518 tests and the existing verifier (zero violations over 828
+measurement rows, with the coverage gaps recorded in the audit), but found blocking calendar and
 verification defects plus missing point-in-time actual provenance. Phase 1
 implementation remains gated on those findings. Older operational sections
 below retain some v2 history; follow the audited architecture for current
@@ -186,8 +187,8 @@ impactfeedai/
 │   └── roadmap.md                 # phased plan
 │
 ├── prisma/
-│   ├── schema.prisma              # Event, AssetReaction, DataRelease
-│   └── migrations/                # baseline + timing/provenance migration
+│   ├── schema.prisma              # Event, DataRelease, AssetReaction (v2 archive), Candle, ReactionMeasurement
+│   └── migrations/                # init, timing/provenance, candles, reaction_measurements
 │
 ├── scripts/
 │   ├── lib/
@@ -373,6 +374,11 @@ REACTION_REPAIR_CONFIRM=DELETE_UNTRUSTED_OR_LEGACY_REACTIONS \
 npm run backfill:prices -- --event-id <uuid>
 ```
 
+> `backfill:prices` writes only the frozen v2 `asset_reactions` archive. The
+> live site reads v3 `reaction_measurements`; dry-run with
+> `npm run backfill:reaction-measurements:dry-run -- --event-id <uuid>`, then
+> `REACTION_MEASUREMENT_BACKFILL_CONFIRM=WRITE_MEASUREMENTS npm run backfill:reaction-measurements -- --apply --event-id <uuid>`.
+
 The 20 CPI / PPI / Employment Situation / FOMC seed entries are `SCHEDULED`:
 those releases have an official published schedule (BLS at 8:30 a.m. ET, FOMC
 statements at 2:00 p.m. ET), each date was checked against the issuing agency's
@@ -397,7 +403,7 @@ the failure model, and expected runtimes.
 
 ### Candle storage (trading charts)
 
-Reaction rows hold four prices per instrument. Real candlestick charts need
+Archived v2 reaction rows (`asset_reactions`) hold four prices per instrument. Real candlestick charts need
 bars, which live in a separate, provider-agnostic `candles` table.
 
 ```bash
@@ -597,7 +603,7 @@ provider candle used as the baseline. `calculationVersion` identifies the
 calculation semantics; the app excludes legacy or mismatched versions from
 event views, pattern aggregates and “biggest move” ranking.
 
-**The denominator is strictly pre-release.** Calculation version 2 prefers the
+**The denominator is strictly pre-release.** In the frozen v2 archive, calculation version 2 prefers the
 most recent usable intraday open strictly before `releaseAt` (at most two hours
 old), then falls back to the immediately preceding session's close (provider
 bar at most four calendar days old). A first post-release candle is never the
@@ -652,6 +658,7 @@ REACTION_REPAIR_CONFIRM=DELETE_UNTRUSTED_OR_LEGACY_REACTIONS \
 After review, use the event-scoped command printed for each eligible event,
 `npm run backfill:prices -- --event-id <uuid>`. Rows on untrusted events stay
 absent until authoritative timing is added. Both operations are idempotent.
+Live v3 reactions need the `backfill:reaction-measurements` step noted above.
 
 ---
 

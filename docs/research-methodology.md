@@ -148,7 +148,8 @@ than either summary alone.
 The same event in two regimes is two different events. Regime tags are what
 make an analog more than an event-type match.
 
-Candidate classifications, all Phase 2:
+Candidate classifications. Deterministic regimes are V2 Phase 1 work (P1.3 in
+the [Phase 1 plan](phase-1-market-context-plan.md)):
 
 **Trend** — bullish / bearish / range. Definable from distance to an N-day
 high, moving-average relationships, or higher-high/higher-low structure. The
