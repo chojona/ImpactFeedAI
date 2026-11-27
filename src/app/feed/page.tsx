@@ -113,6 +113,7 @@ async function loadFirstPage(
     events: [],
     total: 0,
     rankedCount: 0,
+    libraryTotal: 0,
     counts: { ...ZERO_CATEGORY_COUNTS },
     error: null,
   };
@@ -135,6 +136,7 @@ async function loadFirstPage(
       events: result.events,
       total: result.total,
       rankedCount: result.rankedCount,
+      libraryTotal: result.libraryTotal,
       counts: result.counts,
     };
   } catch (err) {

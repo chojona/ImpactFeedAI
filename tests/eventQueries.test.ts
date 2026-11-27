@@ -28,6 +28,9 @@ let pageRows: { id: string }[] = [];
 let rankedRows: { n: number }[] = [{ n: 0 }];
 let rankingIds: { id: string }[] = [];
 
+/** Unfiltered table size returned by `event.count()` — distinct from filtered totals. */
+let libraryTotalRows = 42;
+
 vi.mock("@/lib/prisma", () => ({
   isDatabaseConfigured: () => true,
   prisma: {
@@ -38,6 +41,10 @@ vi.mock("@/lib/prisma", () => ({
           { eventType: "CPI", _count: { _all: 9 } },
           { eventType: "TARIFF", _count: { _all: 11 } },
         ]);
+      },
+      count: (args: unknown) => {
+        calls.push({ model: "event.count", args });
+        return Promise.resolve(libraryTotalRows);
       },
       findMany: (args: unknown) => {
         calls.push({ model: "event.findMany", args });
@@ -76,22 +83,22 @@ vi.mock("@/services/events/mapEvent", async () => {
   };
 });
 
-const { listEvents } = await import("@/services/events/eventQueries");
+const { BIGGEST_MOVE_BENCHMARK_SYMBOL, listEvents } = await import(
+  "@/services/events/eventQueries"
+);
 const { CURRENT_REACTION_CALCULATION_VERSION } = await import(
   "@/services/events/timing"
 );
 
 /**
- * Bound parameters of a raw query, minus the leading calculation-version the
- * shared eligibility fragment contributes. What is left is what the *caller*
- * scoped the query to.
- *
- * Stage 4 cut the read path over to `reaction_measurements` (v3), so the
- * fragment's first bound value is the live v3 constant.
+ * Bound parameters of a raw query, minus the leading calculation-version and
+ * SPY-benchmark bindings the shared eligibility fragment contributes. What is
+ * left is what the *caller* scoped the query to.
  */
 const scopeOf = (values: unknown[]) => {
   expect(values[0]).toBe(CURRENT_REACTION_CALCULATION_VERSION);
-  return values.slice(1);
+  expect(values[1]).toBe(BIGGEST_MOVE_BENCHMARK_SYMBOL);
+  return values.slice(2);
 };
 
 const query = (over: Partial<Parameters<typeof listEvents>[0]> = {}) => ({
@@ -115,6 +122,7 @@ beforeEach(() => {
   pageRows = [{ id: "a" }, { id: "b" }, { id: "c" }];
   rankedRows = [{ n: 2 }];
   rankingIds = [{ id: "b" }, { id: "a" }, { id: "c" }];
+  libraryTotalRows = 42;
 });
 
 describe("listEvents — rankedCount", () => {
@@ -124,6 +132,14 @@ describe("listEvents — rankedCount", () => {
     expect(result.total).toBe(20);
   });
 
+  it("reports the unfiltered library size separately from filtered totals", async () => {
+    libraryTotalRows = 99;
+    const result = await listEvents(query({ search: "zzzzqq" }));
+    expect(result.libraryTotal).toBe(99);
+    expect(result.total).toBe(20);
+    expect(calls.some((c) => c.model === "event.count")).toBe(true);
+  });
+
   it("counts with the same predicate the ranking orders by", async () => {
     await listEvents(query({ sort: "biggest" }));
     const [ranking] = rawQueries.filter((q) => /ORDER BY/i.test(q.sql));
@@ -131,16 +147,18 @@ describe("listEvents — rankedCount", () => {
     expect(ranking).toBeDefined();
     expect(count).toBeDefined();
     // Every clause of the eligibility rule appears in both, so a row the
-    // ranking rejects cannot be counted as ranked.
+    // ranking rejects cannot be counted as ranked. SPY is the fixed benchmark.
     for (const clause of [
       "calculation_version",
+      "rm.symbol =",
       "rm.measure = 'RELEASE_SESSION'",
       "timing_status IN",
       "release_at IS NOT NULL",
       "BTRIM(e.timing_source)",
+      "NULLS LAST",
     ]) {
       expect(ranking?.sql).toContain(clause);
-      expect(count?.sql).toContain(clause);
+      if (clause !== "NULLS LAST") expect(count?.sql).toContain(clause);
     }
   });
 

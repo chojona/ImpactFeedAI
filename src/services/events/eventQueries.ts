@@ -3,25 +3,24 @@
  *
  * This is the layer that replaced `src/lib/mock-data/`. The query-parameter
  * contract (`type`, `q`, `sort`, `offset`, `limit`) and the response envelope
- * (`{ events, total, rankedCount, offset, limit, counts }`) is additive, so
- * `EventBrowser` did not have to move with it.
+ * (`{ events, total, rankedCount, libraryTotal, offset, limit, counts }`) is
+ * additive, so `EventBrowser` did not have to move with it.
  *
  * Two sorts, deliberately implemented differently:
  *
  *   newest  — a plain indexed `ORDER BY occurred_at DESC`.
- *   biggest — orders by the largest absolute move across an event's asset
- *             reactions. That is an aggregate over a child table, so it is one
+ *   biggest — orders by the absolute SPY RELEASE_SESSION move. That is one
  *             raw SQL pass that returns ids, followed by a normal `findMany`.
- *             Doing it in JavaScript would mean loading every matching event to
- *             sort twelve rows per event, which stops working at the ~2,000
- *             events a full backfill produces.
+ *             Ranking on a fixed equity benchmark keeps BTC/CL from dominating
+ *             a cross-asset max-|move| sort. Events without a measured SPY
+ *             session move sort last (NULLS LAST), never as a fabricated 0.
  *
  * Both sorts tie-break on `id` so pagination is stable: without it, two events
  * sharing a timestamp can swap places between page requests and an event is
  * either shown twice or skipped.
  *
  * `biggest` returns two runs, not one ordering: the events that have a measured
- * one-session move, ranked; then the ones that do not, which no ranking can
+ * SPY one-session move, ranked; then the ones that do not, which no ranking can
  * order and which fall out in date order behind them. `rankedCount` reports
  * where the first run ends so the reader is not told that fifty results are
  * ranked when twenty are.
@@ -50,12 +49,15 @@ import {
 } from "@/services/events/timing";
 import type { EventCategory, EventTypeName, NewsEvent } from "@/types/events";
 
+/** Fixed benchmark for `sort=biggest` — SPY release-session move only. */
+export const BIGGEST_MOVE_BENCHMARK_SYMBOL = "SPY" as const;
+
 export interface EventListResult {
   events: NewsEvent[];
   total: number;
   /**
-   * How many of `total` can actually be ranked by move — that is, how many
-   * carry a measured one-session reaction.
+   * How many of `total` can actually be ranked by SPY session move — that is,
+   * how many carry a measured SPY RELEASE_SESSION reaction.
    *
    * Reported by the query layer rather than counted client-side, because the
    * client only ever holds the pages it has loaded: from twelve rows it cannot
@@ -65,6 +67,12 @@ export interface EventListResult {
    * boundary falls.
    */
   rankedCount: number;
+  /**
+   * Unfiltered size of the event table. Distinct from `total` / `counts.ALL`,
+   * which honour the active search (and for `total`, the category). The feed
+   * empty state uses this to tell "library empty" from "no matches".
+   */
+  libraryTotal: number;
   offset: number;
   limit: number;
   counts: Record<CategoryParam, number>;
@@ -133,19 +141,10 @@ async function categoryCounts(
 }
 
 /**
- * The one definition of "this event has a move worth ranking by".
+ * Eligible RELEASE_SESSION measurement rows (any symbol).
  *
- * A `Prisma.Sql` fragment rather than a copied string so the ranking and the
- * count of ranked rows cannot disagree — the whole point of `rankedCount` is
- * that it marks the exact index where the ranking stops, and it can only do
- * that if it is computed from the identical predicate. It refers to the
- * aliases `e` (events) and `rm` (reaction_measurements), so every query
- * embedding it must use those names.
- *
- * The clauses mirror `reactionTimingEligibility` plus the calculation-version
- * and headline-measure gate: a plausible number attached to unsourced timing,
- * or to any measure other than the one the product headlines, is exactly the
- * thing this ranking refuses to use — see spec §15.1.
+ * Shared by research aggregates that are not the feed's SPY benchmark ranking.
+ * Refers to aliases `e` (events) and `rm` (reaction_measurements).
  */
 const MEASURABLE_HEADLINE_MEASUREMENT = Prisma.sql`
   rm.calculation_version = ${CURRENT_REACTION_CALCULATION_VERSION}
@@ -157,15 +156,34 @@ const MEASURABLE_HEADLINE_MEASUREMENT = Prisma.sql`
 `;
 
 /**
- * Ids for one page ordered by largest absolute measured move.
+ * The one definition of "this event has a SPY move worth ranking by".
  *
- * Rankings use one fixed financial horizon: the measured one-session move.
- * Falling back from 1d to 1w or 1h would compare unlike outcomes in the same
- * ordering. The join also enforces the same timing and calculation-version
- * eligibility as the mapper, so legacy rows cannot influence the ranking even
- * if they remain in the database pending repair.
- * `NULLS LAST` keeps events with no measured reaction in the result set instead
- * of letting the join drop them.
+ * A `Prisma.Sql` fragment rather than a copied string so the ranking and the
+ * count of ranked rows cannot disagree — the whole point of `rankedCount` is
+ * that it marks the exact index where the ranking stops, and it can only do
+ * that if it is computed from the identical predicate. It refers to the
+ * aliases `e` (events) and `rm` (reaction_measurements), so every query
+ * embedding it must use those names.
+ *
+ * Extends the headline eligibility with the SPY-benchmark gate: a plausible
+ * number on another symbol is exactly the thing this ranking refuses to use.
+ */
+const MEASURABLE_SPY_SESSION_MEASUREMENT = Prisma.sql`
+  ${MEASURABLE_HEADLINE_MEASUREMENT}
+  AND rm.symbol = ${BIGGEST_MOVE_BENCHMARK_SYMBOL}
+`;
+
+/**
+ * Ids for one page ordered by largest absolute SPY RELEASE_SESSION move.
+ *
+ * Rankings use one fixed financial horizon and one fixed benchmark: SPY's
+ * measured one-session move. Falling back from 1d to 1w or 1h, or taking the
+ * max across symbols, would compare unlike outcomes in the same ordering.
+ * The join also enforces the same timing and calculation-version eligibility
+ * as the mapper, so legacy rows cannot influence the ranking even if they
+ * remain in the database pending repair.
+ * `NULLS LAST` keeps events with no measured SPY reaction in the result set
+ * instead of letting the join drop them — and never treats a missing move as 0.
  *
  * Filtering runs through Prisma and only the *ordering* runs as raw SQL, at the
  * cost of passing the matching ids back in. That keeps one definition of the
@@ -174,7 +192,7 @@ const MEASURABLE_HEADLINE_MEASUREMENT = Prisma.sql`
  * category+search filter and the corpus is a few thousand events, so the `IN`
  * stays well inside what Postgres handles comfortably.
  */
-async function idsByBiggestMove(
+async function idsByBiggestSpyMove(
   ids: string[],
   offset: number,
   limit: number,
@@ -185,7 +203,7 @@ async function idsByBiggestMove(
     FROM events e
     LEFT JOIN reaction_measurements rm
       ON rm.event_id = e.id
-      AND ${MEASURABLE_HEADLINE_MEASUREMENT}
+      AND ${MEASURABLE_SPY_SESSION_MEASUREMENT}
     WHERE e.id IN (${Prisma.join(ids)})
     GROUP BY e.id, e.occurred_at
     ORDER BY
@@ -198,7 +216,7 @@ async function idsByBiggestMove(
 }
 
 /**
- * How many of the matching events have a move to be ranked by.
+ * How many of the matching events have a SPY session move to be ranked by.
  *
  * Same predicate object as the ranking join, not a second spelling of it. The
  * number's only job is to say where the ranked run ends, so a count that admits
@@ -218,7 +236,7 @@ async function countRankable(ids: string[]): Promise<number> {
     FROM events e
     JOIN reaction_measurements rm
       ON rm.event_id = e.id
-      AND ${MEASURABLE_HEADLINE_MEASUREMENT}
+      AND ${MEASURABLE_SPY_SESSION_MEASUREMENT}
     WHERE e.id IN (${Prisma.join(ids)})
   `);
   return rows[0]?.n ?? 0;
@@ -234,9 +252,10 @@ export async function listEvents(
     ...searchFilter(query.search),
   };
 
-  const [counts, matching] = await Promise.all([
+  const [counts, matching, libraryTotal] = await Promise.all([
     categoryCounts(query.search),
     prisma.event.findMany({ where, select: { id: true } }),
+    prisma.event.count(),
   ]);
   const total = counts[query.category] ?? 0;
   const matchingIds = matching.map((e) => e.id);
@@ -244,7 +263,11 @@ export async function listEvents(
 
   let events: NewsEvent[];
   if (query.sort === "biggest") {
-    const ids = await idsByBiggestMove(matchingIds, query.offset, query.limit);
+    const ids = await idsByBiggestSpyMove(
+      matchingIds,
+      query.offset,
+      query.limit,
+    );
     const rows = await prisma.event.findMany({
       where: { id: { in: ids } },
       include: EVENT_INCLUDE,
@@ -270,6 +293,7 @@ export async function listEvents(
     events,
     total,
     rankedCount,
+    libraryTotal,
     offset: query.offset,
     limit: query.limit,
     counts,
