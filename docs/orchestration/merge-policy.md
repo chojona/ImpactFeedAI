@@ -21,7 +21,9 @@ GitHub "required approvals" is deliberately **not** enabled: every agent
 pushes as the single owner account, and GitHub does not let an author approve
 their own PR, so a required approval would block every merge. Independent
 approval is enforced by S6 instead. `Dependency security report` is
-soft-fail by design and is not a required check.
+soft-fail by design and is not a required check. The `Vercel` preview
+deployment is also non-gating: the free plan caps preview builds (100/day) and
+fails with `build-rate-limit` when exhausted; never upgrade the plan to clear it.
 
 ## 2. Who does what
 
