@@ -72,13 +72,20 @@ category as one statistical indicator. `src/lib/assets.ts` supplies the
 
 Server-side reads belong in `src/services/`. Current event queries and mapping
 live in `services/events/`, persisted candle access in `services/market/`,
-canonical macro transforms/provenance in `services/macro/`, and descriptive
-statistics in `services/analytics/`. The data-source registry (provider
-coverage, limits, licensing, point-in-time eligibility, last validation) lives
-in `services/sources/` as static metadata with pure audit functions; it never
-fetches. Components render prepared values rather
-than calculate research results. There are no application write routes or
-Server Actions today, and no model calls.
+canonical macro transforms/provenance in `services/macro/`, descriptive
+statistics in `services/analytics/`, and Phase 1 point-in-time context in
+`services/context/`: Tier-A regime feature contracts (`featureDefinitions`,
+`rates`, `volatility`, market `pointInTime` eligibility) and the Phase 1.1
+macro foundation (ALFRED adapter, `revisionSelect`, vintage `transforms`),
+sharing `KnowledgeMode` / `MarketContextObservation` in `src/types/context.ts`
+and the historical-actual gate in `services/macro/actualProvenance.ts`. These
+are pure TypeScript with no persistence; Phase 1 remains NO-GO, so nothing
+reads them in the product yet. The data-source registry (provider coverage,
+limits, licensing, point-in-time eligibility, last validation) lives in
+`services/sources/` as static metadata with pure audit functions; it never
+fetches. Components render prepared values rather than
+calculate research results. There are no application write routes or Server
+Actions today, and no model calls.
 
 `GET /api/events` parses/clamps parameters through `queryParams.ts`. Newest
 sort uses display/occurrence order; biggest-move sort uses parameterized SQL
@@ -124,7 +131,11 @@ claim of universal detection of database properties outside Prisma's scope.
 Migration history is additive through the v3 table. Retain v2 and old-version
 rows as evidence. Corrections to calendar/economic-close semantics require a
 reaction calculation-version transition under the existing contract §6.3,
-with additive recomputation and verification before a read cutover.
+with additive recomputation and verification before a read cutover. That
+transition is version 4: the engine computes v4, production reads stay on v3,
+and `src/services/events/measurementWriteGate.ts` refuses every `--apply` of a
+version that is neither the live read version nor covered by a committed,
+evidenced cutover authorization (none exists; Phase 1 remains NO-GO).
 
 ## Data pipeline
 
@@ -162,8 +173,10 @@ The canonical session date comes from SPY daily bars; an isolated early-close
 rule controls which close follows a release. Instrument-native economic-close
 logic differs for regular equities, extended futures and UTC-day crypto. A
 bar stamp identifies its source observation and is not necessarily its close
-or availability instant. The audit found false early-close entries that must
-be corrected before broader context/reaction computation.
+or availability instant. Phase 0.5 removed the three false early closes
+(2022-07-01, 2022-12-23, 2026-07-02) against official NYSE schedules, with
+negative regression fixtures, under calculation version 4. Broader
+context/reaction computation stays gated on qualified historical coverage.
 
 Both observations in a measurement share a declared price basis. Never pool
 measures, silently substitute another horizon, or turn missing rows into zeros.
@@ -181,10 +194,14 @@ not a daily input archive for market-context lookbacks.
 
 ### Dry-run semantics
 
-`scripts/lib/readonly-prisma.ts` blocks model-level mutation methods. It does
-not intercept raw SQL mutation APIs, so its protection is narrower than a
-connection-level read-only transaction. Use actual database read-only
-transactions/roles for audits and future dry-run context writers. Existing
+`createDryRunPrismaClient` (`scripts/lib/readonly-prisma.ts`) blocks
+model-level mutation methods and sets PostgreSQL
+`default_transaction_read_only=on` on every connection, merged into the URL's
+own `options` so URL parameters cannot drop it; the server refuses raw SQL
+writes too. Exceptions: `guardPrismaClient` on an externally built client
+(the `repair-reaction-timing` dry-run) is model-level only, and `verify-db.ts`
+uses a writable client. Use read-only transactions/roles for audits and future
+dry-run context writers. Existing
 apply gates remain in place; do not run repair commands as verification.
 
 ## Proposed Phase 1 extension
@@ -250,7 +267,9 @@ baseline, not a permanently accurate test count.
 
 Database verifiers are separate from secret-free unit CI. Candle invariants
 passed 10/10; reaction invariants reported zero violations over 828 rows in the
-audit run. The audit documents verification gaps and a calendar regression not
+audit run. The Phase 0.5 strict verifier derives the expected grid from source
+events and fails incomplete runs; on the captured evidence it exits 1 (132
+unproven missing opportunities, 180 unsupported native-calendar rows). The audit documents verification gaps and a calendar regression not
 caught by these passing checks. Browser/component tests are not committed as
 an established harness; historical browser smoke reports were not rerun.
 

@@ -86,7 +86,7 @@ export const ALFRED_PROVIDER: DataProviderEntry = {
   },
   implementations: [
     { status: "MAIN", path: "scripts/ingest/fetch-macro.ts" },
-    { status: "OPEN_PR", path: "src/services/context/alfred.ts", pullRequest: 20 },
+    { status: "MAIN", path: "src/services/context/alfred.ts" },
   ],
   lastSuccessfulValidation: TESTED_ON,
   series: [

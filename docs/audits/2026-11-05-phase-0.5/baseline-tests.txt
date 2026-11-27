@@ -1,0 +1,13 @@
+
+> impactfeed-ai@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.10 <repo-root>
+
+
+ Test Files  29 passed (29)
+      Tests  518 passed (518)
+   Start at  16:51:36
+   Duration  1.28s (transform 1.39s, setup 0ms, import 3.32s, tests 447ms, environment 2ms)
+

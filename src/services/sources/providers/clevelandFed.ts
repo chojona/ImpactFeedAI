@@ -23,7 +23,7 @@ export const CLEVELAND_FED_PROVIDER: DataProviderEntry = {
     basis: "THIRD_PARTY",
   },
   implementations: [
-    { status: "OPEN_PR", path: "src/services/expectations/adapters/clevelandNowcast.ts", pullRequest: 21 },
+    { status: "MAIN", path: "src/services/expectations/adapters/clevelandNowcast.ts" },
   ],
   lastSuccessfulValidation: TESTED_ON,
   series: [
