@@ -150,8 +150,11 @@ The same event in two regimes is two different events. Regime tags are what
 make an analog more than an event-type match.
 
 Academic methods, point-in-time rules, proposed continuous features, and
-validation tests (no implementation yet):
+validation tests:
 [regime-classification-research.md](regime-classification-research.md).
+
+Pure Tier-A feature contracts (VIX level/percentile, 2s10s, equity RV20) live in
+`src/services/context/` with shared types in `src/types/context.ts`.
 
 Candidate classifications. Deterministic regimes are V2 Phase 1 work (P1.3 in
 the [Phase 1 plan](phase-1-market-context-plan.md)):
