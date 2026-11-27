@@ -344,8 +344,10 @@ untrusted PR code with privileged context.
 
 ## Deployment
 
-Current target is Vercel with managed PostgreSQL; no Docker or separate backend
-service is configured in this checkout. Production builds generate Prisma.
+There is no hosted deployment target: the app runs locally (`npm run dev`, or
+`npm run build && npm run start`) against managed PostgreSQL. `vercel.json`
+sets `git.deploymentEnabled: false`, so pushes and PRs no longer trigger Vercel
+builds. No Docker or separate backend service is configured in this checkout. Production builds generate Prisma.
 Dynamic event/pattern routes read Postgres at request time; landing data can be
 prerendered/revalidated. A successful local build does not prove a deployment
 or provider scheduler is configured. No deployment or production mutation was

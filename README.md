@@ -157,7 +157,7 @@ Everything listed here is confirmed present in the repository.
 | Linting | ESLint 9 + `eslint-config-next` |
 | Tests | Vitest 4 (`npm test`) — unit only |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) |
-| Deployment target | Vercel; local project-link metadata is not committed |
+| Deployment target | None — runs locally (`npm run dev`, or `npm run build && npm run start`). Vercel Git deployments are disabled in `vercel.json` |
 
 **Declared but currently unused:** `@anthropic-ai/sdk` — no AI calls exist in
 the codebase yet. Reaction visualizations use four discrete measurement slots;
@@ -286,7 +286,7 @@ Fill in the values. Every variable is documented inline in
 The database is hosted on **Neon**, which exposes a **pooled** endpoint
 (hostname contains `-pooler.`) and a **direct** endpoint (without it). The
 split is by *consumer*, not by environment — set both variables the same way
-locally and on Vercel:
+in every environment:
 
 | Consumer | Variable | Endpoint | Why |
 | --- | --- | --- | --- |
