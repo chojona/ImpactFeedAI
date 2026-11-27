@@ -159,6 +159,8 @@ export const FRED_PROVIDER: DataProviderEntry = {
     { status: "MAIN", path: "scripts/ingest/sources-fred.ts" },
     { status: "MAIN", path: "scripts/ingest/fetch-macro.ts" },
     { status: "MAIN", path: "scripts/ingest/sources-fomc.ts" },
+    // release/dates as reconciliation evidence for the historical release calendar.
+    { status: "OPEN_PR", path: "scripts/ingest/release-calendar/source-fred.ts", pullRequest: 31 },
     { status: "MAIN", path: "src/services/market-context/fred.ts" },
   ],
   lastSuccessfulValidation: TESTED_ON,

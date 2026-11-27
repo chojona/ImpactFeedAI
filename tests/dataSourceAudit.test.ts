@@ -259,7 +259,7 @@ describe("buildCoverageAudit", () => {
   it("reports the most mature implementation status", () => {
     const audit = buildCoverageAudit(DATA_SOURCE_REGISTRY, { today: TODAY });
     const byId = Object.fromEntries(audit.providers.map((p) => [p.providerId, p.implementation]));
-    expect(byId).toMatchObject({ fred: "MAIN", cboe: "MAIN", nq_archive: "MAIN", alpha_vantage: "NONE", sf_fed: "NONE" });
+    expect(byId).toMatchObject({ fred: "MAIN", cboe: "MAIN", nq_archive: "MAIN", alpha_vantage: "NONE", sf_fed: "OPEN_PR" });
   });
 });
 
