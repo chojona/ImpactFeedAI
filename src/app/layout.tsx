@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 
+import { AssignMainSkipTarget } from "@/components/header/AssignMainSkipTarget";
 import { DataAttribution } from "@/components/ui/DataAttribution";
 
 import "./globals.css";
@@ -37,18 +38,8 @@ export default function RootLayout({
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        {/*
-          Layout owns the skip target. Research pages still wrap their body in
-          a nested <main>; those files are out of scope for this change, so the
-          accessible name for skip-to-content is this landmark.
-        */}
-        <main
-          id="main"
-          tabIndex={-1}
-          className="flex min-h-0 flex-1 flex-col outline-none"
-        >
-          {children}
-        </main>
+        <AssignMainSkipTarget />
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         <DataAttribution />
       </body>
     </html>

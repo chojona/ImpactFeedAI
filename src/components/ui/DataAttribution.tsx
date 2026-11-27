@@ -12,7 +12,6 @@ export function DataAttribution() {
     <footer className="border-t border-line bg-canvas/60">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 text-ink-3 sm:px-6">
         <p className="caption">
-          Macro series and market prices are attributed to their publishers.
           This product uses the FRED® API but is not endorsed or certified by
           the Federal Reserve Bank of St. Louis. BLS.gov cannot vouch for the
           data or analyses derived from these data after the data have been
