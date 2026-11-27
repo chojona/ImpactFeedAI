@@ -136,6 +136,9 @@ Academic methods, point-in-time rules, proposed continuous features, and
 validation tests (no implementation yet):
 [regime-classification-research.md](regime-classification-research.md).
 
+Pure Tier-A feature contracts (VIX level/percentile, 2s10s, equity RV20) live in
+`src/services/context/` with shared types in `src/types/context.ts`.
+
 Candidate classifications, all Phase 2:
 
 **Trend** — bullish / bearish / range. Definable from distance to an N-day
