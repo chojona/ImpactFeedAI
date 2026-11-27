@@ -137,6 +137,17 @@ describe("F4: strict qualification only from the strict allowlist", () => {
     expect(index.expectedActiveMinutes("2024-06-12")).toBe(1380);
   });
 
+  it("refuses when the allowlists disagree on the selected contract", () => {
+    const index = createEligibilityIndex({
+      strictRows: [tierA("2024-06-12", "NQM24")],
+      exploratoryRows: [tierA("2024-06-12", "NQU24")],
+    });
+    const row = index.lookup("2024-06-12");
+    expect(row.qualification).toBe("refused");
+    expect(row.reasonCode).toBe("CONFLICTING_ALLOWLIST_EVIDENCE");
+    expect(row.selectedContract).toBeNull();
+  });
+
   it("refuses when the allowlists disagree on expected_active_minutes", () => {
     const index = createEligibilityIndex({
       strictRows: [tierA("2024-06-12")],
@@ -229,6 +240,41 @@ describe("loadEligibilityIndex", () => {
     await expect(
       loadEligibilityIndex({ strictAllowlistCsv: file("strict-bad-minutes.csv") }),
     ).rejects.toThrow(/expected_active_minutes/);
+  });
+
+  it("refuses a whole allowlist that lists a trading date twice", async () => {
+    await writeFile(
+      file("strict-duplicate.csv"),
+      `${ALLOWLIST_HEADER}\n` +
+        "2024-06-12,D,REFUSED,D_BAD,,,,,NQM24,S1,fixture-v9,1380\n" +
+        "2024-06-12,A,STRICT_AND_EXPLORATORY,A_OK,,,,,NQM24,S1,fixture-v9,1380\n",
+    );
+    await expect(
+      loadEligibilityIndex({ strictAllowlistCsv: file("strict-duplicate.csv") }),
+    ).rejects.toThrow(/2024-06-12.*more than once/);
+  });
+
+  it("refuses a whole certification manifest that lists a trading date twice", async () => {
+    await writeFile(
+      file("cert-duplicate.csv"),
+      "trading_date,selected_contract\n2024-06-12,NQU24\n2024-06-12,NQM24\n",
+    );
+    await expect(
+      loadEligibilityIndex({
+        certificationBySessionCsv: file("cert-duplicate.csv"),
+      }),
+    ).rejects.toThrow(/2024-06-12.*more than once/);
+  });
+
+  it("refuses duplicate in-memory rows instead of letting the last one win", () => {
+    expect(() =>
+      createEligibilityIndex({
+        strictRows: [
+          { ...tierA("2024-06-12"), tier: "D", researchEligibility: "REFUSED" },
+          tierA("2024-06-12"),
+        ],
+      }),
+    ).toThrow(/more than once/);
   });
 
   it("refuses the whole allowlist when a cell has malformed quoting", async () => {

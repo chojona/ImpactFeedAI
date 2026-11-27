@@ -76,6 +76,7 @@ export interface NqBarQuery {
 export type NqRowRejectionReason =
   | "MISSING_CONTRACT"
   | "UNALIGNED_MINUTE"
+  | "MISSING_EVENT_TIMESTAMP"
   | "INVALID_EVENT_TIMESTAMP"
   | "TIMESTAMP_CONFLICT"
   | "MISSING_TRADING_DATE"
@@ -121,7 +122,10 @@ const toTradingDate = (value: unknown): string | null => {
   return null;
 };
 
-/** `ts_event_ns` → exact ns, null when absent, "invalid" when imprecise. */
+/**
+ * `ts_event_ns` → exact ns; null when absent (refused, because timestamp_utc
+ * could not be cross-checked), "invalid" when imprecise.
+ */
 const toEventNs = (value: unknown): bigint | null | "invalid" => {
   if (value === null || value === undefined) return null;
   if (value instanceof ParquetExactTimestamp) return value.ns;
@@ -151,8 +155,9 @@ const convertRow = (
 ): NqMinuteBar | NqRowRejectionReason => {
   if (ns % NS_PER_MINUTE !== ZERO) return "UNALIGNED_MINUTE";
   const eventNs = toEventNs(row.ts_event_ns);
+  if (eventNs === null) return "MISSING_EVENT_TIMESTAMP";
   if (eventNs === "invalid") return "INVALID_EVENT_TIMESTAMP";
-  if (eventNs !== null && eventNs !== ns) return "TIMESTAMP_CONFLICT";
+  if (eventNs !== ns) return "TIMESTAMP_CONFLICT";
 
   const tradingDate = toTradingDate(row.trading_date);
   if (tradingDate === null) return "MISSING_TRADING_DATE";

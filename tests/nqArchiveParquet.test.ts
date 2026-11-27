@@ -90,12 +90,19 @@ describe("parquetRowsToBars (F12)", () => {
     expect(bars[0]!.tradingDate).toBe("2024-06-12");
   });
 
-  it("keeps a bar with no ts_event_ns but records it as unknown", () => {
-    const { bars } = parquetRowsToBars(
-      [row("2024-06-12T12:00:00.000Z", { ts_event_ns: null })],
+  it("refuses a bar with no ts_event_ns to cross-check timestamp_utc against", () => {
+    const { bars, rejections } = parquetRowsToBars(
+      [
+        row("2024-06-12T12:00:00.000Z", { ts_event_ns: null }),
+        row("2024-06-12T12:01:00.000Z", { ts_event_ns: undefined }),
+      ],
       query,
     );
-    expect(bars[0]!.tsEventNs).toBeNull();
+    expect(bars).toEqual([]);
+    expect(rejections.map((r) => r.reason)).toEqual([
+      "MISSING_EVENT_TIMESTAMP",
+      "MISSING_EVENT_TIMESTAMP",
+    ]);
   });
 
   it("refuses rows without a usable trading_date instead of using the UTC date", () => {

@@ -28,6 +28,8 @@ import {
   windowSessionRefusals,
 } from "./windowSessions";
 
+const MINUTE_MS = 60_000;
+
 export interface ExtractContext {
   readonly rolls: readonly NqRollBoundary[];
   readonly eligibility: NqEligibilityIndex;
@@ -66,10 +68,17 @@ export async function extractEventWindow(
   );
   const contract = contractSelection.contract;
 
-  // The grid runs to the first minute open at or after the target instant so
-  // the endpoint bar is inside the queried range.
+  // The grid always starts at or before the anchor minute (the minute before
+  // the release minute), whatever `beforeMs` is, and runs to the first minute
+  // open at or after the target instant, so both price points are queried and
+  // covered.
   const targetAt = new Date(releaseAt.getTime() + afterMs);
-  const gridStart = utcMinuteOpen(new Date(releaseAt.getTime() - beforeMs));
+  const gridStart = new Date(
+    Math.min(
+      utcMinuteOpen(new Date(releaseAt.getTime() - beforeMs)).getTime(),
+      utcMinuteOpen(releaseAt).getTime() - MINUTE_MS,
+    ),
+  );
   const gridEnd = ceilUtcMinute(targetAt);
 
   const bars = await ctx.bars.queryWithinContract({

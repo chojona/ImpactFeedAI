@@ -4,8 +4,10 @@
  * Strict qualification requires Tier A **and** `STRICT_AND_EXPLORATORY` **and**
  * a row in the strict allowlist file. Exploratory requires Tier B **and**
  * `EXPLORATORY_ONLY` **and** a row in the exploratory allowlist file.
- * Conflicting tier/eligibility pairs, or evidence found in the wrong file,
- * refuse rather than promoting via OR.
+ * Conflicting tier/eligibility pairs, allowlists that disagree on a date's
+ * tier, eligibility, contract or minute count, or evidence found in the wrong
+ * file, refuse rather than promoting via OR. A manifest that lists any trading
+ * date twice is unparseable as a whole.
  */
 import { readCsvRecords } from "./csv";
 import { NqArchiveDataError } from "./errors";
@@ -74,6 +76,7 @@ export function qualificationFromEvidence(
 const rowsAgree = (a: AllowlistRow, b: AllowlistRow): boolean =>
   a.tier === b.tier &&
   a.researchEligibility === b.researchEligibility &&
+  a.selectedContract === b.selectedContract &&
   (a.expectedActiveMinutes === null ||
     b.expectedActiveMinutes === null ||
     a.expectedActiveMinutes === b.expectedActiveMinutes);
@@ -91,14 +94,37 @@ const parseExpectedMinutes = (raw: string, tradingDate: string): number | null =
   return value;
 };
 
+/**
+ * Index manifest rows by trading date. A manifest that lists a date twice has
+ * no defensible winner, so the whole manifest is refused rather than letting
+ * row order decide.
+ */
+const byTradingDate = <T>(
+  rows: Iterable<T>,
+  dateOf: (row: T) => string,
+  manifest: string,
+): Map<string, T> => {
+  const map = new Map<string, T>();
+  for (const row of rows) {
+    const date = dateOf(row);
+    if (map.has(date)) {
+      throw new NqArchiveDataError(
+        `${manifest}: trading_date ${date} appears more than once`,
+      );
+    }
+    map.set(date, row);
+  }
+  return map;
+};
+
 const parseAllowlist = (
   rows: ReadonlyArray<Readonly<Record<string, string>>>,
-): Map<string, AllowlistRow> => {
-  const map = new Map<string, AllowlistRow>();
+): AllowlistRow[] => {
+  const parsed: AllowlistRow[] = [];
   for (const row of rows) {
     const tradingDate = row.trading_date ?? "";
     if (!tradingDate) continue;
-    map.set(tradingDate, {
+    parsed.push({
       expectedActiveMinutes: parseExpectedMinutes(
         (row.expected_active_minutes ?? "").trim(),
         tradingDate,
@@ -118,7 +144,7 @@ const parseAllowlist = (
         .filter(Boolean),
     });
   }
-  return map;
+  return parsed;
 };
 
 const eligibilityFromRow = (row: AllowlistRow): NqSessionEligibility => ({
@@ -167,11 +193,15 @@ export function createEligibilityIndex(args: {
   /** Certification calendar dates; omit when no calendar was loaded. */
   tradingDates?: Iterable<string>;
 }): NqEligibilityIndex {
-  const strict = new Map(
-    (args.strictRows ?? []).map((row) => [row.tradingDate, row]),
+  const strict = byTradingDate(
+    args.strictRows ?? [],
+    (row) => row.tradingDate,
+    "strict allowlist",
   );
-  const exploratory = new Map(
-    (args.exploratoryRows ?? []).map((row) => [row.tradingDate, row]),
+  const exploratory = byTradingDate(
+    args.exploratoryRows ?? [],
+    (row) => row.tradingDate,
+    "exploratory allowlist",
   );
   const certificationContracts = new Map(args.certificationContracts ?? []);
 
@@ -200,10 +230,9 @@ export function createEligibilityIndex(args: {
         return unlisted(
           tradingDate,
           "CONFLICTING_ALLOWLIST_EVIDENCE",
-          strictRow.selectedContract ||
-            exploratoryRow.selectedContract ||
-            certificationContracts.get(tradingDate) ||
-            null,
+          strictRow.selectedContract === exploratoryRow.selectedContract
+            ? strictRow.selectedContract || null
+            : null,
           [...new Set([...strictRow.sourceIds, ...exploratoryRow.sourceIds])],
         );
       }
@@ -243,22 +272,26 @@ export async function loadEligibilityIndex(args: {
   exploratoryAllowlistCsv?: string;
   certificationBySessionCsv?: string;
 }): Promise<NqEligibilityIndex> {
-  const strict = args.strictAllowlistCsv
+  const strictRows = args.strictAllowlistCsv
     ? parseAllowlist(await readCsvRecords(args.strictAllowlistCsv))
-    : new Map<string, AllowlistRow>();
-  const exploratory = args.exploratoryAllowlistCsv
+    : [];
+  const exploratoryRows = args.exploratoryAllowlistCsv
     ? parseAllowlist(await readCsvRecords(args.exploratoryAllowlistCsv))
-    : new Map<string, AllowlistRow>();
+    : [];
 
   // expected_active_minutes lives in the allowlists; certification-by-session
   // supplies only the session calendar and certified contracts.
   const certificationContracts = new Map<string, string>();
   const tradingDates: string[] = [];
   if (args.certificationBySessionCsv) {
-    const rows = await readCsvRecords(args.certificationBySessionCsv);
-    for (const row of rows) {
-      const date = row.trading_date ?? "";
-      if (!date) continue;
+    const rows = byTradingDate(
+      (await readCsvRecords(args.certificationBySessionCsv)).filter(
+        (row) => (row.trading_date ?? "") !== "",
+      ),
+      (row) => row.trading_date ?? "",
+      "certification-by-session",
+    );
+    for (const [date, row] of rows) {
       tradingDates.push(date);
       const contract = row.selected_contract ?? "";
       if (contract) certificationContracts.set(date, contract);
@@ -266,8 +299,8 @@ export async function loadEligibilityIndex(args: {
   }
 
   return createEligibilityIndex({
-    strictRows: [...strict.values()],
-    exploratoryRows: [...exploratory.values()],
+    strictRows,
+    exploratoryRows,
     certificationContracts,
     tradingDates,
   });

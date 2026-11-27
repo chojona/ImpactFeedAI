@@ -161,7 +161,34 @@ describe("F5: anchor and endpoint in the extracted window", () => {
     expect(result.endpoint!.price).toBe(result.endpoint!.bar.open);
   });
 
-  it("refuses a complete window that has no pre-release bar", async () => {
+  it("always loads the anchor minute, even when beforeMs does not reach it", async () => {
+    const bars = edtSessionBars({
+      contract: "NQM24",
+      startIso: "2024-06-12T12:29:00.000Z",
+      endIso: "2024-06-12T12:36:00.000Z",
+    });
+    for (const [releaseIso, beforeMs] of [
+      ["2024-06-12T12:30:00.000Z", 0],
+      ["2024-06-12T12:30:30.000Z", 30_000],
+    ] as const) {
+      const result = await extract({
+        bars,
+        eligibility,
+        releaseIso,
+        beforeMs,
+        afterMs: 5 * MINUTE,
+      });
+      expect(result.coverage.windowStart.toISOString()).toBe(
+        "2024-06-12T12:29:00.000Z",
+      );
+      expect(result.anchor?.bar.openAt.toISOString()).toBe(
+        "2024-06-12T12:29:00.000Z",
+      );
+      expect(result.reactionQualification).toBe("strict");
+    }
+  });
+
+  it("refuses when the anchor minute has no bar", async () => {
     const result = await extract({
       bars: edtSessionBars({
         contract: "NQM24",
@@ -173,13 +200,15 @@ describe("F5: anchor and endpoint in the extracted window", () => {
       beforeMs: 0,
       afterMs: 5 * MINUTE,
     });
-    expect(result.coverage.complete).toBe(true);
     expect(result.anchor).toBeNull();
     expect(result.endpoint?.bar.openAt.toISOString()).toBe(
       "2024-06-12T12:35:00.000Z",
     );
     expect(result.reactionQualification).toBe("refused");
-    expect(result.refusalReasons).toEqual(["ANCHOR_UNAVAILABLE"]);
+    expect(result.refusalReasons).toEqual([
+      "INCOMPLETE_EVENT_WINDOW",
+      "ANCHOR_UNAVAILABLE",
+    ]);
   });
 
   it("refuses when the endpoint target falls in the maintenance break", async () => {
@@ -421,6 +450,26 @@ describe("F6: session-aware grid and multi-date windows", () => {
     ).toBe(true);
     expect(result.reactionQualification).toBe("refused");
     expect(result.refusalReasons).toEqual(["CONTRACT_CERTIFICATION_CONFLICT"]);
+  });
+
+  it("refuses when the strict and exploratory allowlists name different contracts", async () => {
+    const result = await extract({
+      bars: edtSessionBars({
+        contract: "NQM24",
+        startIso: "2024-06-12T12:00:00.000Z",
+        endIso: "2024-06-12T13:30:00.000Z",
+      }),
+      eligibility: createEligibilityIndex({
+        strictRows: [tierA("2024-06-12", "NQM24")],
+        exploratoryRows: [tierA("2024-06-12", "NQU24")],
+      }),
+      releaseIso: "2024-06-12T12:30:00.000Z",
+      beforeMs: 30 * MINUTE,
+      afterMs: HOUR,
+    });
+    expect(result.coverage.complete).toBe(true);
+    expect(result.reactionQualification).toBe("refused");
+    expect(result.eligibility.reasonCode).toBe("CONFLICTING_ALLOWLIST_EVIDENCE");
   });
 
   it("refuses when the release session's certification contract contradicts its allowlist contract", async () => {
