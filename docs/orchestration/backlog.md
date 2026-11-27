@@ -23,7 +23,7 @@ Active worker cap: 6.
 | M1 | Calendar-period transforms (no array offsets), null-not-zero BLS parsing, PPI headline NSA basis, seed first-print values | IN PROGRESS | Cursor Auto, delegated | src/services/macro/metrics.ts, scripts/ingest/sources-bls.ts (parsing), scripts/ingest/events-seed.ts, tests/metrics.test.ts (+ new parse/seed tests) | A2 | — |
 | M2 | ALFRED first-print qualification: no inferred INITIAL, common as-of cutoff for transforms, freeze before conflict detection, null-not-zero parsing | IN PROGRESS | Codex gpt-6.2-sol, delegated | src/services/context/**, src/services/macro/actualProvenance.ts, tests/context*.test.ts, tests/actualProvenance.test.ts, tests/fixtures/alfred/**, docs/historical-provenance-policy.md | A2 | — |
 | N1 | NQ adapter hardening: exploratory needs full coverage, strict only from strict file, fail-closed artifacts, look-ahead-safe anchor helper, session-aware grid, strict parquet parsing | IN PROGRESS | Cursor Claude Opus 5.5, delegated | src/services/market/nqArchive/**, tests/nqArchive*.test.ts, tests/fixtures/nqArchive/** | A3 | — |
-| N4 | NYSE calendar: add 2025-01-09 closure and verified 2027 schedule | IN PROGRESS | Cursor Auto, delegated | src/services/market/sessionCalendar*.ts, tests/fixtures/nyse-hours.json, tests/sessionCalendar*.test.ts | A3 | — |
+| N4 | NYSE calendar: add 2025-01-09 closure and verified 2027 schedule (issue #42) | IN REVIEW (reviewer: Claude Sonnet 5.5, head 3f5d49a) | Cursor Auto, delegated | src/services/market/sessionCalendar*.ts, tests/fixtures/nyse-hours.json, tests/sessionCalendar*.test.ts | A3 | #43 |
 
 ## Next (filled in from audit findings)
 
