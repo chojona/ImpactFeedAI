@@ -1,9 +1,9 @@
 /**
  * Canonical market-context series catalog.
  *
- * `seriesKey` values for VIX / DGS2 / DGS10 match Agent 06 regime feature
- * contracts (`market:VIXCLS:level`, `market:DGS*:yield_pct`). Additional keys
- * cover breakevens, 3m yields and Fed target bounds for later feature work.
+ * Keys for VIX / DGS2 / DGS10 / SPY match Agent 06 regime feature contracts.
+ * Official adapters in this package fetch VIX/yields/breakevens/Fed target;
+ * `market:SPY:close` is reserved for equity-price adapters (not implemented here).
  */
 
 import type { ContextUnit } from "@/types/context";
@@ -18,6 +18,7 @@ export const MARKET_SERIES_KEYS = {
   T10YIE: "market:T10YIE:breakeven_pct",
   DFEDTARU: "market:DFEDTARU:target_pct",
   DFEDTARL: "market:DFEDTARL:target_pct",
+  SPY: "market:SPY:close",
 } as const;
 
 export type CanonicalMarketSeriesKey =
@@ -160,6 +161,19 @@ export const MARKET_SERIES_CATALOG: readonly MarketSeriesDefinition[] = [
     mirrorNativeId: null,
     citationUrls: ["https://fred.stlouisfed.org/series/DFEDTARL"],
     historyFrom: "2008-12-16",
+  },
+  {
+    catalogId: "SPY",
+    seriesKey: MARKET_SERIES_KEYS.SPY,
+    unit: "price",
+    description:
+      "SPY daily close reserved for equity RV20 / session-calendar features. No official adapter in this package — equity-price providers populate it separately.",
+    primaryProvider: "equity_price",
+    mirrorProvider: null,
+    primaryNativeId: "SPY",
+    mirrorNativeId: null,
+    citationUrls: ["https://finance.yahoo.com/quote/SPY"],
+    historyFrom: "1993-01-29",
   },
 ] as const;
 

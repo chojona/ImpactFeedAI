@@ -58,6 +58,13 @@ export {
 } from "@/services/market-context/series";
 
 export {
+  observationDatesOnSessionCalendar,
+  sessionWindowIsComplete,
+  validateSessionCalendar,
+  type SessionCalendarValidation,
+} from "@/services/market-context/sessionCalendar";
+
+export {
   TREASURY_YIELD_FIELDS,
   TREASURY_YIELD_XML_BASE,
   buildTreasuryYieldUrl,

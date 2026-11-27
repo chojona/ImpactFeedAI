@@ -21,7 +21,9 @@ import {
   nextNyMidnightAfter,
   parseRawNumeric,
   redactFredApiKey,
+  sessionWindowIsComplete,
   treasuryH15Availability,
+  validateSessionCalendar,
 } from "@/services/market-context";
 
 const fixtureDir = join(
@@ -35,15 +37,18 @@ const fixture = (name: string): string =>
 const FIXED_FETCHED_AT = new Date("2024-06-01T15:00:00.000Z");
 
 describe("market-context series registry", () => {
-  it("covers every priority catalog id exactly once", () => {
-    const ids = MARKET_SERIES_CATALOG.map((s) => s.catalogId).sort();
-    expect(ids).toEqual([...PRIORITY_SERIES_CATALOG_IDS].sort());
+  it("covers every priority fetch catalog id", () => {
+    const ids = new Set(MARKET_SERIES_CATALOG.map((s) => s.catalogId));
+    for (const id of PRIORITY_SERIES_CATALOG_IDS) {
+      expect(ids.has(id)).toBe(true);
+    }
   });
 
-  it("aligns VIX/DGS2/DGS10 keys with Agent 06 regime contracts", () => {
+  it("aligns VIX/DGS2/DGS10/SPY keys with Agent 06 regime contracts", () => {
     expect(MARKET_SERIES_KEYS.VIXCLS).toBe("market:VIXCLS:level");
     expect(MARKET_SERIES_KEYS.DGS2).toBe("market:DGS2:yield_pct");
     expect(MARKET_SERIES_KEYS.DGS10).toBe("market:DGS10:yield_pct");
+    expect(MARKET_SERIES_KEYS.SPY).toBe("market:SPY:close");
   });
 });
 
@@ -280,6 +285,52 @@ describe("SYSTEM_REPLAY fetchedAt enforcement", () => {
         "SYSTEM_REPLAY",
       ),
     ).toContain("not_known_to_system");
+  });
+});
+
+describe("sessionCalendar helpers (no gap compression)", () => {
+  it("rejects non-ascending or duplicate calendars", () => {
+    expect(validateSessionCalendar(["2024-01-03", "2024-01-02"]).ok).toBe(false);
+    expect(validateSessionCalendar(["2024-01-02", "2024-01-02"]).ok).toBe(false);
+    expect(validateSessionCalendar(["2024-01-02", "2024-01-03"]).ok).toBe(true);
+  });
+
+  it("does not treat missing sessions as complete when prints are absent", () => {
+    const calendar = ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"];
+    const observations = [
+      {
+        id: "1",
+        seriesKey: MARKET_SERIES_KEYS.VIXCLS,
+        value: 13,
+        unit: "index_points" as const,
+        observationAt: new Date("2024-01-02T00:00:00.000Z"),
+        observationDate: "2024-01-02",
+        availableAt: new Date("2024-01-03T05:00:00.000Z"),
+        fetchedAt: FIXED_FETCHED_AT,
+        quality: "conservative_date_bound" as const,
+      },
+      {
+        id: "2",
+        seriesKey: MARKET_SERIES_KEYS.VIXCLS,
+        value: 14,
+        unit: "index_points" as const,
+        observationAt: new Date("2024-01-05T00:00:00.000Z"),
+        observationDate: "2024-01-05",
+        availableAt: new Date("2024-01-06T05:00:00.000Z"),
+        fetchedAt: FIXED_FETCHED_AT,
+        quality: "conservative_date_bound" as const,
+      },
+    ];
+    // Calendar still has 01-03 and 01-04 with no prints — window incomplete.
+    expect(
+      sessionWindowIsComplete(
+        observations,
+        MARKET_SERIES_KEYS.VIXCLS,
+        calendar,
+        "2024-01-05",
+        4,
+      ),
+    ).toBe(false);
   });
 });
 

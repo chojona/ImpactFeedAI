@@ -14,6 +14,8 @@
  *   FRED current-vintage pulls `revised_latest` with `availableAt: null`, so
  *   they never pass the market PIT gate. Adds the `revised_latest_ineligible`
  *   {@link FeatureReasonCode} (same spelling as macro {@link MissingReason}).
+ *   Revision state lives in `quality`, not a separate `revisionKind` field;
+ *   `market:SPY:close` is reserved for the equity-price adapter.
  *
  * Shared vocabulary must stay identical across those PRs:
  * `KnowledgeMode`, series keys (`market:VIXCLS:level`, `market:DGS*:yield_pct`,

@@ -15,7 +15,12 @@ import type { AvailabilityPolicyVersion } from "@/services/market-context/availa
 /** How precisely availability was established. */
 export type AvailabilityPrecision = "timestamp" | "date" | "unknown";
 
-export type MarketContextProvider = "cboe" | "us_treasury" | "fred";
+export type MarketContextProvider =
+  | "cboe"
+  | "us_treasury"
+  | "fred"
+  /** Equity close series (e.g. SPY); fetch adapter lives outside this PR. */
+  | "equity_price";
 
 export type ObservationParseStatus = "ok" | "missing" | "invalid";
 
