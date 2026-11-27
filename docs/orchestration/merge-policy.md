@@ -1,8 +1,6 @@
 # Merge policy (agent-driven development)
 
-Status: **UNATTENDED MERGING DISABLED.** The orchestrator may prepare,
-review and report on PRs, but each merge needs the owner's go-ahead until the
-owner changes this line. Only the repository owner changes this line.
+Status: **Unattended merging is DISABLED.** Each merge requires Jonathan's explicit approval for the current PR head. Only Jonathan changes this status.
 
 ## 1. Safeguards
 
@@ -14,7 +12,7 @@ owner changes this line. Only the repository owner changes this line.
 | S4 | Squash merge only (merge commits and rebase merges disabled at repo level) | GitHub | VERIFIED 2026-11-27 |
 | S5 | Conversation resolution required before merge | GitHub | VERIFIED 2026-11-27 |
 | S6 | Independent review attestation on the exact current head SHA (§3) | Orchestrator, via `merge-gate.sh` | VERIFIED by demo (§7); not machine-enforced by GitHub (see §8) |
-| S7 | Merges serialized through the orchestrator thread; every merge call pinned to the gated SHA | Orchestrator + GitHub `sha=` guard | VERIFIED by demo (§7) |
+| S7 | Explicit owner authorization for the current PR head | `merge-gate.sh` | Covered by offline tests |
 
 GitHub "required approvals" is deliberately set to **0**: every agent pushes
 as the single owner account, and GitHub does not let an author approve their
@@ -59,8 +57,8 @@ Behavioural checks (same day, owner admin token):
 - **Reviewer**: a fresh agent that did not write the change, preferably on a
   different provider than the implementer. Reviews the diff against
   CLAUDE.md (data integrity rules especially) and posts an attestation.
-- **Orchestrator**: assigns tasks, routes findings, runs the gate, merges.
-  It is the only role that merges, and only through `merge-gate.sh --merge`.
+- **Orchestrator**: assigns tasks, routes findings, runs the gate, and reports the verdict.
+- **Owner**: Jonathan (`chojona`) authorizes each merge for the current head.
 
 ## 3. Review attestation
 
@@ -91,25 +89,40 @@ the start:
 3. Branch is 0 commits behind `main` and GitHub reports it mergeable.
 4. The latest attestation names that exact SHA and says APPROVE.
 5. No unresolved review threads.
-6. No file under `.github/`, `prisma/`, `docs/orchestration/` or `vercel.json`
-   (these always need the owner).
+6. Neither side of a renamed path, nor any other changed path, touches
+   `.github/`, `prisma/`, `docs/orchestration/`, `.agents/`, `vercel.json`,
+   `package.json`, or `CLAUDE.md`. These changes go to Jonathan directly.
+7. Jonathan's GitHub account (`chojona`) submitted an approving review on the
+   current head or posted this exact standalone PR comment:
 
-`--merge` then squash-merges with `sha=<that SHA>`, so GitHub refuses the merge
-if the branch moved after the gate ran. The orchestrator additionally checks,
-by reading the diff and the review:
+   ```
+   Authorize merge of PR #<number> at <full lowercase head SHA>
+   ```
 
-7. UI check (any PR touching `src/app/**` or `src/components/**`): the
+   A new head requires fresh authorization. A recorded force-push also
+   invalidates authorization issued at or before that event, including when
+   the push restores an earlier SHA. Accounts that share Jonathan's
+   credentials can act under the same GitHub identity.
+
+The gate prints a verdict and exits zero only when every check passes.
+It checks the branch ref again before reporting a pass and rejects GitHub API,
+network, and JSON errors. Run the offline tests with
+`docs/orchestration/test-merge-gate.sh`.
+
+The orchestrator additionally checks the diff and review:
+
+8. UI check (any PR touching `src/app/**` or `src/components/**`): the
    reviewer runs a local production build (`npm run build && npm run start
    -- -p <free port>`), drives every affected route with Playwright at 390px
    and 1440px, and reports HTTP status, console errors, horizontal overflow
    (`scrollWidth > innerWidth`) and screenshot paths (saved outside the repo).
    Both the live read-only database and the no-`DATABASE_URL` empty state are
    checked when the change can affect empty states.
-8. Scope: the diff stays inside the task's owned files, adds no dependency
+9. Scope: the diff stays inside the task's owned files, adds no dependency
    without it being flagged in the PR body, contains no schema migration, no
    secrets, no committed third-party data whose licence is unverified, and no
    research claim that the data cannot support.
-9. One merge at a time. After each merge, every other open PR is behind
+10. One merge at a time. After each merge, every other open PR is behind
    `main`; updating it changes its SHA, so it needs CI and a fresh review again.
 
 Escalate to the owner instead of merging when: a gate item is ambiguous, the
@@ -126,9 +139,9 @@ fix rounds, then it is marked BLOCKED in `backlog.md` and escalated.
 
 ## 6. Can a workflow merge on an outdated approval?
 
-- **The orchestrator's path:** no. The gate reads one SHA, requires the
-  latest attestation to name it, and pins the merge to it; GitHub returns 409
-  if the head moved (demonstrated in §1 and §7).
+- **Gate verdict:** applies to the SHA it prints. For a separately authorized
+  merge, GitHub's expected-SHA parameter rejects a head that moved after the
+  gate ran (§7).
 - **GitHub auto-merge:** disabled at repo level (`allow_auto_merge: false`).
 - **GitHub Actions:** no workflow in `.github/workflows/` merges or approves;
   `ci.yml` runs with `permissions: contents: read`.
@@ -136,7 +149,7 @@ fix rounds, then it is marked BLOCKED in `backlog.md` and escalated.
   merge API directly once `Quality checks` passes, because GitHub itself does
   not know about attestations. This is the gap §8 closes.
 
-## 7. Demonstration (PR #49, docs only)
+## 7. Historical demonstration (PR #49, before unattended merging was disabled)
 
 1. Orchestrator opened #49 (`docs/README.md` index) at `d8c35b4`.
 2. Merge attempts during CI and with merge/rebase methods were refused (§1).
@@ -210,7 +223,7 @@ can only land with the owner's own action.
    and mandatory re-review, merge throughput is about one PR per CI-plus-review
    cycle.
 5. The pulls API can briefly report an old head after a push; mitigated by
-   gate check 0 and the pinned merge.
+   gate check 0 and the final branch ref check.
 6. The scheduled orchestration cycle (T3) is configured by the orchestrator
    itself; its prompt says merges stay disabled while this file says so, but
    that is an instruction, not a control.

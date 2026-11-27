@@ -1,85 +1,110 @@
 #!/usr/bin/env bash
-# Deterministic merge gate for agent PRs (see merge-policy.md §4).
-#
-#   docs/orchestration/merge-gate.sh <pr-number>           # check only
-#   docs/orchestration/merge-gate.sh <pr-number> --merge   # check, then squash-merge
-#
-# Every check is evaluated against ONE head SHA read at the start. The merge
-# call passes that SHA to GitHub (`sha=`), so GitHub refuses the merge if the
-# branch moved after the gate ran: an approval can never be applied to a
-# different head than the one it names. Needs: gh (authenticated), jq.
+# Read-only gate. See merge-policy.md for the owner authorization format.
 set -euo pipefail
 
-REPO="chojona/ImpactFeedAI"
-QUALITY_CHECK="Quality checks"
-QUALITY_APP_ID=15368 # github-actions; statuses posted with a personal token do not count
-MARKER="<!-- impactfeed-review -->"
+reject() { printf 'GATE FAIL: %s\n' "$1" >&2; exit 1; }
+trap 'reject "API, JSON, or command error at line $LINENO"' ERR
 
-PR="${1:?usage: merge-gate.sh <pr-number> [--merge]}"
-MODE="${2:-check}"
-failures=()
-fail() { failures+=("$1"); }
+[[ $# == 1 && $1 =~ ^[1-9][0-9]*$ ]] || reject "usage: merge-gate.sh <pr-number>"
+pr="$1"
+repo="repos/chojona/ImpactFeedAI"
+owner="chojona"
 
-pr_json="$(gh api "repos/$REPO/pulls/$PR")"
-HEAD="$(jq -r .head.sha <<<"$pr_json")"
-HEAD_REF="$(jq -r .head.ref <<<"$pr_json")"
-echo "PR #$PR head $HEAD ($HEAD_REF)"
+api() { gh api --hostname github.com "$@"; }
+json() {
+  jq -ers 'if length == 1 then .[0] else error("expected one JSON value") end | '"$@"
+}
+pages() {
+  api "$1" --paginate --slurp | json '
+    if type == "array" and length > 0 and all(.[]; type == "array")
+    then add else error("invalid paginated response") end'
+}
 
-# 0. The pulls API can lag a fresh push (observed 2026-11-27 on #49), so the
-#    head must also match the branch ref itself. A mismatch means "moving":
-#    re-run later. The merge call below is pinned to $HEAD either way.
-ref_sha="$(gh api "repos/$REPO/git/ref/heads/$HEAD_REF" --jq .object.sha)"
-[[ "$ref_sha" == "$HEAD" ]] || fail "head is moving: pulls API says $HEAD, branch ref says $ref_sha"
+pr_json="$(api "$repo/pulls/$pr")"
+head="$(json 'select(.number == $pr) | .head.sha | strings | select(test("^[0-9a-f]{40}$"))' --argjson pr "$pr" <<<"$pr_json")"
+head_ref="$(json '.head.ref | strings | select(length > 0)' <<<"$pr_json")"
+head_repo="$(json '.head.repo.full_name | strings | select(test("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"))' <<<"$pr_json")"
+# Encode each ref segment so branch names cannot alter the API request.
+encoded_ref="$(jq -rn --arg ref "$head_ref" '$ref | split("/") | map(@uri) | join("/")')"
+check_head() {
+  local ref_sha
+  ref_sha="$(api "repos/$head_repo/git/ref/heads/$encoded_ref" | json '.object.sha | strings')"
+  [[ "$ref_sha" == "$head" ]] || reject "head changed or is moving"
+}
 
-# 1. Open, not draft, no do-not-merge label.
-[[ "$(jq -r .state <<<"$pr_json")" == "open" ]] || fail "PR is not open"
-[[ "$(jq -r .draft <<<"$pr_json")" == "false" ]] || fail "PR is a draft"
-jq -e '[.labels[].name] | index("do-not-merge") | not' <<<"$pr_json" >/dev/null \
-  || fail "do-not-merge label present"
+check_head
+json '.state == "open" and .draft == false and .mergeable == true
+  and (.labels | type == "array" and all(.[]; (.name | type) == "string" and .name != "do-not-merge"))' \
+  <<<"$pr_json" >/dev/null || reject "PR must be open, mergeable, and free of draft status and do-not-merge"
+api "$repo/compare/main...$head" | json '.behind_by == 0' >/dev/null \
+  || reject "could not verify that the head is up to date with main"
 
-# 2. Required check succeeded on this exact head, from the expected app.
-quality="$(gh api "repos/$REPO/commits/$HEAD/check-runs?per_page=100" --jq \
-  "[.check_runs[] | select(.name==\"$QUALITY_CHECK\" and .app.id==$QUALITY_APP_ID)]
-   | if length==0 then \"missing\"
-     elif all(.conclusion==\"success\") then \"success\"
-     else (map(.conclusion // .status) | join(\",\")) end")"
-[[ "$quality" == "success" ]] || fail "$QUALITY_CHECK on $HEAD: $quality"
+api "$repo/commits/$head/check-runs?per_page=100" --paginate --slurp | json '
+  select(type == "array" and length > 0 and all(.[]; (.check_runs | type) == "array"))
+  | [.[].check_runs[] | select(.name == "Quality checks" and .app.id == 15368)]
+  | length > 0 and all(.[]; .conclusion == "success" and .head_sha == $head)' --arg head "$head" >/dev/null \
+  || reject "Quality checks did not succeed on the current head"
 
-# 3. Up to date with main and mergeable.
-behind="$(gh api "repos/$REPO/compare/main...$HEAD" --jq .behind_by)"
-[[ "$behind" == "0" ]] || fail "branch is $behind commit(s) behind main"
-[[ "$(jq -r .mergeable <<<"$pr_json")" == "true" ]] || fail "GitHub reports not mergeable"
+comments="$(pages "$repo/issues/$pr/comments?per_page=100")"
+reviews="$(pages "$repo/pulls/$pr/reviews?per_page=100")"
+json 'all(.[]; (.body | type) == "string" and (.user.login | type) == "string" and (.user.type | type) == "string")' \
+  <<<"$comments" >/dev/null || reject "invalid comments response"
+json 'all(.[]; (.state | type) == "string" and (.commit_id | type) == "string"
+  and (.user.login | type) == "string" and (.user.type | type) == "string")' \
+  <<<"$reviews" >/dev/null || reject "invalid reviews response"
 
-# 4. Latest attestation must name this exact head and approve it.
-attest="$(gh api --paginate "repos/$REPO/issues/$PR/comments" --jq \
-  "[.[] | select(.body | contains(\"$MARKER\"))] | .[]" | jq -s 'last')"
-if [[ "$attest" == "null" || -z "$attest" ]]; then
-  fail "no review attestation"
-else
-  body="$(jq -r .body <<<"$attest")"
-  a_head="$(grep -oE '^Head: *[0-9a-f]{40}' <<<"$body" | grep -oE '[0-9a-f]{40}' | head -1 || true)"
-  a_verdict="$(grep -oE '^Verdict: *(APPROVE|CHANGES_REQUESTED)' <<<"$body" | awk '{print $2}' | head -1 || true)"
-  echo "latest attestation: head=${a_head:-none} verdict=${a_verdict:-none} ($(jq -r .html_url <<<"$attest"))"
-  [[ "$a_head" == "$HEAD" ]] || fail "latest attestation is for ${a_head:-no SHA}, not current head (stale)"
-  [[ "$a_verdict" == "APPROVE" ]] || fail "latest attestation verdict is ${a_verdict:-missing}"
+last_force_push="$(api graphql --paginate --slurp -F n="$pr" -f query='
+  query($n:Int!, $endCursor:String) {
+    repository(owner:"chojona",name:"ImpactFeedAI") {
+      pullRequest(number:$n) {
+        timelineItems(last:1, itemTypes:[HEAD_REF_FORCE_PUSHED_EVENT]) {
+          nodes { ... on HeadRefForcePushedEvent { createdAt } }
+        }
+        reviewThreads(first:100, after:$endCursor) {
+          nodes { isResolved }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }' | json '
+    select(type == "array" and length > 0 and all(.[]; (has("errors") | not)))
+    | map(.data.repository.pullRequest)
+    | select(map(.reviewThreads) | (last | .pageInfo.hasNextPage == false)
+      and all(.[]; (.nodes | type == "array" and all(.[]; .isResolved == true))))
+    | select(all(.[]; (.timelineItems.nodes | type == "array"
+        and all(.[]; (.createdAt | type) == "string"))))
+    | [.[].timelineItems.nodes[].createdAt] | max // ""')" \
+  || reject "review threads or head force-push history could not be verified"
+
+# A standalone, exact command avoids treating quoted text or a general approval as authorization.
+authorization="Authorize merge of PR #$pr at $head"
+if ! json 'any(.[]; .user.login == $owner and .user.type == "User" and .body == $authorization
+        and (.created_at | type == "string" and . > $last_force_push))' \
+      --arg owner "$owner" --arg authorization "$authorization" --arg last_force_push "$last_force_push" <<<"$comments" >/dev/null \
+   && ! json '[.[] | select(.user.login == $owner and .user.type == "User"
+            and (.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED"))]
+            | last | .state == "APPROVED" and .commit_id == $head
+            and (.submitted_at | type == "string" and . > $last_force_push)' \
+      --arg owner "$owner" --arg head "$head" --arg last_force_push "$last_force_push" <<<"$reviews" >/dev/null; then
+  reject "missing explicit authorization from $owner for PR #$pr at $head"
 fi
 
-# 5. No unresolved review threads.
-unresolved="$(gh api graphql -F n="$PR" -f query='query($n:Int!){repository(owner:"chojona",name:"ImpactFeedAI"){pullRequest(number:$n){reviewThreads(first:100){nodes{isResolved}}}}}' \
-  --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not)] | length')"
-[[ "$unresolved" == "0" ]] || fail "$unresolved unresolved review thread(s)"
+json '[.[] | select(.body | contains("<!-- impactfeed-review -->"))] | last
+  | (.body // "" | split("\n")) as $lines
+  | [$lines[] | select(startswith("Head:"))] == ["Head: " + $head]
+    and [$lines[] | select(startswith("Verdict:"))] == ["Verdict: APPROVE"]' \
+  --arg head "$head" <<<"$comments" >/dev/null || reject "missing current approving review attestation"
 
-# 6. Paths that always need the owner (merge-policy.md §4, escalation list).
-sensitive="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' \
-  | grep -E '^(\.github/|prisma/|docs/orchestration/|vercel\.json$)' || true)"
-[[ -z "$sensitive" ]] || fail "touches owner-approval paths: $(tr '\n' ' ' <<<"$sensitive")"
 
-if ((${#failures[@]})); then
-  printf 'GATE FAIL\n'; printf '  - %s\n' "${failures[@]}"; exit 1
-fi
-echo "GATE PASS for $HEAD"
+files="$(pages "$repo/pulls/$pr/files?per_page=100")"
+changed_files="$(json '.changed_files | numbers' <<<"$pr_json")"
+json 'length == $count and all(.[];
+    (.filename | type) == "string" and (.status | type) == "string"
+    and (if .status == "renamed" or has("previous_filename")
+         then (.previous_filename | type) == "string" else true end))
+  and (any(.[] | .filename, (.previous_filename // "");
+    test("^(\\.github/|prisma/|docs/orchestration/|\\.agents/|(?:vercel\\.json|package\\.json|CLAUDE\\.md)$)")) | not)' \
+  --argjson count "$changed_files" <<<"$files" >/dev/null || reject "protected paths or incomplete PR file list"
 
-if [[ "$MODE" == "--merge" ]]; then
-  gh api -X PUT "repos/$REPO/pulls/$PR/merge" -f merge_method=squash -f sha="$HEAD" \
-    --jq '"merged: \(.merged) \(.sha)"'
-fi
+check_head
+printf 'GATE PASS for PR #%s at %s\n' "$pr" "$head"
