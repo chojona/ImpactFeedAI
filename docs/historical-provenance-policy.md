@@ -40,6 +40,23 @@ with secrets removed. Store source values and every transform input, including
 previous-period values needed for YoY/MoM changes. A correct headline value
 cannot certify an unarchived transform denominator.
 
+An ALFRED single-day snapshot records the provider's information set for that
+date. Its row interval does not establish the date the value was published or
+whether it was the first print. The adapter leaves release stage unresolved
+unless independently reviewed publication evidence ties the exact series,
+period, date, and value to a stage. Provider responses explicitly limited to
+initial releases or demonstrably complete revision histories can establish the
+stage of an archived observation. In each mode, independent publication
+evidence is required for a date-bound availability claim. First-print
+selection requires both the initial stage and the initial reported value kind.
+
+Macro transforms require all operands to share a validated single-day snapshot
+or a single point-in-time panel selection. Snapshot arithmetic is descriptive
+unless its inputs also qualify under the point-in-time policy. Input lineage
+includes the numerator and denominator of any returned prior. The selection
+freeze excludes rows recorded after `recordedThrough` before revision
+conflicts are evaluated.
+
 Historical public-information reconstruction may use evidence retrieved later,
 but requires `availableAt < cutoff` and `recordedAt <= recordedThrough`.
 System replay additionally requires both retrieval and insertion strictly
