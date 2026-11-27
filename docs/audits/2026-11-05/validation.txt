@@ -1,0 +1,247 @@
+Audit baseline: 3fe158504a22f765105e2a0aa7697bccaa3d7acc
+Date: November 5, 2026 (America/New_York)
+These are baseline validation logs. No application code was changed.
+Browser smoke/E2E and clean database migration replay were not performed.
+
+Baseline quality checks
+
+
+> impactfeed-ai@0.1.0 verify
+> npm run typecheck && npm run lint && npm run test
+
+
+> impactfeed-ai@0.1.0 typecheck
+> tsc --noEmit
+
+
+> impactfeed-ai@0.1.0 lint
+> eslint
+
+
+> impactfeed-ai@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.10 <repo-root>
+
+
+ Test Files  29 passed (29)
+      Tests  518 passed (518)
+   Start at  16:29:27
+   Duration  1.47s (transform 1.61s, setup 0ms, import 3.27s, tests 361ms, environment 2ms)
+
+
+
+Local schema validation
+
+
+> impactfeed-ai@0.1.0 db:validate
+> prisma validate
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+The schema at prisma/schema.prisma is valid 🚀
+
+
+Production build: restricted network (font-fetch failure)
+
+
+> impactfeed-ai@0.1.0 build
+> prisma generate && next build
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (7.8.0) to ./src/generated/prisma in 67ms
+
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+Turbopack build encountered 2 warnings:
+[next]/internal/font/google/ibm_plex_mono_eca0cfd2.module.css
+Error while requesting resource
+There was an issue establishing a connection while requesting https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap
+
+
+[next]/internal/font/google/ibm_plex_sans_6ebeb417.module.css
+Error while requesting resource
+There was an issue establishing a connection while requesting https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap
+
+
+
+> Build error occurred
+Error: Turbopack build failed with 2 errors:
+[next]/internal/font/google/ibm_plex_mono_eca0cfd2.module.css
+next/font: error:
+Failed to fetch `IBM Plex Mono` from Google Fonts.
+
+
+[next]/internal/font/google/ibm_plex_sans_6ebeb417.module.css
+next/font: error:
+Failed to fetch `IBM Plex Sans` from Google Fonts.
+
+
+    at ignore-listed frames
+
+
+Production build: network enabled (passed)
+
+
+> impactfeed-ai@0.1.0 build
+> prisma generate && next build
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (7.8.0) to ./src/generated/prisma in 64ms
+
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.0s
+  Running TypeScript ...
+  Finished TypeScript in 4.1s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/5) ...
+(node:57409) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  Generating static pages using 9 workers (1/5) 
+  Generating static pages using 9 workers (2/5) 
+  Generating static pages using 9 workers (3/5) 
+✓ Generating static pages using 9 workers (5/5) in 891ms
+  Finalizing page optimization ...
+
+Route (app)       Revalidate  Expire
+┌ ○ /                    10m      1y
+├ ○ /_not-found
+├ ƒ /api/events
+├ ƒ /events/[id]
+├ ƒ /feed
+└ ƒ /patterns
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+
+Candle verifier: PGOPTIONS read-only, node --import tsx scripts/maintenance/verify-candles.ts
+
+(node:57423) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+candles table: 1,276 rows
+
+Coverage
+  QQQ    1h   AS_TRADED                  638 rows  2024-09-09 → 2025-07-03
+  SPY    1h   AS_TRADED                  638 rows  2024-09-09 → 2025-07-03
+
+Volume: 726/726 extended-hours rows have NULL volume (withheld, not zeroed)
+
+Invariants
+  ✓ every row carries the current ingestion version
+  ✓ no duplicate (symbol, interval, open_time, price_basis)
+  ✓ every row declares a provider
+  ✓ no fabricated extended-hours zero volume persisted
+      0 extended-hours row(s) stored with volume = 0
+  ✓ every stored bar satisfies the OHLC invariants
+  ✓ SQL and TypeScript agree on OHLC coherence
+  ✓ timestamps are strictly increasing within each series
+  ✓ no candle is stamped in the future
+  ✓ every row is classified into a session
+      REGULAR=550 EXTENDED=726
+  ✓ no symbol/interval series mixes price bases
+
+10/10 invariants hold.
+
+
+Reaction verifier: PGOPTIONS read-only, node --import tsx scripts/maintenance/verify-reaction-measurements.ts
+
+verify-reaction-measurements — version 3
+
+(node:57425) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+=== Coverage ===
+rows by measure:
+  RELEASE_SESSION      240
+  SESSION_PLUS_1       240
+  SESSION_PLUS_5       240
+  INTRADAY_60M         108
+rows by sessionBasis:
+  CONTINUOUS_24_7      69
+  EXTENDED_FUTURES     207
+  US_EQUITY_RTH        552
+
+=== Anchor-kind purity (must be exactly 1 per measure) ===
+  ✓ RELEASE_SESSION      {PRIOR_SESSION_CLOSE}
+  ✓ SESSION_PLUS_1       {PRIOR_SESSION_CLOSE}
+  ✓ SESSION_PLUS_5       {PRIOR_SESSION_CLOSE}
+  ✓ INTRADAY_60M         {PRE_RELEASE_INTRADAY_BAR}
+
+=== Session-basis stability (must be exactly 1 per symbol) ===
+  ✓ BTC-USD    {CONTINUOUS_24_7}
+  ✓ CL=F       {EXTENDED_FUTURES}
+  ✓ DX-Y.NYB   {EXTENDED_FUTURES}
+  ✓ GC=F       {EXTENDED_FUTURES}
+  ✓ GLD        {US_EQUITY_RTH}
+  ✓ IWM        {US_EQUITY_RTH}
+  ✓ QQQ        {US_EQUITY_RTH}
+  ✓ SPY        {US_EQUITY_RTH}
+  ✓ TLT        {US_EQUITY_RTH}
+  ✓ XLE        {US_EQUITY_RTH}
+  ✓ XLF        {US_EQUITY_RTH}
+  ✓ XLK        {US_EQUITY_RTH}
+
+=== INTRADAY_60M elapsed-minute distribution ===
+  n=108  min=60.0  median=60.0  max=90.0
+
+distinct releaseSessionDay values at v3: 20
+
+✓ 0 violation(s) found.
+
+
+Read-only schema drift comparison
+Command: PGOPTIONS="-c default_transaction_read_only=on" ./node_modules/.bin/prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+Exit code: 0
+Loaded Prisma config from prisma.config.ts.
+
+No difference detected.
+┌─────────────────────────────────────────────────────────┐
+│  Update available 7.8.0 -> 8.0.0-rc.30                  │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+
+Supplemental read-only aggregate: all of actual_source, actual_source_url, metric_key, reference_period_start have non-null count = 0 in data_releases.

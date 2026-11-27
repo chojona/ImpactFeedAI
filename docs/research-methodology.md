@@ -24,6 +24,12 @@ exist in the metric's canonical unit. The 20 seed forecasts are hand-entered and
 explicitly `UNVERIFIED`; no external historical consensus provider is wired yet
 (see [data-sources.md](data-sources.md#the-consensus-problem)).
 
+The [November 5, 2026 audit](audits/2026-11-05-repository-audit.md) confirmed
+zero verified live forecasts and no persisted actual-vintage history. These
+stored differences are descriptive arithmetic, not qualified first-print
+surprises for historical context research. The [Phase 1 plan](phase-1-market-context-plan.md)
+requires strict pre-release availability and revision-aware selection.
+
 ### Why raw surprise is not enough
 
 A raw difference is not comparable across indicators. +0.1 on CPI YoY is a
@@ -75,26 +81,36 @@ different directions.
 **Target windows:** 5 minutes · 30 minutes · 1 hour · 4 hours · 1 trading day ·
 3 trading days · 1 week
 
-**Currently stored:** 1 hour, 1 day, 1 week only, as fixed columns
-(`price1h`, `price1d`, `price1w`). Yahoo's ~730-day intraday retention makes 5-
-and 30-minute windows impossible for older events without a different price
-provider.
+**Current live measurements:** `INTRADAY_60M`, `RELEASE_SESSION`,
+`SESSION_PLUS_1`, `SESSION_PLUS_5` as versioned rows in
+`reaction_measurements`. The old fixed-column `asset_reactions` is a v2
+archive, ignored by live reads. Missing windows have no measurement row.
 
 Details that decide whether the numbers mean anything:
 
-- **Anchor price.** Calculation version 2 requires a bounded price strictly
-  before a sourced `releaseAt`: the latest usable intraday open no more than two
-  hours old, otherwise the immediately preceding session close whose provider
-  bar is no more than four calendar days old. A first post-release candle is
-  never the denominator, so an opening/weekend gap stays in the return.
-- **Trading days, not calendar days.** A Friday event's "1 day" is Monday. A
-  window crossing a holiday is longer in wall-clock time than one that does
-  not.
+- **Anchor price.** V3 anchors are fixed by measure family: first hour uses a
+  usable intraday open strictly before the sourced release, no more than two
+  hours old, with no daily fallback. Session measures use the immediately
+  preceding canonical session close, whose economic close must precede the
+  release. Provider bar stamps are not necessarily close/availability times.
+- **First-hour tolerance.** Target is release +60 minutes; the selected
+  intraday open can be up to two hours later than that target. Anchor age and
+  endpoint slip mean actual price-to-price exposure need not be 60 minutes.
+- **Trading sessions, not calendar days.** Session origin is the first
+  canonical SPY session whose close follows the release. Next-session and
+  five-session endpoints are offsets from that origin; holidays extend elapsed
+  wall-clock time. Release-session returns include pre-release trading when
+  the announcement occurs during that session.
 - **Session boundaries.** For an 08:30 ET release, the 1-hour target coincides
   with the 09:30 cash open. Futures/crypto may have a true intraday endpoint;
   ETF proxies generally express the first-hour repricing as an opening gap.
   Those are different microstructures and should not be over-interpreted as
   equivalent paths.
+- **Native market semantics.** Session-basis labels distinguish regular US
+  equities, extended futures and continuous UTC-day crypto. Common canonical
+  dates do not imply identical tradeable hours. The audit identified false
+  early-close entries and a verifier completeness gap; broader computation
+  is gated on their correction and versioned verification.
 - **Overlapping events.** CPI at 08:30 and a Fed speaker at 10:00 contaminate
   each other's windows. Contamination should be flagged, not silently averaged
   away.
@@ -136,7 +152,8 @@ Academic methods, point-in-time rules, proposed continuous features, and
 validation tests (no implementation yet):
 [regime-classification-research.md](regime-classification-research.md).
 
-Candidate classifications, all Phase 2:
+Candidate classifications. Deterministic regimes are V2 Phase 1 work (P1.3 in
+the [Phase 1 plan](phase-1-market-context-plan.md)):
 
 **Trend** — bullish / bearish / range. Definable from distance to an N-day
 high, moving-average relationships, or higher-high/higher-low structure. The
