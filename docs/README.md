@@ -3,7 +3,6 @@
 Each entry links a document in this folder by its own title. Read
 [architecture.md](architecture.md) before adding a new file.
 
-- [Documentation index](README.md)
 - [Architecture](architecture.md)
 - [Candle preservation pipeline](candle-preservation.md)
 - [ImpactFeedAI — Verified Historical Data Acquisition Plan](data-acquisition-plan.md)
