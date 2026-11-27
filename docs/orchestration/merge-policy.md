@@ -49,6 +49,7 @@ Behavioural checks (same day, owner admin token):
 | Merge-commit method on #49 | HTTP 405 `Merge commits are not allowed on this repository.` |
 | Rebase method on #49 | HTTP 405 `Rebase merges are not allowed on this repository.` |
 | Squash-merge #49 pinned to the previously approved SHA after a new push | HTTP 409 `Head branch was modified. Review and try the merge again.` |
+| Squash-merge approved #43 after `main` moved (branch 1 behind) | HTTP 405 `Required status check "Quality checks" is expected.` |
 
 ## 2. Who does what
 
@@ -146,8 +147,11 @@ fix rounds, then it is marked BLOCKED in `backlog.md` and escalated.
    the pinned merge returned **409**. The gate now cross-checks the branch ref
    (check 0). Re-run: **GATE FAIL**: `Quality checks` in progress, attestation
    is for `d8c35b4` (stale).
-5. A fresh reviewer re-reviewed `e65ae00`; gate re-run and merge are recorded
-   in the PR thread.
+5. A fresh reviewer (new Cursor composer-2.5 agent) approved `e65ae00`. The
+   gate first failed only on `Quality checks` in progress, then passed once CI
+   finished, and `merge-gate.sh 49 --merge` squash-merged it as `a3d86f7`.
+6. After that merge, the gate failed every other approved PR (#41, #43, #45,
+   #47) as 1 commit behind `main`, and GitHub itself refused to merge #43.
 
 ## 8. Proposal: machine-enforced review gate (needs owner approval)
 
