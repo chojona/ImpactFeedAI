@@ -82,6 +82,24 @@ describe("ALFRED adapter requests", () => {
     expect(url.searchParams.get("output_type")).toBeNull();
   });
 
+  it("redacts the API key from transport error detail", async () => {
+    const result = await fetchAlfredObservations({
+      request: {
+        seriesId: "PAYEMS",
+        observationStart: "2023-01-01",
+        observationEnd: "2023-01-01",
+        mode: "current_latest",
+      },
+      apiKey: "secret-api-key",
+      httpGet: async (url) => {
+        throw new Error(`request to ${url} failed`);
+      },
+    });
+    expect(result.status).toBe("error");
+    expect(JSON.stringify(result)).not.toContain("secret-api-key");
+    expect(result.detail).toContain("[REDACTED]");
+  });
+
   it("redacts api_key from evidence URLs", () => {
     const raw = buildAlfredObservationsUrl(
       {

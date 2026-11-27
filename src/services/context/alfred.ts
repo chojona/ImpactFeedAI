@@ -373,7 +373,10 @@ export async function fetchAlfredObservations(options: {
       fetchedAt,
     };
   } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
+    // An injected httpGet (or a wrapped fetch error) may echo the request URL;
+    // never let the API key reach a returned or printed result.
+    const raw = err instanceof Error ? err.message : String(err);
+    const detail = options.apiKey ? raw.split(options.apiKey).join("[REDACTED]") : raw;
     return {
       status: "error",
       mode: options.request.mode,
