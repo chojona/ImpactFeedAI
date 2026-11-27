@@ -62,11 +62,20 @@ re-review may be a new agent given the previous findings.
    reviewer that is not the implementer.
 5. Every finding from earlier attestations is fixed or explicitly answered,
    and no review thread is unresolved.
-6. Scope check: the diff stays inside the task's owned files, adds no
+6. UI check (any PR touching `src/app/**` or `src/components/**`): the
+   reviewer runs a local production build (`npm run build && npm run start
+   -- -p <free port>`), drives every affected route with Playwright at 390px
+   and 1440px, and reports in the attestation: HTTP status, console errors,
+   horizontal overflow (`scrollWidth > innerWidth`), and screenshot paths
+   (saved outside the repo). Both the live read-only database and the
+   no-`DATABASE_URL` empty state are checked when the change can affect empty
+   states. The server is stopped afterwards. There is no hosted preview: the
+   app runs locally only (see #47).
+7. Scope check: the diff stays inside the task's owned files, adds no
    dependency without it being flagged in the PR body, contains no schema
    migration, no secrets, no committed third-party data whose licence is
    unverified, and no research claim that the data cannot support.
-7. Squash merge. One merge at a time; after each merge, other open PRs are
+8. Squash merge. One merge at a time; after each merge, other open PRs are
    updated from `main` and must pass the gate again.
 
 Escalate to the owner instead of merging when: a gate item is ambiguous, the
