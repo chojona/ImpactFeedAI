@@ -80,7 +80,10 @@ macro foundation (ALFRED adapter, `revisionSelect`, vintage `transforms`),
 sharing `KnowledgeMode` / `MarketContextObservation` in `src/types/context.ts`
 and the historical-actual gate in `services/macro/actualProvenance.ts`. These
 are pure TypeScript with no persistence; Phase 1 remains NO-GO, so nothing
-reads them in the product yet. Components render prepared values rather than
+reads them in the product yet. The data-source registry (provider coverage,
+limits, licensing, point-in-time eligibility, last validation) lives in
+`services/sources/` as static metadata with pure audit functions; it never
+fetches. Components render prepared values rather than
 calculate research results. There are no application write routes or Server
 Actions today, and no model calls.
 
