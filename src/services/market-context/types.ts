@@ -10,6 +10,7 @@ import type {
   KnowledgeMode,
   MarketContextObservation,
 } from "@/types/context";
+import type { AvailabilityPolicyVersion } from "@/services/market-context/availability";
 
 /** How precisely availability was established. */
 export type AvailabilityPrecision = "timestamp" | "date" | "unknown";
@@ -17,6 +18,16 @@ export type AvailabilityPrecision = "timestamp" | "date" | "unknown";
 export type MarketContextProvider = "cboe" | "us_treasury" | "fred";
 
 export type ObservationParseStatus = "ok" | "missing" | "invalid";
+
+/**
+ * Whether the observation may enter historical public-information reconstruction.
+ * FRED current-revised pulls are `false` unless an ALFRED-style vintage is used.
+ */
+export type HistoricalReconstructionStatus =
+  | "eligible"
+  | "ineligible_revised_latest"
+  | "ineligible_unknown_availability"
+  | "ineligible_missing";
 
 /** Injected fetch so adapters stay network-free under test. */
 export type FetchLike = (
@@ -33,13 +44,21 @@ export interface RetrievalMetadata {
   /** Original textual value from the payload before numeric parse. */
   readonly rawValue: string | null;
   readonly availabilityPrecision: AvailabilityPrecision;
+  readonly availabilityPolicyVersion: AvailabilityPolicyVersion | null;
   readonly parseStatus: ObservationParseStatus;
   readonly knowledgeMode: KnowledgeMode;
+  readonly historicalReconstruction: HistoricalReconstructionStatus;
+  /**
+   * ALFRED-style realtime vintage date (`YYYY-MM-DD`) when the pull was
+   * vintage-bounded; null for current-revised FRED defaults.
+   */
+  readonly vintageAsOf: string | null;
 }
 
 /**
  * Full adapter output: lean observation + retrieval provenance.
  * Feature calculators should consume `observation` only.
+ * SYSTEM_REPLAY selectors must read `observation.fetchedAt` (strict `< cutoff`).
  */
 export interface RetrievedMarketObservation {
   readonly observation: MarketContextObservation;

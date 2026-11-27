@@ -13,13 +13,13 @@
 
 import type { KnowledgeMode, MarketContextObservation } from "@/types/context";
 import {
-  DATE_AVAILABILITY_PRECISION,
-  conservativeAvailableAtFromIsoDate,
   observationAtFromIsoDate,
   parseRawNumeric,
   qualityForParsedValue,
   treasuryDateTimeToIsoDate,
+  treasuryH15Availability,
 } from "@/services/market-context/availability";
+import { historicalReconstructionStatusForQuality } from "@/services/market-context/eligibility";
 import { fetchText } from "@/services/market-context/http";
 import {
   MARKET_SERIES_KEYS,
@@ -128,13 +128,14 @@ export function parseTreasuryYieldXml(
     if (!isoDate) continue;
     const observationAt = observationAtFromIsoDate(isoDate);
     if (!observationAt) continue;
-    const availableAt = conservativeAvailableAtFromIsoDate(isoDate);
+    const availability = treasuryH15Availability(isoDate);
 
     for (const field of fields) {
       const def = TREASURY_YIELD_FIELDS[field];
       const raw = extractTaggedValue(entry, def.xmlTag);
       const parsed = parseRawNumeric(raw);
       const seriesKey: CanonicalMarketSeriesKey = def.seriesKey;
+      const quality = qualityForParsedValue(parsed.value, availability.quality);
       const observation: MarketContextObservation = {
         id: `us_treasury:${def.xmlTag}:${isoDate}`,
         seriesKey,
@@ -142,10 +143,11 @@ export function parseTreasuryYieldXml(
         unit: "pct_level",
         observationAt,
         observationDate: isoDate,
-        availableAt,
+        availableAt: parsed.value === null ? null : availability.availableAt,
+        fetchedAt,
         publishedAt: null,
         sourceAt: null,
-        quality: qualityForParsedValue(parsed.value),
+        quality,
       };
 
       out.push({
@@ -157,9 +159,12 @@ export function parseTreasuryYieldXml(
           requestId,
           etag,
           rawValue: parsed.rawValue,
-          availabilityPrecision: DATE_AVAILABILITY_PRECISION,
+          availabilityPrecision: availability.availabilityPrecision,
+          availabilityPolicyVersion: availability.availabilityPolicyVersion,
           parseStatus: parsed.parseStatus,
           knowledgeMode,
+          historicalReconstruction: historicalReconstructionStatusForQuality(quality),
+          vintageAsOf: null,
         },
       });
     }

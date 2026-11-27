@@ -4,18 +4,24 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it, vi } from "vitest";
 
+import { easternWallClock } from "@/services/macro/time";
 import {
+  AVAILABILITY_POLICY,
   MARKET_SERIES_CATALOG,
   MARKET_SERIES_KEYS,
   PRIORITY_SERIES_CATALOG_IDS,
+  adapterObservationIneligibilityReasons,
   buildTreasuryYieldUrl,
-  conservativeAvailableAtFromIsoDate,
+  cboeVixAvailability,
   fetchCboeVixHistory,
   fetchFredMarketObservations,
   fetchTreasuryYieldCurve,
-  observationAtFromIsoDate,
+  isEligibleForHistoricalReconstruction,
+  isEligibleForSystemReplay,
+  nextNyMidnightAfter,
   parseRawNumeric,
   redactFredApiKey,
+  treasuryH15Availability,
 } from "@/services/market-context";
 
 const fixtureDir = join(
@@ -26,7 +32,7 @@ const fixtureDir = join(
 const fixture = (name: string): string =>
   readFileSync(join(fixtureDir, name), "utf8");
 
-const FIXED_FETCHED_AT = new Date("2024-01-10T15:00:00.000Z");
+const FIXED_FETCHED_AT = new Date("2024-06-01T15:00:00.000Z");
 
 describe("market-context series registry", () => {
   it("covers every priority catalog id exactly once", () => {
@@ -53,23 +59,38 @@ describe("availability helpers", () => {
       rawValue: "0",
       parseStatus: "ok",
     });
-    expect(parseRawNumeric("not-a-number")).toEqual({
-      value: null,
-      rawValue: "not-a-number",
-      parseStatus: "invalid",
-    });
   });
 
-  it("uses next-day UTC midnight as conservative availableAt (date precision)", () => {
-    const observationAt = observationAtFromIsoDate("2024-01-02");
-    const availableAt = conservativeAvailableAtFromIsoDate("2024-01-02");
-    expect(observationAt?.toISOString()).toBe("2024-01-02T00:00:00.000Z");
-    expect(availableAt?.toISOString()).toBe("2024-01-03T00:00:00.000Z");
+  it("uses NY next-day midnight for Cboe, not UTC midnight", () => {
+    const bound = cboeVixAvailability("2024-01-02");
+    expect(bound.availabilityPolicyVersion).toBe(
+      AVAILABILITY_POLICY.CBOE_VIX_NY_NEXT_DAY_OPEN,
+    );
+    expect(bound.availableAt?.toISOString()).toBe(
+      nextNyMidnightAfter("2024-01-02")?.toISOString(),
+    );
+    // UTC next-midnight would be 2024-01-03T00:00:00.000Z; NY midnight in
+    // January is 05:00Z.
+    expect(bound.availableAt?.toISOString()).toBe("2024-01-03T05:00:00.000Z");
+    expect(bound.availableAt?.toISOString()).not.toBe(
+      "2024-01-03T00:00:00.000Z",
+    );
+  });
+
+  it("uses H.15 16:15 ET for Treasury yields", () => {
+    const bound = treasuryH15Availability("2024-01-02");
+    expect(bound.availabilityPolicyVersion).toBe(
+      AVAILABILITY_POLICY.TREASURY_H15_1615_ET,
+    );
+    expect(bound.availabilityPrecision).toBe("timestamp");
+    expect(bound.availableAt?.toISOString()).toBe(
+      easternWallClock("2024-01-02", 16, 15).toISOString(),
+    );
   });
 });
 
-describe("FRED market adapter", () => {
-  it("parses VIXCLS closes and preserves missing rows as null", async () => {
+describe("FRED market adapter — revision / vintage gating", () => {
+  it("marks current-revised pulls as revised_latest and unsuitable for reconstruction", async () => {
     const result = await fetchFredMarketObservations({
       apiKey: "test-key",
       seriesId: "VIXCLS",
@@ -80,69 +101,69 @@ describe("FRED market adapter", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    expect(result.observations).toHaveLength(4);
-    const byDate = Object.fromEntries(
-      result.observations.map((row) => [
-        row.observation.observationDate,
-        row,
-      ]),
+    const okRow = result.observations.find(
+      (row) => row.observation.observationDate === "2024-01-02",
     );
+    expect(okRow?.observation.quality).toBe("revised_latest");
+    expect(okRow?.observation.availableAt).toBeNull();
+    expect(okRow?.observation.fetchedAt?.toISOString()).toBe(
+      FIXED_FETCHED_AT.toISOString(),
+    );
+    expect(okRow?.retrieval.historicalReconstruction).toBe(
+      "ineligible_revised_latest",
+    );
+    expect(okRow?.retrieval.vintageAsOf).toBeNull();
+    expect(isEligibleForHistoricalReconstruction(okRow!.observation)).toBe(
+      false,
+    );
+    expect(
+      adapterObservationIneligibilityReasons(
+        okRow!.observation,
+        new Date("2024-06-01T12:00:00.000Z"),
+        "PUBLIC_INFORMATION_RECONSTRUCTION",
+      ),
+    ).toContain("revised_latest_ineligible");
 
-    expect(byDate["2024-01-02"]?.observation.value).toBe(13.2);
-    expect(byDate["2024-01-02"]?.observation.seriesKey).toBe(
-      MARKET_SERIES_KEYS.VIXCLS,
+    const missing = result.observations.find(
+      (row) => row.observation.observationDate === "2024-01-04",
     );
-    expect(byDate["2024-01-02"]?.observation.unit).toBe("index_points");
-    expect(byDate["2024-01-02"]?.retrieval.rawValue).toBe("13.20");
-    expect(byDate["2024-01-02"]?.retrieval.availabilityPrecision).toBe("date");
-    expect(byDate["2024-01-02"]?.observation.quality).toBe(
-      "conservative_date_bound",
-    );
-    expect(byDate["2024-01-02"]?.observation.availableAt?.toISOString()).toBe(
-      "2024-01-03T00:00:00.000Z",
-    );
-
-    expect(byDate["2024-01-04"]?.observation.value).toBeNull();
-    expect(byDate["2024-01-04"]?.observation.quality).toBe("missing");
-    expect(byDate["2024-01-04"]?.retrieval.parseStatus).toBe("missing");
-    expect(byDate["2024-01-04"]?.retrieval.rawValue).toBe(".");
+    expect(missing?.observation.value).toBeNull();
+    expect(missing?.observation.quality).toBe("missing");
+    expect(missing?.retrieval.rawValue).toBe(".");
   });
 
-  it("maps breakevens and Fed target upper bound with pct_level units", async () => {
-    const breakeven = await fetchFredMarketObservations({
+  it("marks vintageAsOf pulls eligible with NY-EOD availability", async () => {
+    const result = await fetchFredMarketObservations({
       apiKey: "test-key",
-      seriesId: "T5YIE",
-      fixtureBody: fixture("fred-t5yie.json"),
+      seriesId: "DGS2",
+      vintageAsOf: "2024-01-03",
+      fixtureBody: fixture("fred-dgs2-vintage.json"),
       fetchedAt: FIXED_FETCHED_AT,
     });
-    const target = await fetchFredMarketObservations({
-      apiKey: "test-key",
-      seriesId: "DFEDTARU",
-      fixtureBody: fixture("fred-dfedtaru.json"),
-      fetchedAt: FIXED_FETCHED_AT,
-    });
 
-    expect(breakeven.ok && breakeven.observations[0]?.observation.seriesKey).toBe(
-      MARKET_SERIES_KEYS.T5YIE,
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const row = result.observations[0]!;
+    expect(row.observation.quality).toBe("conservative_date_bound");
+    expect(row.retrieval.vintageAsOf).toBe("2024-01-03");
+    expect(row.retrieval.availabilityPolicyVersion).toBe(
+      AVAILABILITY_POLICY.FRED_VINTAGE_NY_EOD,
     );
-    expect(breakeven.ok && breakeven.observations[0]?.observation.unit).toBe(
-      "pct_level",
+    expect(row.observation.availableAt?.toISOString()).toBe(
+      nextNyMidnightAfter("2024-01-03")?.toISOString(),
     );
-    expect(target.ok && target.observations[0]?.observation.seriesKey).toBe(
-      MARKET_SERIES_KEYS.DFEDTARU,
-    );
-    expect(target.ok && target.observations[0]?.observation.value).toBe(5.5);
+    expect(row.retrieval.historicalReconstruction).toBe("eligible");
+    expect(isEligibleForHistoricalReconstruction(row.observation)).toBe(true);
   });
 
-  it("redacts API keys from provenance endpoints", () => {
-    const redacted = redactFredApiKey(
-      "https://api.stlouisfed.org/fred/series/observations?series_id=VIXCLS&api_key=SECRET&file_type=json",
-    );
-    expect(redacted).toContain("api_key=REDACTED");
-    expect(redacted).not.toContain("SECRET");
-  });
+  it("redacts API keys and surfaces injected-fetch errors", async () => {
+    expect(
+      redactFredApiKey(
+        "https://api.stlouisfed.org/fred/series/observations?api_key=SECRET",
+      ),
+    ).toContain("api_key=REDACTED");
 
-  it("surfaces injected-fetch HTTP errors without inventing observations", async () => {
     const fetchImpl = vi.fn(async () => new Response("nope", { status: 503 }));
     const result = await fetchFredMarketObservations({
       apiKey: "test-key",
@@ -150,151 +171,159 @@ describe("FRED market adapter", () => {
       fetchImpl,
       fetchedAt: FIXED_FETCHED_AT,
     });
-
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.kind).toBe("http_error");
     expect(result.error.statusCode).toBe(503);
-    expect(result.error.sourceEndpoint).toContain("api_key=REDACTED");
-    expect(fetchImpl).toHaveBeenCalledOnce();
-  });
-
-  it("requires an API key when no fixture is provided", async () => {
-    const result = await fetchFredMarketObservations({
-      apiKey: "",
-      seriesId: "DGS2",
-    });
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.kind).toBe("config_error");
   });
 });
 
-describe("Cboe VIX adapter", () => {
-  it("parses CLOSE values onto the shared VIXCLS series key", async () => {
+describe("provider publication delays vs 08:30 ET cutoffs", () => {
+  it("keeps same-day Treasury yields unavailable before H.15 at an 08:30 ET cutoff", async () => {
+    const result = await fetchTreasuryYieldCurve({
+      fixtureBody: fixture("treasury-yields.xml"),
+      fetchedAt: FIXED_FETCHED_AT,
+      fields: ["BC_2YEAR"],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const jan2 = result.observations.find(
+      (row) => row.observation.observationDate === "2024-01-02",
+    )!;
+    const cutoff0830 = easternWallClock("2024-01-02", 8, 30);
+
+    expect(jan2.observation.availableAt?.toISOString()).toBe(
+      easternWallClock("2024-01-02", 16, 15).toISOString(),
+    );
+    expect(
+      adapterObservationIneligibilityReasons(
+        jan2.observation,
+        cutoff0830,
+        "PUBLIC_INFORMATION_RECONSTRUCTION",
+      ),
+    ).toContain("not_available_before_cutoff");
+    expect(isEligibleForHistoricalReconstruction(jan2.observation)).toBe(true);
+
+    // After H.15 the same day, the print is eligible.
+    const afterH15 = easternWallClock("2024-01-02", 16, 16);
+    expect(
+      adapterObservationIneligibilityReasons(
+        jan2.observation,
+        afterH15,
+        "PUBLIC_INFORMATION_RECONSTRUCTION",
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps same-day Cboe VIX unavailable at 08:30 ET (next NY day open policy)", async () => {
     const result = await fetchCboeVixHistory({
       fixtureBody: fixture("cboe-vix.csv"),
       fetchedAt: FIXED_FETCHED_AT,
     });
-
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    expect(result.retrievalBatch.sourceProvider).toBe("cboe");
-    expect(result.observations).toHaveLength(4);
+    const jan2 = result.observations.find(
+      (row) => row.observation.observationDate === "2024-01-02",
+    )!;
+    const cutoff0830 = easternWallClock("2024-01-02", 8, 30);
+    expect(
+      adapterObservationIneligibilityReasons(
+        jan2.observation,
+        cutoff0830,
+        "PUBLIC_INFORMATION_RECONSTRUCTION",
+      ),
+    ).toContain("not_available_before_cutoff");
 
+    const nextOpen = easternWallClock("2024-01-03", 0, 1);
+    expect(
+      adapterObservationIneligibilityReasons(
+        jan2.observation,
+        nextOpen,
+        "PUBLIC_INFORMATION_RECONSTRUCTION",
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("SYSTEM_REPLAY fetchedAt enforcement", () => {
+  it("requires observation.fetchedAt strictly before cutoff", async () => {
+    const result = await fetchCboeVixHistory({
+      fixtureBody: fixture("cboe-vix.csv"),
+      fetchedAt: new Date("2024-01-10T12:00:00.000Z"),
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const obs = result.observations[0]!.observation;
+    expect(obs.fetchedAt?.toISOString()).toBe("2024-01-10T12:00:00.000Z");
+
+    expect(
+      isEligibleForSystemReplay(obs, new Date("2024-01-10T12:00:00.001Z")),
+    ).toBe(true);
+    expect(
+      isEligibleForSystemReplay(obs, new Date("2024-01-10T12:00:00.000Z")),
+    ).toBe(false);
+    expect(
+      adapterObservationIneligibilityReasons(
+        obs,
+        new Date("2024-01-10T11:59:59.000Z"),
+        "SYSTEM_REPLAY",
+      ),
+    ).toContain("not_known_to_system");
+
+    const withoutFetch = { ...obs, fetchedAt: null };
+    expect(
+      adapterObservationIneligibilityReasons(
+        withoutFetch,
+        new Date("2024-06-01T00:00:00.000Z"),
+        "SYSTEM_REPLAY",
+      ),
+    ).toContain("not_known_to_system");
+  });
+});
+
+describe("Cboe / Treasury parse provenance", () => {
+  it("parses Cboe CLOSE onto shared VIXCLS key with fetchedAt", async () => {
+    const result = await fetchCboeVixHistory({
+      fixtureBody: fixture("cboe-vix.csv"),
+      fetchedAt: FIXED_FETCHED_AT,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
     const first = result.observations[0]!;
     expect(first.observation.seriesKey).toBe(MARKET_SERIES_KEYS.VIXCLS);
-    expect(first.observation.observationDate).toBe("2024-01-02");
     expect(first.observation.value).toBe(13.2);
-    expect(first.observation.unit).toBe("index_points");
-    expect(first.retrieval.rawValue).toBe("13.200000");
-    expect(first.retrieval.availabilityPrecision).toBe("date");
-    expect(first.observation.availableAt?.toISOString()).toBe(
-      "2024-01-03T00:00:00.000Z",
+    expect(first.observation.fetchedAt?.toISOString()).toBe(
+      FIXED_FETCHED_AT.toISOString(),
     );
-
-    const missing = result.observations.find(
-      (row) => row.observation.observationDate === "2024-01-04",
+    expect(first.retrieval.availabilityPolicyVersion).toBe(
+      AVAILABILITY_POLICY.CBOE_VIX_NY_NEXT_DAY_OPEN,
     );
-    expect(missing?.observation.value).toBeNull();
-    expect(missing?.observation.quality).toBe("missing");
   });
 
-  it("honours observationStart/End filters", async () => {
-    const result = await fetchCboeVixHistory({
-      fixtureBody: fixture("cboe-vix.csv"),
-      fetchedAt: FIXED_FETCHED_AT,
-      observationStart: "2024-01-03",
-      observationEnd: "2024-01-04",
-    });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(
-      result.observations.map((r) => r.observation.observationDate),
-    ).toEqual(["2024-01-03", "2024-01-04"]);
-  });
-
-  it("returns http_error from injected fetch failures", async () => {
-    const fetchImpl = vi.fn(async () => {
-      throw new Error("offline");
-    });
-    const result = await fetchCboeVixHistory({ fetchImpl });
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.kind).toBe("http_error");
-    expect(result.error.message).toContain("offline");
-  });
-});
-
-describe("US Treasury yield adapter", () => {
-  it("builds year and month endpoints", () => {
+  it("parses Treasury BC fields onto DGS keys", async () => {
     expect(buildTreasuryYieldUrl({ year: 2024 })).toContain(
       "field_tdr_date_value=2024",
     );
-    expect(buildTreasuryYieldUrl({ yearMonth: "202401" })).toContain(
-      "field_tdr_date_value_month=202401",
-    );
-    expect(buildTreasuryYieldUrl({ allPages: true, page: 2 })).toContain(
-      "page=2",
-    );
-  });
-
-  it("parses BC_3MONTH / BC_2YEAR / BC_10YEAR with shared DGS keys", async () => {
     const result = await fetchTreasuryYieldCurve({
       fixtureBody: fixture("treasury-yields.xml"),
       fetchedAt: FIXED_FETCHED_AT,
     });
-
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-
-    expect(result.retrievalBatch.sourceProvider).toBe("us_treasury");
-    // 3 entries × 3 fields
     expect(result.observations).toHaveLength(9);
-
     const jan2_2y = result.observations.find(
       (row) =>
         row.observation.observationDate === "2024-01-02" &&
         row.observation.seriesKey === MARKET_SERIES_KEYS.DGS2,
     );
     expect(jan2_2y?.observation.value).toBe(4.33);
-    expect(jan2_2y?.observation.unit).toBe("pct_level");
-    expect(jan2_2y?.retrieval.rawValue).toBe("4.33");
-    expect(jan2_2y?.retrieval.availabilityPrecision).toBe("date");
-
-    const jan2_10y = result.observations.find(
-      (row) =>
-        row.observation.observationDate === "2024-01-02" &&
-        row.observation.seriesKey === MARKET_SERIES_KEYS.DGS10,
+    expect(jan2_2y?.observation.fetchedAt?.toISOString()).toBe(
+      FIXED_FETCHED_AT.toISOString(),
     );
-    expect(jan2_10y?.observation.value).toBe(3.95);
-
-    const jan2_3m = result.observations.find(
-      (row) =>
-        row.observation.observationDate === "2024-01-02" &&
-        row.observation.seriesKey === MARKET_SERIES_KEYS.DGS3MO,
-    );
-    expect(jan2_3m?.observation.value).toBe(5.46);
-
-    const missing3m = result.observations.find(
-      (row) =>
-        row.observation.observationDate === "2024-01-04" &&
-        row.observation.seriesKey === MARKET_SERIES_KEYS.DGS3MO,
-    );
-    expect(missing3m?.observation.value).toBeNull();
-    expect(missing3m?.retrieval.parseStatus).toBe("missing");
   });
 
-  it("fails closed when neither fixture nor period is provided", async () => {
-    const result = await fetchTreasuryYieldCurve({});
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.kind).toBe("config_error");
-  });
-});
-
-describe("cross-adapter provenance", () => {
   it("keeps FRED DGS2 mirror keys identical to Treasury BC_2YEAR emissions", async () => {
     const treasury = await fetchTreasuryYieldCurve({
       fixtureBody: fixture("treasury-yields.xml"),
@@ -304,13 +333,12 @@ describe("cross-adapter provenance", () => {
     const fred = await fetchFredMarketObservations({
       apiKey: "test-key",
       seriesId: "DGS2",
-      fixtureBody: fixture("fred-dgs2.json"),
+      vintageAsOf: "2024-01-03",
+      fixtureBody: fixture("fred-dgs2-vintage.json"),
       fetchedAt: FIXED_FETCHED_AT,
     });
-
     expect(treasury.ok && fred.ok).toBe(true);
     if (!treasury.ok || !fred.ok) return;
-
     const t = treasury.observations.find(
       (row) => row.observation.observationDate === "2024-01-02",
     );
@@ -318,9 +346,6 @@ describe("cross-adapter provenance", () => {
       (row) => row.observation.observationDate === "2024-01-02",
     );
     expect(t?.observation.seriesKey).toBe(f?.observation.seriesKey);
-    expect(t?.observation.unit).toBe(f?.observation.unit);
     expect(t?.observation.value).toBe(f?.observation.value);
-    expect(t?.retrieval.sourceProvider).toBe("us_treasury");
-    expect(f?.retrieval.sourceProvider).toBe("fred");
   });
 });

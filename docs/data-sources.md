@@ -282,10 +282,12 @@ Still Planned / not adapted here: `DGS30`, `T10Y2Y`, `SP500`, `NASDAQ100`
 *(verify licensing on index series)*.
 
 Daily granularity only — fine for regime and context features, insufficient for
-intraday reaction analysis. **No production DB writes.** 2024 FRED API Terms
-restrict storing/caching/archiving FRED Content and incorporating it into
-databases; re-verify before any durable warehouse or commercial redistribution.
-Details: [market-context-adapters.md](market-context-adapters.md).
+intraday reaction analysis. **No production DB writes.** Default FRED pulls are
+marked `revised_latest` and are **not** point-in-time historical reconstruction;
+pass `vintageAsOf` for an ALFRED-style as-of panel. 2024 FRED API Terms restrict
+storing/caching/archiving FRED Content and incorporating it into databases;
+re-verify before any durable warehouse or commercial redistribution. Details:
+[market-context-adapters.md](market-context-adapters.md).
 
 ### US Treasury Daily Par Yield Curve · **Integrated (adapters only)**
 

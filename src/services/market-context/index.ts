@@ -5,13 +5,19 @@
  */
 
 export {
-  DATE_AVAILABILITY_PRECISION,
-  conservativeAvailableAtFromIsoDate,
+  AVAILABILITY_POLICY,
+  cboeVixAvailability,
+  fredMarketRedistributorAvailability,
+  fredRevisedLatestAvailability,
+  fredVintageAvailability,
   mdyToIsoDate,
+  nextNyMidnightAfter,
   observationAtFromIsoDate,
   parseRawNumeric,
   qualityForParsedValue,
   treasuryDateTimeToIsoDate,
+  treasuryH15Availability,
+  type AvailabilityPolicyVersion,
 } from "@/services/market-context/availability";
 
 export {
@@ -20,6 +26,15 @@ export {
   parseCboeVixCsv,
   type CboeVixFetchOptions,
 } from "@/services/market-context/cboe";
+
+export {
+  adapterObservationIneligibilityReasons,
+  availabilityIneligibilityReasons,
+  historicalReconstructionStatusForQuality,
+  isEligibleForHistoricalReconstruction,
+  isEligibleForSystemReplay,
+  systemReplayIneligibilityReasons,
+} from "@/services/market-context/eligibility";
 
 export {
   FRED_EMITTED_SERIES_KEYS,
@@ -55,6 +70,7 @@ export {
 export type {
   AvailabilityPrecision,
   FetchLike,
+  HistoricalReconstructionStatus,
   MarketContextFetchError,
   MarketContextFetchResult,
   MarketContextProvider,

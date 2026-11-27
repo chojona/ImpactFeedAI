@@ -13,13 +13,13 @@
 
 import type { KnowledgeMode, MarketContextObservation } from "@/types/context";
 import {
-  DATE_AVAILABILITY_PRECISION,
-  conservativeAvailableAtFromIsoDate,
+  cboeVixAvailability,
   mdyToIsoDate,
   observationAtFromIsoDate,
   parseRawNumeric,
   qualityForParsedValue,
 } from "@/services/market-context/availability";
+import { historicalReconstructionStatusForQuality } from "@/services/market-context/eligibility";
 import { fetchText } from "@/services/market-context/http";
 import { MARKET_SERIES_KEYS } from "@/services/market-context/series";
 import type {
@@ -93,7 +93,8 @@ export function parseCboeVixCsv(
     if (!observationAt) continue;
 
     const parsed = parseRawNumeric(cells[closeIdx]);
-    const availableAt = conservativeAvailableAtFromIsoDate(isoDate);
+    const availability = cboeVixAvailability(isoDate);
+    const quality = qualityForParsedValue(parsed.value, availability.quality);
     const observation: MarketContextObservation = {
       id: `cboe:VIX:${isoDate}`,
       seriesKey: MARKET_SERIES_KEYS.VIXCLS,
@@ -101,10 +102,11 @@ export function parseCboeVixCsv(
       unit: "index_points",
       observationAt,
       observationDate: isoDate,
-      availableAt,
+      availableAt: parsed.value === null ? null : availability.availableAt,
+      fetchedAt,
       publishedAt: null,
       sourceAt: null,
-      quality: qualityForParsedValue(parsed.value),
+      quality,
     };
 
     out.push({
@@ -116,9 +118,12 @@ export function parseCboeVixCsv(
         requestId,
         etag,
         rawValue: parsed.rawValue,
-        availabilityPrecision: DATE_AVAILABILITY_PRECISION,
+        availabilityPrecision: availability.availabilityPrecision,
+        availabilityPolicyVersion: availability.availabilityPolicyVersion,
         parseStatus: parsed.parseStatus,
         knowledgeMode,
+        historicalReconstruction: historicalReconstructionStatusForQuality(quality),
+        vintageAsOf: null,
       },
     });
   }

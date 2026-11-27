@@ -9,9 +9,11 @@
  *   calculators and market PIT eligibility in `src/services/context/`. Keep
  *   {@link MarketContextObservation}, {@link FeatureReasonCode}, and
  *   `sessionCalendar` stable for consumers.
- * - PR #24 (official market adapters): populates {@link MarketContextObservation}
- *   (with `fetchedAt`) and may add `revised_latest` quality for FRED current
- *   vintage pulls.
+ * - PR #24 (official market adapters, `src/services/market-context/`):
+ *   populates {@link MarketContextObservation} (with `fetchedAt`) and marks
+ *   FRED current-vintage pulls `revised_latest` with `availableAt: null`, so
+ *   they never pass the market PIT gate. Adds the `revised_latest_ineligible`
+ *   {@link FeatureReasonCode} (same spelling as macro {@link MissingReason}).
  *
  * Shared vocabulary must stay identical across those PRs:
  * `KnowledgeMode`, series keys (`market:VIXCLS:level`, `market:DGS*:yield_pct`,
@@ -119,7 +121,8 @@ export type FeatureReasonCode =
   | "missing_session_calendar"
   | "invalid_session_calendar"
   | "empty_input"
-  | "conflict_quarantined";
+  | "conflict_quarantined"
+  | "revised_latest_ineligible";
 
 export interface FeatureInputRef {
   readonly observationId: string;

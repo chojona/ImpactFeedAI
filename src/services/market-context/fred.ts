@@ -4,18 +4,24 @@
  * Used as primary source for breakevens (T5YIE/T10YIE) and Fed target bounds
  * (DFEDTARU/DFEDTARL), and as an optional mirror for VIXCLS / DGS*.
  *
- * Does not write to any database. Callers must respect FRED API Terms —
- * especially restrictions on storing/caching/archiving FRED Content.
+ * Current-revised pulls (default observations endpoint without a realtime
+ * vintage) are marked `revised_latest` and are **not** eligible for historical
+ * public-information reconstruction. Pass `vintageAsOf` (ALFRED-style
+ * realtime_start=realtime_end) to request a point-in-time panel.
+ *
+ * Does not write to any database. Callers must respect FRED API Terms.
  */
 
 import type { KnowledgeMode, MarketContextObservation } from "@/types/context";
 import {
-  DATE_AVAILABILITY_PRECISION,
-  conservativeAvailableAtFromIsoDate,
+  fredRevisedLatestAvailability,
+  fredVintageAvailability,
   observationAtFromIsoDate,
+  parseIsoDateOnly,
   parseRawNumeric,
   qualityForParsedValue,
 } from "@/services/market-context/availability";
+import { historicalReconstructionStatusForQuality } from "@/services/market-context/eligibility";
 import { fetchText } from "@/services/market-context/http";
 import {
   MARKET_SERIES_KEYS,
@@ -72,6 +78,12 @@ export interface FredMarketFetchOptions {
   readonly seriesId: FredMarketSeriesId;
   readonly observationStart?: string;
   readonly observationEnd?: string;
+  /**
+   * ALFRED-style as-of day (`YYYY-MM-DD`). Sets realtime_start=realtime_end so
+   * the panel is the series as known on that day. Required for historical
+   * reconstruction eligibility.
+   */
+  readonly vintageAsOf?: string;
   readonly fetchImpl?: FetchLike;
   readonly fetchedAt?: Date;
   readonly knowledgeMode?: KnowledgeMode;
@@ -90,6 +102,10 @@ function buildFredUrl(opts: FredMarketFetchOptions): string {
   }
   if (opts.observationEnd) {
     url.searchParams.set("observation_end", opts.observationEnd);
+  }
+  if (opts.vintageAsOf) {
+    url.searchParams.set("realtime_start", opts.vintageAsOf);
+    url.searchParams.set("realtime_end", opts.vintageAsOf);
   }
   return url.toString();
 }
@@ -115,9 +131,11 @@ function mapFredRows(
   requestId: string | null,
   etag: string | null,
   knowledgeMode: KnowledgeMode,
+  vintageAsOf: string | null,
 ): RetrievedMarketObservation[] {
   const catalog = marketSeriesByCatalogId(FRED_TO_CATALOG[seriesId]);
   const out: RetrievedMarketObservation[] = [];
+  const vintageMode = vintageAsOf !== null;
 
   for (const row of rows) {
     const isoDate = row.date?.trim() ?? "";
@@ -125,18 +143,25 @@ function mapFredRows(
     if (!observationAt) continue;
 
     const parsed = parseRawNumeric(row.value);
-    const availableAt = conservativeAvailableAtFromIsoDate(isoDate);
+    const availability = vintageMode
+      ? fredVintageAvailability(vintageAsOf)
+      : fredRevisedLatestAvailability();
+
+    const quality = qualityForParsedValue(parsed.value, availability.quality);
     const observation: MarketContextObservation = {
-      id: `fred:${seriesId}:${isoDate}`,
+      id: vintageMode
+        ? `fred:${seriesId}:${isoDate}:asof:${vintageAsOf}`
+        : `fred:${seriesId}:${isoDate}:revised_latest`,
       seriesKey: catalog.seriesKey,
       value: parsed.value,
       unit: catalog.unit,
       observationAt,
       observationDate: isoDate,
-      availableAt,
+      availableAt: parsed.value === null ? null : availability.availableAt,
+      fetchedAt,
       publishedAt: null,
       sourceAt: null,
-      quality: qualityForParsedValue(parsed.value),
+      quality,
     };
 
     out.push({
@@ -148,9 +173,12 @@ function mapFredRows(
         requestId,
         etag,
         rawValue: parsed.rawValue,
-        availabilityPrecision: DATE_AVAILABILITY_PRECISION,
+        availabilityPrecision: availability.availabilityPrecision,
+        availabilityPolicyVersion: availability.availabilityPolicyVersion,
         parseStatus: parsed.parseStatus,
         knowledgeMode,
+        historicalReconstruction: historicalReconstructionStatusForQuality(quality),
+        vintageAsOf,
       },
     });
   }
@@ -178,11 +206,25 @@ export async function fetchFredMarketObservations(
     };
   }
 
+  if (opts.vintageAsOf && !parseIsoDateOnly(opts.vintageAsOf)) {
+    return {
+      ok: false,
+      error: {
+        kind: "config_error",
+        message: `invalid vintageAsOf date: ${opts.vintageAsOf}`,
+        sourceProvider: "fred",
+        sourceEndpoint: FRED_OBSERVATIONS_URL,
+        statusCode: null,
+      },
+    };
+  }
+
   const fetchedAt = opts.fetchedAt ?? new Date();
   const knowledgeMode =
     opts.knowledgeMode ?? "PUBLIC_INFORMATION_RECONSTRUCTION";
+  const vintageAsOf = opts.vintageAsOf ?? null;
   const endpoint = opts.fixtureBody
-    ? `fixture:fred:${opts.seriesId}`
+    ? `fixture:fred:${opts.seriesId}${vintageAsOf ? `:asof:${vintageAsOf}` : ":revised_latest"}`
     : redactFredApiKey(buildFredUrl(opts));
 
   let body: string;
@@ -193,11 +235,7 @@ export async function fetchFredMarketObservations(
     body = opts.fixtureBody;
   } else {
     const fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
-    const response = await fetchText(
-      fetchImpl,
-      buildFredUrl(opts),
-      "fred",
-    );
+    const response = await fetchText(fetchImpl, buildFredUrl(opts), "fred");
     if (!response.ok) {
       return {
         ok: false,
@@ -237,6 +275,7 @@ export async function fetchFredMarketObservations(
     requestId,
     etag,
     knowledgeMode,
+    vintageAsOf,
   );
 
   return {
