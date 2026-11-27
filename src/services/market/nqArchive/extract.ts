@@ -10,6 +10,7 @@ import type {
   NqBarStore,
   NqEventWindowRequest,
   NqEventWindowResult,
+  NqReactionQualification,
   NqRollBoundary,
 } from "./types";
 
@@ -47,12 +48,16 @@ export async function extractEventWindow(
     certificationContract,
   );
 
+  let reactionQualification: NqReactionQualification =
+    eligibility.qualification;
+  let reasonCode = eligibility.reasonCode;
+
   // A certification conflict means we cannot trust the causal selection for a
   // qualified measurement — force refusal without inventing a substitute.
-  const reactionQualification =
-    contractSelection.conflictsWithCertification
-      ? "refused"
-      : eligibility.qualification;
+  if (contractSelection.conflictsWithCertification) {
+    reactionQualification = "refused";
+    reasonCode = "CONTRACT_CERTIFICATION_CONFLICT";
+  }
 
   const windowStart = new Date(releaseAt.getTime() - beforeMs);
   const windowEnd = new Date(releaseAt.getTime() + afterMs);
@@ -74,12 +79,20 @@ export async function extractEventWindow(
     bars,
   });
 
+  // Incomplete requested grids cannot enter strict qualification. Exploratory
+  // remains labelled exploratory so callers can still inspect gaps.
+  if (reactionQualification === "strict" && !coverage.complete) {
+    reactionQualification = "refused";
+    reasonCode = "INCOMPLETE_EVENT_WINDOW";
+  }
+
   return {
     releaseAt,
     tradingDate,
     contractSelection,
     eligibility: {
       ...eligibility,
+      reasonCode,
       qualification: reactionQualification,
     },
     bars,

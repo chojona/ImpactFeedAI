@@ -1,8 +1,9 @@
 /**
  * Session eligibility from Phase-3 allowlists and certification-by-session.
  *
- * Does not bypass calendar certification: Tier A → strict, Tier B → exploratory
- * only, everything else → refused for qualified reactions.
+ * Strict qualification requires Tier A **and** `STRICT_AND_EXPLORATORY`.
+ * Exploratory requires Tier B **and** `EXPLORATORY_ONLY`. Conflicting
+ * tier/eligibility pairs refuse rather than promoting via OR.
  */
 import { readFile } from "node:fs/promises";
 
@@ -18,7 +19,7 @@ export interface NqEligibilityIndex {
   certificationContract(tradingDate: string): string | null;
 }
 
-interface AllowlistRow {
+export interface AllowlistRow {
   tradingDate: string;
   tier: NqResearchTier;
   researchEligibility: string;
@@ -38,18 +39,28 @@ const asTier = (value: string): NqResearchTier => {
   return "UNKNOWN";
 };
 
-const qualificationFor = (
+/**
+ * Map allowlist evidence to a reaction qualification.
+ *
+ * Never promotes with OR across tier and researchEligibility. A mismatched
+ * pair (for example Tier A with EXPLORATORY_ONLY) is refused.
+ */
+export function qualificationFromEvidence(
   tier: NqResearchTier,
   researchEligibility: string | null,
-): NqReactionQualification => {
-  if (tier === "A" || researchEligibility === "STRICT_AND_EXPLORATORY") {
+): NqReactionQualification {
+  const eligibility = researchEligibility ?? "";
+  if (tier === "A" && eligibility === "STRICT_AND_EXPLORATORY") {
     return "strict";
   }
-  if (tier === "B" || researchEligibility === "EXPLORATORY_ONLY") {
+  if (tier === "B" && eligibility === "EXPLORATORY_ONLY") {
     return "exploratory";
   }
   return "refused";
-};
+}
+
+const rowsAgree = (a: AllowlistRow, b: AllowlistRow): boolean =>
+  a.tier === b.tier && a.researchEligibility === b.researchEligibility;
 
 const parseAllowlist = (
   rows: ReadonlyArray<Readonly<Record<string, string>>>,
@@ -77,6 +88,91 @@ const parseAllowlist = (
   return map;
 };
 
+const eligibilityFromRow = (row: AllowlistRow): NqSessionEligibility => ({
+  tradingDate: row.tradingDate,
+  tier: row.tier,
+  researchEligibility: row.researchEligibility || null,
+  reasonCode: row.reasonCode || null,
+  calendarValidity: row.calendarValidity || null,
+  providerIntegrity: row.providerIntegrity || null,
+  contractSelectionEvidence: row.contractSelection || null,
+  observedCoverage: row.observedCoverage || null,
+  selectedContract: row.selectedContract || null,
+  sourceIds: row.sourceIds,
+  qualification: qualificationFromEvidence(
+    row.tier,
+    row.researchEligibility || null,
+  ),
+});
+
+/**
+ * Build an eligibility index from in-memory allowlist rows (unit tests).
+ */
+export function createEligibilityIndex(args: {
+  strictRows?: readonly AllowlistRow[];
+  exploratoryRows?: readonly AllowlistRow[];
+  certificationContracts?: ReadonlyMap<string, string>;
+}): NqEligibilityIndex {
+  const strict = new Map(
+    (args.strictRows ?? []).map((row) => [row.tradingDate, row]),
+  );
+  const exploratory = new Map(
+    (args.exploratoryRows ?? []).map((row) => [row.tradingDate, row]),
+  );
+  const certificationContracts = new Map(args.certificationContracts ?? []);
+
+  return {
+    certificationContract(tradingDate: string): string | null {
+      return certificationContracts.get(tradingDate) ?? null;
+    },
+    lookup(tradingDate: string): NqSessionEligibility {
+      const strictRow = strict.get(tradingDate);
+      const exploratoryRow = exploratory.get(tradingDate);
+
+      if (strictRow && exploratoryRow && !rowsAgree(strictRow, exploratoryRow)) {
+        return {
+          tradingDate,
+          tier: "UNKNOWN",
+          researchEligibility: null,
+          reasonCode: "CONFLICTING_ALLOWLIST_EVIDENCE",
+          calendarValidity: null,
+          providerIntegrity: null,
+          contractSelectionEvidence: null,
+          observedCoverage: null,
+          selectedContract:
+            strictRow.selectedContract ||
+            exploratoryRow.selectedContract ||
+            certificationContracts.get(tradingDate) ||
+            null,
+          sourceIds: [
+            ...new Set([...strictRow.sourceIds, ...exploratoryRow.sourceIds]),
+          ],
+          qualification: "refused",
+        };
+      }
+
+      const row = strictRow ?? exploratoryRow;
+      if (!row) {
+        return {
+          tradingDate,
+          tier: "UNKNOWN",
+          researchEligibility: null,
+          reasonCode: "NOT_ON_ALLOWLIST",
+          calendarValidity: null,
+          providerIntegrity: null,
+          contractSelectionEvidence: null,
+          observedCoverage: null,
+          selectedContract: certificationContracts.get(tradingDate) ?? null,
+          sourceIds: [],
+          qualification: "refused",
+        };
+      }
+
+      return eligibilityFromRow(row);
+    },
+  };
+}
+
 export async function loadEligibilityIndex(args: {
   strictAllowlistCsv?: string;
   exploratoryAllowlistCsv?: string;
@@ -99,43 +195,11 @@ export async function loadEligibilityIndex(args: {
     }
   }
 
-  return {
-    certificationContract(tradingDate: string): string | null {
-      return certificationContracts.get(tradingDate) ?? null;
-    },
-    lookup(tradingDate: string): NqSessionEligibility {
-      const row = strict.get(tradingDate) ?? exploratory.get(tradingDate);
-      if (!row) {
-        return {
-          tradingDate,
-          tier: "UNKNOWN",
-          researchEligibility: null,
-          reasonCode: "NOT_ON_ALLOWLIST",
-          calendarValidity: null,
-          providerIntegrity: null,
-          contractSelectionEvidence: null,
-          observedCoverage: null,
-          selectedContract: certificationContracts.get(tradingDate) ?? null,
-          sourceIds: [],
-          qualification: "refused",
-        };
-      }
-
-      return {
-        tradingDate,
-        tier: row.tier,
-        researchEligibility: row.researchEligibility || null,
-        reasonCode: row.reasonCode || null,
-        calendarValidity: row.calendarValidity || null,
-        providerIntegrity: row.providerIntegrity || null,
-        contractSelectionEvidence: row.contractSelection || null,
-        observedCoverage: row.observedCoverage || null,
-        selectedContract: row.selectedContract || null,
-        sourceIds: row.sourceIds,
-        qualification: qualificationFor(row.tier, row.researchEligibility),
-      };
-    },
-  };
+  return createEligibilityIndex({
+    strictRows: [...strict.values()],
+    exploratoryRows: [...exploratory.values()],
+    certificationContracts,
+  });
 }
 
 export async function readJsonStatus(
