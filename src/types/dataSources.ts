@@ -39,6 +39,7 @@ export type EvidenceBasis =
   | "UNVERIFIED"; // believed, not checked — treat as unknown
 
 export type Resolution =
+  | "tick" // individual trades / order-book messages
   | "1m"
   | "5m"
   | "15m"
@@ -124,7 +125,9 @@ export interface RevisionBehavior {
 /**
  * Whether values can feed a point-in-time reconstruction.
  *
- * - `ELIGIBLE`: usable as-is at the stated publication precision.
+ * - `ELIGIBLE`: usable as-is against an exact cutoff. Requires instant-precision
+ *   publication timing; a date-only timestamp is at most CONDITIONAL, because
+ *   it cannot place a value before or after an intraday cutoff.
  * - `CONDITIONAL`: usable only once every listed condition is met.
  * - `INELIGIBLE`: must not feed point-in-time work (e.g. current-vintage values
  *   standing in for first prints).

@@ -42,9 +42,14 @@ function vintageSeries(
       basis: "TESTED",
     },
     pointInTime: {
-      status: "ELIGIBLE",
-      reason: "Returns the value as it stood on a given date, at date precision.",
-      conditions: [],
+      status: "CONDITIONAL",
+      reason:
+        "Vintages are dated, not timed. realtime_start says which day a value appeared, not whether it was public before an intraday cutoff on that day.",
+      conditions: [
+        "Take the release instant from an independently verified publisher release record, never from the vintage date.",
+        "A vintage dated on the cutoff day counts as known only after that verified release instant. Without one, treat it as unknown until the next day.",
+        "Never assume a vintage is known at an exact intraday cutoff based on its date alone.",
+      ],
     },
     notes,
   };

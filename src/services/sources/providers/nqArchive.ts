@@ -50,16 +50,6 @@ export const NQ_ARCHIVE_PROVIDER: DataProviderEntry = {
           evidence:
             "Read the archive's acceptance-report.md and rolls.csv: 6,784,816 deduplicated bars, 67 chunks, 66 roll boundaries. The parquet itself was not opened.",
         },
-        {
-          status: "UNAVAILABLE",
-          resolution: "1m",
-          accessTier: "local_licensed",
-          start: null,
-          end: null,
-          testedOn: TESTED_ON,
-          unavailableReason: "not_licensed",
-          evidence: "Trades, MBO and status schemas were not part of the purchase (certification-report.md).",
-        },
       ],
       publication: {
         delay: "static_archive",
@@ -85,6 +75,44 @@ export const NQ_ARCHIVE_PROVIDER: DataProviderEntry = {
         ],
       },
       notes: ["Acceptance status: FAIL_ACCEPTANCE_CALENDAR_AND_SOURCE_LIMITATIONS (2026-10-08)."],
+    },
+    {
+      // Schema gap kept apart from the OHLCV series so it cannot read as a gap
+      // in the tested 1-minute bars.
+      id: "nq_archive:nq_trades_mbo_status",
+      providerSeriesId: "trades, mbo, status",
+      title: "NQ trades, market-by-order and status schemas (not purchased)",
+      unit: "n/a",
+      canonicalKeys: [],
+      coverage: [
+        {
+          status: "UNAVAILABLE",
+          resolution: "tick",
+          accessTier: "local_licensed",
+          start: null,
+          end: null,
+          testedOn: TESTED_ON,
+          unavailableReason: "not_licensed",
+          evidence:
+            "certification-report.md: trades, MBO and status streams were not in the approved OHLCV/definition purchase. Getting them would be a new purchase.",
+        },
+      ],
+      publication: {
+        delay: "static_archive",
+        precision: "unknown",
+        detail: "Not held locally.",
+        availabilityRule: null,
+        basis: "DOCUMENTED",
+      },
+      revisions: { kind: "unknown", detail: "Not held locally.", basis: "UNVERIFIED" },
+      pointInTime: {
+        status: "INELIGIBLE",
+        reason: "No data is held for these schemas.",
+        conditions: [],
+      },
+      notes: [
+        "Without these streams, a missing 1-minute OHLCV bar cannot be told apart from a zero-trade minute or a feed gap.",
+      ],
     },
   ],
 };

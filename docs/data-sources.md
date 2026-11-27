@@ -19,7 +19,10 @@ licensing and auth requirements now live in
 provider. Each coverage claim is **TESTED** (a live request returned it, with
 the date), **ADVERTISED** (the provider documents it, nothing here exercised it)
 or **UNAVAILABLE** (refused under the stated access tier, with the reason). The
-registry is checked by `validateRegistry` in the test suite. `npm run
+registry is checked by `validateRegistry` in the test suite. `assessCoverage`
+reports availability (could the data be obtained?) separately from research
+suitability (point-in-time status, conditions, licensing, blockers). TESTED
+availability never means certified or historically usable. `npm run
 audit:sources` prints the per-provider audit offline. When this prose and the
 registry disagree, the registry's dated evidence wins. Headline findings from
 the 2026-11-27 validation:

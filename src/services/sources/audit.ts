@@ -4,7 +4,10 @@
  * - `validateRegistry`: integrity rules (fails the test suite when violated).
  * - `buildCoverageAudit`: per-provider counts shaped for the /quality page.
  * - `assessCoverage`: "can series X give resolution R for this date range, and
- *   how do we know?", with the answer graded TESTED > ADVERTISED > UNAVAILABLE.
+ *   how do we know?" (availability, graded TESTED > ADVERTISED > UNAVAILABLE),
+ *   reported separately from "may it be used for point-in-time research?"
+ *   (suitability: point-in-time status, conditions, licensing, blockers).
+ *   TESTED availability never implies research suitability.
  *
  * No I/O. `today` is always injected so results are deterministic.
  */
@@ -14,7 +17,9 @@ import type {
   DataSeriesEntry,
   DataSourceRegistry,
   IsoDate,
+  LicensingTerms,
   Permission,
+  PointInTimeEligibility,
   Resolution,
 } from "@/types/dataSources";
 
@@ -63,6 +68,7 @@ export type RegistryIssueCode =
   | "BAD_ENV_VAR_NAME"
   | "NONZERO_COST"
   | "PIT_ELIGIBLE_WITHOUT_BASIS"
+  | "CONTRADICTORY_COVERAGE"
   | "POSSIBLE_SECRET";
 
 export interface RegistryIssue {
@@ -166,20 +172,55 @@ function validateSeries(
     });
   }
   series.coverage.forEach((c, i) => validateClaim(c, `${path}.coverage[${i}]`, asOf, issues));
+  checkContradictions(series, path, asOf, issues);
 
+  // ELIGIBLE means "usable as-is at an exact cutoff". A date-only publication
+  // time cannot place a value before or after an intraday cutoff, so it is at
+  // most CONDITIONAL, whatever the revision behaviour.
   const pit = series.pointInTime;
   if (
     pit.status === "ELIGIBLE" &&
     (series.revisions.kind === "unknown" ||
       series.revisions.kind === "revised_without_vintages" ||
-      series.publication.precision === "unknown")
+      series.publication.precision !== "instant")
   ) {
     issues.push({
       code: "PIT_ELIGIBLE_WITHOUT_BASIS",
       path: `${path}.pointInTime`,
-      message: "ELIGIBLE needs known revision behaviour (not revised in place) and a known publication precision",
+      message:
+        "ELIGIBLE needs an instant-precision publication time and known revision behaviour (not revised in place). Date-only timing is at most CONDITIONAL",
     });
   }
+}
+
+/**
+ * Within one series, an UNAVAILABLE claim must not overlap a TESTED claim with
+ * the same resolution and access tier: the registry would then say the same
+ * data both was and was not obtained. A gap in a different schema or product
+ * belongs in its own series entry.
+ */
+function checkContradictions(series: DataSeriesEntry, path: string, asOf: IsoDate, issues: RegistryIssue[]): void {
+  const tested = series.coverage.filter((c) => c.status === "TESTED");
+  series.coverage.forEach((u, i) => {
+    if (u.status !== "UNAVAILABLE") return;
+    const clash = tested.find(
+      (t) => t.resolution === u.resolution && t.accessTier === u.accessTier && spansIntersect(t, u, asOf),
+    );
+    if (clash) {
+      issues.push({
+        code: "CONTRADICTORY_COVERAGE",
+        path: `${path}.coverage[${i}]`,
+        message: `UNAVAILABLE ${u.resolution}/${u.accessTier} overlaps a TESTED claim for the same resolution and tier`,
+      });
+    }
+  });
+}
+
+function spansIntersect(a: CoverageClaim, b: CoverageClaim, today: IsoDate): boolean {
+  const x = claimSpan(a, today);
+  const y = claimSpan(b, today);
+  // A null bound is open-ended.
+  return (x.start === null || y.end === null || x.start <= y.end) && (y.start === null || x.end === null || y.start <= x.end);
 }
 
 function newestTestedOn(provider: DataProviderEntry): IsoDate | null {
@@ -351,16 +392,48 @@ export function buildCoverageAudit(registry: DataSourceRegistry, options: Covera
 
 // ── Range assessment ───────────────────────────────────────────────────────
 
-export type CoverageVerdict = "TESTED" | "ADVERTISED" | "UNAVAILABLE" | "UNKNOWN";
+/**
+ * Whether the data could be OBTAINED. This says nothing about whether it is fit
+ * for research: TESTED means a request returned bars, not that they are
+ * certified, point-in-time safe or licensed for storage. See `suitability`.
+ */
+export type AvailabilityVerdict = "TESTED" | "ADVERTISED" | "UNAVAILABLE" | "UNKNOWN";
+
+/**
+ * Whether obtained data may be used for point-in-time research. Series-level:
+ * range-specific limits (for example certified sessions) appear in the
+ * point-in-time conditions, which must be satisfied by the caller.
+ */
+export interface ResearchSuitability {
+  readonly pointInTime: PointInTimeEligibility;
+  readonly licensing: {
+    readonly storage: Permission;
+    readonly redistribution: Permission;
+    readonly summary: string;
+    readonly basis: LicensingTerms["basis"];
+  };
+  /**
+   * Every reason the range is not research-ready as-is: availability other
+   * than TESTED, point-in-time status other than ELIGIBLE (each condition is
+   * listed), and storage other than PERMITTED. Redistribution is reported in
+   * `licensing` but does not block private research.
+   */
+  readonly blockers: readonly string[];
+  /** True only when `blockers` is empty. */
+  readonly researchReady: boolean;
+}
 
 export interface CoverageAssessment {
   readonly seriesId: string;
+  readonly providerId: string | null;
   readonly resolution: Resolution;
   readonly from: IsoDate;
   readonly to: IsoDate;
-  readonly verdict: CoverageVerdict;
-  /** Claims that decided the verdict. */
+  readonly availability: AvailabilityVerdict;
+  /** Claims that decided `availability`. */
   readonly claims: readonly CoverageClaim[];
+  /** Null only when the series is not registered. */
+  readonly suitability: ResearchSuitability | null;
 }
 
 export interface AssessCoverageOptions {
@@ -392,12 +465,42 @@ function overlaps(claim: CoverageClaim, from: IsoDate, to: IsoDate, today: IsoDa
   return (start === null || start <= to) && (end === null || end >= from);
 }
 
-export function findSeries(registry: DataSourceRegistry, seriesId: string): DataSeriesEntry | null {
-  for (const p of registry.providers) {
-    const s = p.series.find((x) => x.id === seriesId);
-    if (s) return s;
+function locateSeries(
+  registry: DataSourceRegistry,
+  seriesId: string,
+): { provider: DataProviderEntry; series: DataSeriesEntry } | null {
+  for (const provider of registry.providers) {
+    const series = provider.series.find((x) => x.id === seriesId);
+    if (series) return { provider, series };
   }
   return null;
+}
+
+export function findSeries(registry: DataSourceRegistry, seriesId: string): DataSeriesEntry | null {
+  return locateSeries(registry, seriesId)?.series ?? null;
+}
+
+function assessSuitability(
+  provider: DataProviderEntry,
+  series: DataSeriesEntry,
+  availability: AvailabilityVerdict,
+): ResearchSuitability {
+  const pit = series.pointInTime;
+  const lic = provider.licensing;
+  const blockers: string[] = [];
+  if (availability !== "TESTED") blockers.push(`Availability is ${availability}, not TESTED.`);
+  if (pit.status === "INELIGIBLE") blockers.push(`Point-in-time INELIGIBLE: ${pit.reason}`);
+  if (pit.status === "CONDITIONAL") {
+    blockers.push(`Point-in-time CONDITIONAL: ${pit.reason}`);
+    for (const c of pit.conditions) blockers.push(`Condition: ${c}`);
+  }
+  if (lic.storage !== "PERMITTED") blockers.push(`Storage is ${lic.storage}: ${lic.summary}`);
+  return {
+    pointInTime: pit,
+    licensing: { storage: lic.storage, redistribution: lic.redistribution, summary: lic.summary, basis: lic.basis },
+    blockers,
+    researchReady: blockers.length === 0,
+  };
 }
 
 export function assessCoverage(
@@ -408,9 +511,21 @@ export function assessCoverage(
   options: AssessCoverageOptions,
 ): CoverageAssessment {
   const { from, to } = range;
-  const base = { seriesId, resolution, from, to };
-  const series = findSeries(registry, seriesId);
-  if (!series) return { ...base, verdict: "UNKNOWN", claims: [] };
+  const found = locateSeries(registry, seriesId);
+  if (!found) {
+    return { seriesId, providerId: null, resolution, from, to, availability: "UNKNOWN", claims: [], suitability: null };
+  }
+  const { provider, series } = found;
+  const result = (availability: AvailabilityVerdict, claims: readonly CoverageClaim[]): CoverageAssessment => ({
+    seriesId,
+    providerId: provider.id,
+    resolution,
+    from,
+    to,
+    availability,
+    claims,
+    suitability: assessSuitability(provider, series, availability),
+  });
 
   const candidates = series.coverage.filter(
     (c) => c.resolution === resolution && (options.includePremium || c.accessTier !== "premium"),
@@ -419,10 +534,10 @@ export function assessCoverage(
     candidates.filter((c) => c.status === status && test(c, from, to, options.today));
 
   const tested = pick("TESTED", spans);
-  if (tested.length > 0) return { ...base, verdict: "TESTED", claims: tested };
+  if (tested.length > 0) return result("TESTED", tested);
   const advertised = pick("ADVERTISED", spans);
-  if (advertised.length > 0) return { ...base, verdict: "ADVERTISED", claims: advertised };
+  if (advertised.length > 0) return result("ADVERTISED", advertised);
   const unavailable = pick("UNAVAILABLE", overlaps);
-  if (unavailable.length > 0) return { ...base, verdict: "UNAVAILABLE", claims: unavailable };
-  return { ...base, verdict: "UNKNOWN", claims: [] };
+  if (unavailable.length > 0) return result("UNAVAILABLE", unavailable);
+  return result("UNKNOWN", []);
 }

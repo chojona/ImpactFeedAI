@@ -107,6 +107,32 @@ describe("validateRegistry", () => {
     expect(c).toEqual(expect.arrayContaining(["DUPLICATE_ID", "BAD_SERIES_ID"]));
   });
 
+  it("refuses ELIGIBLE point-in-time status for date-only publication timing", () => {
+    const dateOnly = series({
+      revisions: { kind: "revised_with_vintages", detail: "", basis: "TESTED" },
+      pointInTime: { status: "ELIGIBLE", reason: "", conditions: [] },
+    });
+    expect(series().publication.precision).toBe("date");
+    expect(codes(registry(provider({ series: [dateOnly] })))).toContain("PIT_ELIGIBLE_WITHOUT_BASIS");
+    const instant = series({
+      publication: { ...series().publication, precision: "instant" },
+      pointInTime: { status: "ELIGIBLE", reason: "", conditions: [] },
+    });
+    expect(codes(registry(provider({ series: [instant] })))).toEqual([]);
+  });
+
+  it("rejects an UNAVAILABLE claim that overlaps a TESTED claim of the same resolution and tier", () => {
+    const tested1m = { status: "TESTED", resolution: "1m", accessTier: "local_licensed", start: "2010-06-07", end: "2026-10-06", testedOn: "2026-01-01", evidence: "manifest" } as const;
+    const gap = { status: "UNAVAILABLE", resolution: "1m", accessTier: "local_licensed", start: null, end: null, testedOn: "2026-01-01", unavailableReason: "not_licensed", evidence: "schema" } as const;
+    const clash = series({ coverage: [tested1m, gap] });
+    expect(codes(registry(provider({ series: [clash] })))).toEqual(["CONTRADICTORY_COVERAGE"]);
+    // The same gap at a different resolution, or a refused range outside the tested one, is fine.
+    const tick = series({ coverage: [tested1m, { ...gap, resolution: "tick" }] });
+    const disjoint = series({ coverage: [tested1m, { ...gap, start: "2000-01-01", end: "2010-06-06" }] });
+    expect(codes(registry(provider({ series: [tick] })))).toEqual([]);
+    expect(codes(registry(provider({ series: [disjoint] })))).toEqual([]);
+  });
+
   it("refuses ELIGIBLE point-in-time status when revisions are unknown or revised in place", () => {
     const unknown = series({ revisions: { kind: "unknown", detail: "", basis: "UNVERIFIED" }, pointInTime: { status: "ELIGIBLE", reason: "", conditions: [] } });
     const inPlace = series({ revisions: { kind: "revised_without_vintages", detail: "", basis: "DOCUMENTED" }, pointInTime: { status: "ELIGIBLE", reason: "", conditions: [] } });
@@ -141,37 +167,75 @@ describe("assessCoverage", () => {
 
   it("reports Alpha Vantage SPY 1-minute 2022 as unavailable on the free key", () => {
     const r = assess("alpha_vantage:SPY", "1m", "2022-03-01", "2022-03-31");
-    expect(r.verdict).toBe("UNAVAILABLE");
+    expect(r.availability).toBe("UNAVAILABLE");
     expect(r.claims.every((c) => c.unavailableReason === "premium_only")).toBe(true);
   });
 
   it("separates what premium advertises from what the free key gets", () => {
-    expect(assess("alpha_vantage:SPY", "1m", "2022-03-01", "2022-03-31", true).verdict).toBe("ADVERTISED");
+    expect(assess("alpha_vantage:SPY", "1m", "2022-03-01", "2022-03-31", true).availability).toBe("ADVERTISED");
   });
 
   it("reports Yahoo daily SPY for 2022–2024 as tested", () => {
-    expect(assess("yahoo:SPY", "1d", "2022-01-03", "2024-12-31").verdict).toBe("TESTED");
+    expect(assess("yahoo:SPY", "1d", "2022-01-03", "2024-12-31").availability).toBe("TESTED");
   });
 
   it("evaluates rolling windows relative to today", () => {
-    expect(assess("yahoo:SPY", "1m", "2026-11-20", "2026-11-26").verdict).toBe("TESTED");
-    expect(assess("yahoo:SPY", "1m", "2022-03-01", "2022-03-04").verdict).toBe("UNAVAILABLE");
+    expect(assess("yahoo:SPY", "1m", "2026-11-20", "2026-11-26").availability).toBe("TESTED");
+    expect(assess("yahoo:SPY", "1m", "2022-03-01", "2022-03-04").availability).toBe("UNAVAILABLE");
   });
 
   it("never stretches a session-count window into a covered range", () => {
     // 100 sessions are treated as 100 calendar days, so August 2026 is not claimed.
-    expect(assess("alpha_vantage:SPY", "1d", "2026-08-01", "2026-08-31").verdict).toBe("UNKNOWN");
+    expect(assess("alpha_vantage:SPY", "1d", "2026-08-01", "2026-08-31").availability).toBe("UNKNOWN");
   });
 
   it("reports SF Fed FOMC surprises after 2023 as unpublished", () => {
     const r = assess("sf_fed:fomc_update_2023", "per_event", "2024-01-01", "2024-12-31");
-    expect(r.verdict).toBe("UNAVAILABLE");
+    expect(r.availability).toBe("UNAVAILABLE");
     expect(r.claims[0].unavailableReason).toBe("not_published");
   });
 
+  it("keeps availability separate from research suitability", () => {
+    const r = assess("yahoo:SPY", "1d", "2022-01-03", "2024-12-31");
+    expect(r.availability).toBe("TESTED");
+    expect(r.providerId).toBe("yahoo");
+    expect(r.suitability?.researchReady).toBe(false);
+    expect(r.suitability?.pointInTime.status).toBe("CONDITIONAL");
+    expect(r.suitability?.licensing.storage).toBe("UNVERIFIED");
+    expect(r.suitability?.blockers.some((b) => b.startsWith("Storage is UNVERIFIED"))).toBe(true);
+  });
+
+  it("does not treat tested NQ minute bars as certified outside accepted sessions", () => {
+    const r = assess("nq_archive:nq_outright_ohlcv_1m", "1m", "2022-01-03", "2022-12-30");
+    expect(r.availability).toBe("TESTED");
+    expect(r.suitability?.researchReady).toBe(false);
+    expect(r.suitability?.blockers).toContain("Condition: Strict measurements only on ACCEPT sessions (accepted-sessions.csv).");
+  });
+
+  it("lists every point-in-time condition for ALFRED vintages as a blocker", () => {
+    const r = assess("alfred:PAYEMS", "per_vintage", "2022-03-04", "2022-03-04");
+    expect(r.availability).toBe("TESTED");
+    expect(r.suitability?.researchReady).toBe(false);
+    for (const c of r.suitability!.pointInTime.conditions) expect(r.suitability?.blockers).toContain(`Condition: ${c}`);
+  });
+
+  it("is research-ready only when tested, point-in-time ELIGIBLE and storable", () => {
+    for (const p of DATA_SOURCE_REGISTRY.providers) {
+      for (const s of p.series) {
+        for (const c of s.coverage.filter((x) => x.status === "TESTED" && x.start && x.end)) {
+          const r = assessCoverage(DATA_SOURCE_REGISTRY, s.id, c.resolution, { from: c.start!, to: c.end! }, { today: TODAY });
+          expect(r.availability, s.id).toBe("TESTED");
+          expect(r.suitability?.researchReady, s.id).toBe(s.pointInTime.status === "ELIGIBLE" && p.licensing.storage === "PERMITTED");
+        }
+      }
+    }
+  });
+
   it("returns UNKNOWN for unregistered series or resolutions", () => {
-    expect(assess("nope:X", "1d", "2022-01-01", "2022-01-02").verdict).toBe("UNKNOWN");
-    expect(assess("cboe:VIX", "1w", "2022-01-01", "2022-01-31").verdict).toBe("UNKNOWN");
+    const missing = assess("nope:X", "1d", "2022-01-01", "2022-01-02");
+    expect(missing.availability).toBe("UNKNOWN");
+    expect(missing.suitability).toBeNull();
+    expect(assess("cboe:VIX", "1w", "2022-01-01", "2022-01-31").availability).toBe("UNKNOWN");
   });
 });
 

@@ -91,8 +91,30 @@ describe("recorded findings", () => {
     }
   });
 
-  it("marks current-vintage FRED macro series as point-in-time ineligible and ALFRED as eligible", () => {
+  it("marks current-vintage FRED macro series as point-in-time ineligible", () => {
     expect(getProvider("fred")!.series.find((s) => s.id === "fred:PAYEMS")!.pointInTime.status).toBe("INELIGIBLE");
-    expect(getProvider("alfred")!.series.find((s) => s.id === "alfred:PAYEMS")!.pointInTime.status).toBe("ELIGIBLE");
+  });
+
+  it("keeps date-only ALFRED vintages CONDITIONAL on verified release timing", () => {
+    for (const s of getProvider("alfred")!.series) {
+      expect(s.publication.precision, s.id).toBe("date");
+      expect(s.pointInTime.status, s.id).toBe("CONDITIONAL");
+      expect(s.pointInTime.conditions.join(" "), s.id).toMatch(/verified .*release/i);
+    }
+  });
+
+  it("marks nothing ELIGIBLE unless its publication time is instant-precision", () => {
+    for (const s of allSeries.filter((x) => x.pointInTime.status === "ELIGIBLE")) {
+      expect(s.publication.precision, s.id).toBe("instant");
+    }
+  });
+
+  it("keeps the NQ schema gap out of the tested OHLCV series", () => {
+    const nq = getProvider("nq_archive")!;
+    const ohlcv = nq.series.find((s) => s.id === "nq_archive:nq_outright_ohlcv_1m")!;
+    expect(ohlcv.coverage.map((c) => c.status)).toEqual(["TESTED"]);
+    const gap = nq.series.find((s) => s.id === "nq_archive:nq_trades_mbo_status")!;
+    expect(gap.coverage).toHaveLength(1);
+    expect(gap.coverage[0]).toMatchObject({ status: "UNAVAILABLE", resolution: "tick", unavailableReason: "not_licensed" });
   });
 });
